@@ -5,67 +5,75 @@ import axios from "axios";
 import uniquid from "uniquid";
 
 const RegistroPaciente = () => {
-  const [nombre, setNombre] = useState("");
-  const [apellidos, setApellidos] = useState("");
-  const [fecha, setFecha] = useState("");
-  const [genero, setGenero] = useState("");
-  const [estadoPaciente, setEstadoPaciente] = useState("");
-  const [ciudadNacimiento, setCiudadNacimiento] = useState("");
-  const [nacionalidad, setNacionalidad] = useState("");
-  const [estadoNacimiento, setEstadoNacimiento] = useState("");
-  const [identificacion, setIdentificacion] = useState("");
-  const [casilla, setCasilla] = useState(false);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthdate, setBirthdate] = useState("");
+  const [gender, setGender] = useState("");
+  const [patientStatus, setPatientStatus] = useState("");
+  const [birthCity, setBirthCity] = useState("");
+  const [nationality, setNationality] = useState("");
+  const [birthState, setBirthState] = useState("");
+  const [idType, setIdType] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [error, setError] = useState("");
 
-  const AgregarPaciente = async (e) => {
+  const agregarPaciente = async (e) => {
     e.preventDefault();
 
-    if (!casilla) {
-      alert("Marque la casilla para continuar");
-      return;
-    }
+    /* const paciente = {
+      firstName,
+      lastName,
+      birthdate,
+      gender,
+      patientStatus,
+      birthCity,
+      nationality,
+      birthState,
+      idType,
+    }; */
 
-    const paciente = {
-      idpaciente: uniquid(),
-      nombre,
-      apellidos,
-      fecha,
-      genero,
-      estadoPaciente,
-      ciudadNacimiento,
-      nacionalidad,
-      estadoNacimiento,
-      identificacion,
-    };
+    const res = await fetch("/api/patient", {
+      method: "POST",
+      headers: {
+        "Content-type": "application/json",
+      },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        birthdate,
+        gender,
+        patientStatus,
+        birthCity,
+        nationality,
+        birthState,
+        idType
+      })
+    });
 
-    try {
-      const response = await axios.post(
-        "api/paciente/agregarPaciente",
-        paciente
-      );
-      console.log("Exitoso", response.data);
-      limpiarCampos();
-    } catch (error) {
-      console.log("Fallido", error);
-    }
+    limpiarCampos();
+    const { msg } = await res.json();
+    setError(msg);
+    
   };
 
   const limpiarCampos = () => {
-    setNombre("");
-    setApellidos("");
-    setFecha("");
-    setGenero("");
-    setEstadoPaciente("");
-    setCiudadNacimiento("");
-    setNacionalidad("");
-    setEstadoNacimiento("");
-    setIdentificacion("");
-    setCasilla(false);
+    setFirstName("");
+    setLastName("");
+    setBirthdate("");
+    setGender("");
+    setPatientStatus("");
+    setBirthCity("");
+    setNationality("");
+    setBirthState("");
+    setIdType("");
+    setConsent(false);
+    setError("")
   };
 
   return (
     <form
       className="max-w-md mx-auto p-4 bg-gray-100"
-      onSubmit={AgregarPaciente}
+      onSubmit={agregarPaciente}
     >
       <h1 className="text-black font-extrabold">REGISTRO DE PACIENTES</h1>
       <div className="mb-4">
@@ -79,8 +87,8 @@ const RegistroPaciente = () => {
           type="text"
           id="firstName"
           name="firstName"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe el nombre del paciente"
           required
@@ -97,8 +105,8 @@ const RegistroPaciente = () => {
           type="text"
           id="lastName"
           name="lastName"
-          value={apellidos}
-          onChange={(e) => setApellidos(e.target.value)}
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe los apellidos del paciente"
           required
@@ -116,8 +124,8 @@ const RegistroPaciente = () => {
           type="text"
           id="birthdate"
           name="birthdate"
-          value={fecha}
-          onChange={(e) => setFecha(e.target.value)}
+          value={birthdate}
+          onChange={(e) => setBirthdate(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="DD/MM/AAAA"
           required
@@ -134,8 +142,8 @@ const RegistroPaciente = () => {
           type="text"
           id="gender"
           name="gender"
-          value={genero}
-          onChange={(e) => setGenero(e.target.value)}
+          value={gender}
+          onChange={(e) => setGender(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="M o F"
           required
@@ -151,11 +159,14 @@ const RegistroPaciente = () => {
         <select
           id="patientStatus"
           name="patientStatus"
-          value={estadoPaciente}
-          onChange={(e) => setEstadoPaciente(e.target.value)}
+          value={patientStatus}
+          onChange={(e) => setPatientStatus(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           required
         >
+          <option value="" disabled>
+            Seleccione una opción
+          </option>
           <option value="activo">Activo</option>
           <option value="inactivo">Inactivo</option>
         </select>
@@ -171,8 +182,8 @@ const RegistroPaciente = () => {
           type="text"
           id="birthCity"
           name="birthCity"
-          value={ciudadNacimiento}
-          onChange={(e) => setCiudadNacimiento(e.target.value)}
+          value={birthCity}
+          onChange={(e) => setBirthCity(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Ingrese la ciudad de nacimiento del paciente"
         />
@@ -188,8 +199,8 @@ const RegistroPaciente = () => {
           type="text"
           id="nationality"
           name="nationality"
-          value={nacionalidad}
-          onChange={(e) => setNacionalidad(e.target.value)}
+          value={nationality}
+          onChange={(e) => setNationality(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Ingrese la nacionalidad del paciente"
         />
@@ -205,8 +216,8 @@ const RegistroPaciente = () => {
           type="text"
           id="birthState"
           name="birthState"
-          value={estadoNacimiento}
-          onChange={(e) => setEstadoNacimiento(e.target.value)}
+          value={birthState}
+          onChange={(e) => setBirthState(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Ingrese el estado de nacimiento del paciente"
         />
@@ -222,8 +233,8 @@ const RegistroPaciente = () => {
           type="text"
           id="idType"
           name="idType"
-          value={identificacion}
-          onChange={(e) => setIdentificacion(e.target.value)}
+          value={idType}
+          onChange={(e) => setIdType(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Ingrese el tipo de identificación del paciente"
         />
@@ -234,8 +245,8 @@ const RegistroPaciente = () => {
             type="checkbox"
             id="consent"
             name="consent"
-            checked={casilla}
-            onChange={(e) => setCasilla(e.target.checked)}
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
             className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
             required
           />
@@ -245,6 +256,7 @@ const RegistroPaciente = () => {
           </span>
         </label>
       </div>
+      {error && <p className="text-red-600">{error}</p>}
       <div className="mt-4">
         <button
           type="submit"
