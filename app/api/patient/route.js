@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 
 export async function POST(req) {
   const {
+    idPatient,
     firstName,
     lastName,
     birthdate,
@@ -18,7 +19,7 @@ export async function POST(req) {
 
   try{
     await dbConnect();
-    await Patient.create({firstName, lastName, birthdate, gender, patientStatus, birthCity, nationality, birthState, idType})
+    await Patient.create({idPatient,firstName, lastName, birthdate, gender, patientStatus, birthCity, nationality, birthState, idType})
 
     return NextResponse.json({
       msg : ["Mensaje enviado con exito"], success: true
