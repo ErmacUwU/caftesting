@@ -1,8 +1,13 @@
 import React from 'react'
+import patientList from '../listaPacientes/page'
 
 const Pacientes = () => {
   return (
-    <div>Pacientes</div>
+    
+   <div className='bg-white'>
+    A
+   </div>
+    
   )
 }
 
