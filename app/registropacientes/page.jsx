@@ -38,6 +38,7 @@ const RegistroPaciente = () => {
         "Content-type": "application/json",
       },
       body: JSON.stringify({
+        idPatient: uniquid(),
         firstName,
         lastName,
         birthdate,
