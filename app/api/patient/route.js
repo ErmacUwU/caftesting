@@ -39,3 +39,9 @@ export async function POST(req) {
   }
   
 }
+
+export async function GET() {
+  await dbConnect();
+  const patient = await Patient.find();
+  return NextResponse.json({ patient });
+}

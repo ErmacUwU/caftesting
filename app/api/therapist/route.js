@@ -47,3 +47,10 @@ export async function POST(req) {
     }
   }
 }
+
+export async function GET(){
+
+    await dbConnect();
+    const therapist = await Therapist.find()
+    return NextResponse.json({ therapist })
+}
