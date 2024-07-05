@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import BotonDeletePaciente from "./BotonDeletePaciente";
 
 const TarjetaPaciente = () => {
   const [patient, setPatient] = useState([]);
@@ -38,6 +39,11 @@ const TarjetaPaciente = () => {
             <div>ID: {p.idPatient}</div>
             <div>
               Nombre: {p.firstName} {p.lastName}
+            </div>
+            <div>Estatus del Paciente: {p.patientStatus}</div>
+            <div>Nacionalidad: {p.nationality}</div>
+            <div className="py-2">
+              <BotonDeletePaciente id={p._id} />
             </div>
           </div>
         </div>

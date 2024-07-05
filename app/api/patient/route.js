@@ -45,3 +45,10 @@ export async function GET() {
   const patient = await Patient.find();
   return NextResponse.json({ patient });
 }
+
+export async function DELETE(req) {
+  const id = req.nextUrl.searchParams.get("id");
+  await dbConnect();
+  await Patient.findByIdAndDelete(id);
+  return NextResponse.json({ msg: "Paciente Eliminado" });
+}

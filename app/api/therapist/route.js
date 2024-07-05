@@ -54,3 +54,10 @@ export async function GET(){
     const therapist = await Therapist.find()
     return NextResponse.json({ therapist })
 }
+
+export async function DELETE(req){
+  const id = req.nextUrl.searchParams.get("id");
+  await dbConnect();
+  await Therapist.findByIdAndDelete(id)
+  return NextResponse.json({ msg: "Terapeuta Eliminado"})
+}

@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect } from "react";
+import BotonDeleteTerapeuta from "./BotonDeleteTerapeuta";
 
 const TarjetaTerapeuta = () => {
   const [therapist, setTherapist] = useState([]);
@@ -42,6 +43,7 @@ const TarjetaTerapeuta = () => {
             <div>Especialidad: {t.specialization}</div>
             <div>Celular: {t.phone}</div>
             <div>Email: {t.email}</div>
+            <div className="py-2"><BotonDeleteTerapeuta id={t._id}/></div>
           </div>
         </div>
       ))}
