@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import BotonDeletePaciente from "./BotonDeletePaciente";
+import { PenBoxIcon } from "lucide-react";
 
 const TarjetaPaciente = () => {
   const [patient, setPatient] = useState([]);
@@ -42,8 +44,17 @@ const TarjetaPaciente = () => {
             </div>
             <div>Estatus del Paciente: {p.patientStatus}</div>
             <div>Nacionalidad: {p.nationality}</div>
-            <div className="py-2">
-              <BotonDeletePaciente id={p._id} />
+            <div className="flex justify-evenly py-2">
+              <div>
+                <Link href={`/editPaciente/${p._id}`}>
+                  <button>
+                    <PenBoxIcon size={24} color="blue" />
+                  </button>
+                </Link>
+              </div>
+              <div>
+                <BotonDeletePaciente id={p._id} />
+              </div>
             </div>
           </div>
         </div>
