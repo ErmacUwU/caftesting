@@ -3,7 +3,7 @@ import React from 'react'
 const page = () => {
   return (
     <div>
-      Solo es un atchivo de prueba para calar el Pull o Fetch
+      Solo es un archivo de prueba para calar el Pull o Fetch
     </div>
   )
 }
