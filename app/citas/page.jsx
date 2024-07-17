@@ -1,31 +1,43 @@
-'use client';
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import FullCalendar from '@fullcalendar/react';
+import React, { useEffect, useState } from "react";
+import FullCalendar from "@fullcalendar/react";
 import timeGridPlugin from "@fullcalendar/timegrid";
-import dayGridPlugin from '@fullcalendar/daygrid';
+import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
-import '@fullcalendar/core/locales-all';
-import axios from 'axios';
+import "@fullcalendar/core/locales-all";
+import axios from "axios";
+import uniquid from "uniquid";
 
 const Citas = () => {
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
-  const [selectedPatient, setSelectedPatient] = useState('');
-  const [selectedTherapist, setSelectedTherapist] = useState('');
+  const [appointments, setAppointments] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState("");
+  const [selectedTherapist, setSelectedTherapist] = useState("");
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentStartTime, setAppointmentStartTime] = useState("");
+  const [appointmentEndTime, setAppointmentEndTime] = useState("");
+  const [appointmentTitle, setAppointmentTitle] = useState("");
+  const [appointmentDescription, setAppointmentDescription] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [patientsRes, therapistsRes] = await Promise.all([
-          axios.get('/api/patient'),
-          axios.get('/api/therapist'),
-        ]);
+        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all(
+          [
+            axios.get("/api/patient"),
+            axios.get("/api/therapist"),
+            axios.get("/api/date"),
+          ]
+        );
 
         setPatients(patientsRes.data.patient || []);
         setTherapists(therapistsRes.data.therapist || []);
+        console.log("Fetched appointments:", appointmentsRes.data.data);
+        setAppointments(appointmentsRes.data.data || []);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
       }
     };
 
@@ -36,10 +48,28 @@ const Citas = () => {
     alert(arg.dateStr);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Selected Patient:', selectedPatient);
-    console.log('Selected Therapist:', selectedTherapist);
+    const appointmentData = {
+      idDate: uniquid(),
+      date: appointmentDate,
+      start: new Date(`${appointmentDate}T${appointmentStartTime}`),
+      end: new Date(`${appointmentDate}T${appointmentEndTime}`),
+      therapist: selectedTherapist,
+      patient: selectedPatient,
+      title: appointmentTitle,
+      description: appointmentDescription,
+    };
+
+    try {
+      const response = await axios.post("/api/date", appointmentData);
+      console.log("Appointment created:", response.data);
+
+      // Actualizar el estado de las citas con la nueva cita creada
+      setAppointments([...appointments, response.data.data]);
+    } catch (error) {
+      console.error("Error creating appointment:", error);
+    }
   };
 
   return (
@@ -50,7 +80,7 @@ const Citas = () => {
           <select
             value={selectedPatient}
             onChange={(e) => setSelectedPatient(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1"
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-black"
           >
             <option value="">Seleccione un paciente</option>
             {patients.map((patient) => (
@@ -65,7 +95,7 @@ const Citas = () => {
           <select
             value={selectedTherapist}
             onChange={(e) => setSelectedTherapist(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1"
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-black"
           >
             <option value="">Seleccione un terapeuta</option>
             {therapists.map((therapist) => (
@@ -75,7 +105,54 @@ const Citas = () => {
             ))}
           </select>
         </label>
-        <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded">
+        <label className="block mb-2">
+          Fecha de la Cita:
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-black"
+          />
+        </label>
+        <label className="block mb-2">
+          Hora de Inicio de la Cita:
+          <input
+            type="time"
+            value={appointmentStartTime}
+            onChange={(e) => setAppointmentStartTime(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-black"
+          />
+        </label>
+        <label className="block mb-2">
+          Hora de Cierre de la Cita:
+          <input
+            type="time"
+            value={appointmentEndTime}
+            onChange={(e) => setAppointmentEndTime(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-black"
+          />
+        </label>
+        <label className="block mb-2">
+          Título de la Cita:
+          <input
+            type="text"
+            value={appointmentTitle}
+            onChange={(e) => setAppointmentTitle(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-black"
+          />
+        </label>
+        <label className="block mb-2">
+          Descripción de la Cita:
+          <textarea
+            value={appointmentDescription}
+            onChange={(e) => setAppointmentDescription(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-black"
+          />
+        </label>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-blue-500 text-white rounded"
+        >
           Crear Cita
         </button>
       </form>
@@ -83,6 +160,29 @@ const Citas = () => {
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
+        events={appointments
+          .map((appointment) => {
+            // Verificar si appointment está definido y tiene las propiedades necesarias
+            if (
+              !appointment ||
+              !appointment._id ||
+              !appointment.title ||
+              !appointment.start ||
+              !appointment.end
+            ) {
+              console.error("Invalid appointment data:", appointment);
+              return null;
+            }
+
+            console.log("Mapping appointment:", appointment);
+            return {
+              id: appointment._id,
+              title: appointment.title,
+              start: new Date(appointment.start), // Asegurarse de que las fechas sean objetos de Date
+              end: new Date(appointment.end),
+            };
+          })
+          .filter((event) => event !== null)} // Filtrar eventos nulos
         dateClick={handleDateClick}
         headerToolbar={{
           left: "prev,next today",
@@ -104,9 +204,3 @@ const Citas = () => {
 };
 
 export default Citas;
-
-
-
-
-
-
