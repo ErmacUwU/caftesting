@@ -103,8 +103,86 @@ const Citas = () => {
   return (
     <div>
       <form onSubmit={handleSubmit} className="mb-4">
-        {/* Formulario para crear una cita */}
-        {/* (Código del formulario que ya tienes) */}
+        <label className="block mb-2">
+          Paciente:
+          <select
+            value={selectedPatient}
+            onChange={(e) => setSelectedPatient(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          >
+            <option value="">Seleccione un paciente</option>
+            {patients.map((patient) => (
+              <option key={patient._id} value={patient._id}>
+                {patient.firstName} {patient.lastName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block mb-2">
+          Terapeuta:
+          <select
+            value={selectedTherapist}
+            onChange={(e) => setSelectedTherapist(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          >
+            <option value="">Seleccione un terapeuta</option>
+            {therapists.map((therapist) => (
+              <option key={therapist._id} value={therapist._id}>
+                {therapist.firstName} {therapist.lastName}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block mb-2">
+          Fecha de la Cita:
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          />
+        </label>
+        <label className="block mb-2">
+          Hora de Inicio de la Cita:
+          <input
+            type="time"
+            value={appointmentStartTime}
+            onChange={(e) => setAppointmentStartTime(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          />
+        </label>
+        <label className="block mb-2">
+          Hora de Cierre de la Cita:
+          <input
+            type="time"
+            value={appointmentEndTime}
+            onChange={(e) => setAppointmentEndTime(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          />
+        </label>
+        <label className="block mb-2">
+          Título de la Cita:
+          <input
+            type="text"
+            value={appointmentTitle}
+            onChange={(e) => setAppointmentTitle(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          />
+        </label>
+        <label className="block mb-2">
+          Descripción de la Cita:
+          <textarea
+            value={appointmentDescription}
+            onChange={(e) => setAppointmentDescription(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          />
+        </label>
+        <button
+          type="submit"
+          className="px-4 py-2 bg-blue-500 text-white rounded "
+        >
+          Crear Cita
+        </button>
       </form>
 
       {/* Calendario FullCalendar para mostrar citas */}
