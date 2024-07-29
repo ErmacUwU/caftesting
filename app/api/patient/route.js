@@ -15,11 +15,24 @@ export async function POST(req) {
     nationality,
     birthState,
     idType,
+    contacts,
   } = await req.json();
 
   try{
     await dbConnect();
-    await Patient.create({idPatient,firstName, lastName, birthdate, gender, patientStatus, birthCity, nationality, birthState, idType})
+    await Patient.create({
+      idPatient,
+      firstName,
+      lastName,
+      birthdate,
+      gender,
+      patientStatus,
+      birthCity,
+      nationality,
+      birthState,
+      idType,
+      contacts,
+    });
 
     return NextResponse.json({
       msg : ["Mensaje enviado con exito"], success: true

@@ -2,39 +2,25 @@ import mongoose from "mongoose";
 
 const ContactSchema = new mongoose.Schema(
   {
-    firstName: {
-      type: String,
-      required: true,
-    },
-    lastNameP: {
-      type: String,
-      required: true,
-    },
-    lastNameM: String,
-    phone: {
-      type: String,
-      required: true,
-    },
-    email: {
-      type: String,
-      required: true,
-    },
+    firstName: String,
+    lastName: String,
+    middleName: String,
+    phone: String,
+    email: String,
     additionalPhone: String,
     sendReminders: {
       type: Boolean,
       default: false,
     },
-    address: {
-      street: String,
-      number: String,
-      postalCode: String,
-      neighborhood: String,
-      city: String,
-      state: String,
-      country: String,
-    },
+    street: String,
+    number: String,
+    postalCode: String,
+    neighborhood: String,
+    city: String,
+    state: String,
+    country: String,
   },
-  { _id: false } // No queremos un ID separado para cada contacto en este esquema
+  { _id: false } // Para que no se cree un ID adicional para cada contacto
 );
 
 const PatientSchema = new mongoose.Schema(
@@ -42,7 +28,6 @@ const PatientSchema = new mongoose.Schema(
     idPatient: {
       type: String,
       required: true,
-      unique: true,
     },
     firstName: {
       type: String,
@@ -70,11 +55,7 @@ const PatientSchema = new mongoose.Schema(
     nationality: String,
     birthState: String,
     idType: String,
-    consent: {
-      type: Boolean,
-      required: true,
-    },
-    contacts: [ContactSchema], // Campo de contactos
+    contacts: [ContactSchema], // Aquí añades el array de contactos
   },
   { timestamps: true }
 );

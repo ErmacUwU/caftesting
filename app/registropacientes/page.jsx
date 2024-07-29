@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import axios from "axios";
 import uniquid from "uniquid";
 
 const RegistroPaciente = () => {
@@ -14,17 +13,21 @@ const RegistroPaciente = () => {
   const [nationality, setNationality] = useState("");
   const [birthState, setBirthState] = useState("");
   const [idType, setIdType] = useState("");
+  const [contacts, setContacts] = useState([]);
   const [consent, setConsent] = useState(false);
-  const [contacts, setContacts] = useState([
-    {
-      firstName: "",
-      lastNameP: "",
-      lastNameM: "",
-      phone: "",
-      email: "",
-      additionalPhone: "",
-      sendReminders: false,
-      address: {
+  const [error, setError] = useState("");
+
+  const addContact = () => {
+    setContacts([
+      ...contacts,
+      {
+        firstName: "",
+        lastName: "",
+        middleName: "",
+        phone: "",
+        email: "",
+        additionalPhone: "",
+        sendReminders: false,
         street: "",
         number: "",
         postalCode: "",
@@ -33,83 +36,52 @@ const RegistroPaciente = () => {
         state: "",
         country: "",
       },
-    },
-  ]);
-  const [error, setError] = useState("");
+    ]);
+  };
 
-  const handleContactChange = (index, field, value) => {
+  const handleContactChange = (index, event) => {
+    const { name, value, type, checked } = event.target;
     const updatedContacts = [...contacts];
-    if (field === "address") {
-      updatedContacts[index].address = {
-        ...updatedContacts[index].address,
-        ...value,
-      };
+    if (type === "checkbox") {
+      updatedContacts[index][name] = checked;
     } else {
-      updatedContacts[index][field] = value;
+      updatedContacts[index][name] = value;
     }
     setContacts(updatedContacts);
   };
 
-  const addContact = () => {
-    setContacts([
-      ...contacts,
-      {
-        firstName: "",
-        lastNameP: "",
-        lastNameM: "",
-        phone: "",
-        email: "",
-        additionalPhone: "",
-        sendReminders: false,
-        address: {
-          street: "",
-          number: "",
-          postalCode: "",
-          neighborhood: "",
-          city: "",
-          state: "",
-          country: "",
-        },
-      },
-    ]);
+  const removeContact = (index) => {
+    const updatedContacts = [...contacts];
+    updatedContacts.splice(index, 1);
+    setContacts(updatedContacts);
   };
 
   const agregarPaciente = async (e) => {
     e.preventDefault();
 
-    const paciente = {
-      idPatient: uniquid(),
-      firstName,
-      lastName,
-      birthdate,
-      gender,
-      patientStatus,
-      birthCity,
-      nationality,
-      birthState,
-      idType,
-      consent,
-      contacts,
-    };
+    const res = await fetch("/api/patient", {
+      method: "POST",
+      headers: {
+        "Content-type": "application/json",
+      },
+      body: JSON.stringify({
+        idPatient: uniquid(),
+        firstName,
+        lastName,
+        birthdate,
+        gender,
+        patientStatus,
+        birthCity,
+        nationality,
+        birthState,
+        idType,
+        contacts,
+      }),
+    });
 
-    try {
-      const res = await fetch("/api/patient", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(paciente),
-      });
-
-      const { msg } = await res.json();
-      if (res.ok) {
-        limpiarCampos();
-      } else {
-        setError(msg);
-      }
-    } catch (err) {
-      setError("Error al registrar el paciente");
-    }
+    limpiarCampos();
+    const { msg } = await res.json();
+    setError(msg);
   };
 
   const limpiarCampos = () => {
@@ -122,27 +94,8 @@ const RegistroPaciente = () => {
     setNationality("");
     setBirthState("");
     setIdType("");
+    setContacts([]);
     setConsent(false);
-    setContacts([
-      {
-        firstName: "",
-        lastNameP: "",
-        lastNameM: "",
-        phone: "",
-        email: "",
-        additionalPhone: "",
-        sendReminders: false,
-        address: {
-          street: "",
-          number: "",
-          postalCode: "",
-          neighborhood: "",
-          city: "",
-          state: "",
-          country: "",
-        },
-      },
-    ]);
     setError("");
   };
 
@@ -316,312 +269,293 @@ const RegistroPaciente = () => {
         />
       </div>
       <div className="mb-4">
-        <label htmlFor="consent" className="flex items-center">
-          <input
-            type="checkbox"
-            id="consent"
-            name="consent"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-            className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
-            required
-          />
-          <span className="ml-2 text-sm text-gray-700">
-            Consentimiento para el tratamiento de sus datos para fines mentales
-            firmado
-          </span>
+        <label
+          htmlFor="contacts"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Contactos
         </label>
-      </div>
-      <div className="mb-4">
-        <h2 className="text-black font-bold">Contactos</h2>
         {contacts.map((contact, index) => (
-          <div key={index} className="mb-4 border p-4 rounded">
-            <h3 className="text-lg font-semibold">Contacto {index + 1}</h3>
+          <div key={index} className="mb-4 border p-4 rounded-md shadow-sm">
             <div className="mb-4">
               <label
-                htmlFor={`contact-${index}-firstName`}
+                htmlFor={`contact-firstName-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Nombre del contacto
+                Nombre(s)
               </label>
               <input
                 type="text"
-                id={`contact-${index}-firstName`}
+                id={`contact-firstName-${index}`}
+                name="firstName"
                 value={contact.firstName}
-                onChange={(e) =>
-                  handleContactChange(index, "firstName", e.target.value)
-                }
+                onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Nombre del contacto"
+                placeholder="Nombre(s)"
+                required
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-${index}-lastNameP`}
+                htmlFor={`contact-lastName-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Apellido Paterno
               </label>
               <input
                 type="text"
-                id={`contact-${index}-lastNameP`}
-                value={contact.lastNameP}
-                onChange={(e) =>
-                  handleContactChange(index, "lastNameP", e.target.value)
-                }
+                id={`contact-lastName-${index}`}
+                name="lastName"
+                value={contact.lastName}
+                onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
                 placeholder="Apellido Paterno"
+                required
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-${index}-lastNameM`}
+                htmlFor={`contact-middleName-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Apellido Materno
               </label>
               <input
                 type="text"
-                id={`contact-${index}-lastNameM`}
-                value={contact.lastNameM}
-                onChange={(e) =>
-                  handleContactChange(index, "lastNameM", e.target.value)
-                }
+                id={`contact-middleName-${index}`}
+                name="middleName"
+                value={contact.middleName}
+                onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
                 placeholder="Apellido Materno"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-${index}-phone`}
+                htmlFor={`contact-phone-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Teléfono
               </label>
               <input
                 type="text"
-                id={`contact-${index}-phone`}
+                id={`contact-phone-${index}`}
+                name="phone"
                 value={contact.phone}
-                onChange={(e) =>
-                  handleContactChange(index, "phone", e.target.value)
-                }
+                onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
                 placeholder="Teléfono"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-${index}-email`}
+                htmlFor={`contact-email-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Correo electrónico
+                Email
               </label>
               <input
                 type="email"
-                id={`contact-${index}-email`}
+                id={`contact-email-${index}`}
+                name="email"
                 value={contact.email}
-                onChange={(e) =>
-                  handleContactChange(index, "email", e.target.value)
-                }
+                onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Correo electrónico"
+                placeholder="Email"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-${index}-additionalPhone`}
+                htmlFor={`contact-additionalPhone-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Teléfono adicional
               </label>
               <input
                 type="text"
-                id={`contact-${index}-additionalPhone`}
+                id={`contact-additionalPhone-${index}`}
+                name="additionalPhone"
                 value={contact.additionalPhone}
-                onChange={(e) =>
-                  handleContactChange(index, "additionalPhone", e.target.value)
-                }
+                onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
                 placeholder="Teléfono adicional"
               />
             </div>
-            <div className="mb-4 flex items-center">
-              <input
-                type="checkbox"
-                id={`contact-${index}-sendReminders`}
-                checked={contact.sendReminders}
-                onChange={(e) =>
-                  handleContactChange(index, "sendReminders", e.target.checked)
-                }
-                className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
-              />
+            <div className="mb-4">
               <label
-                htmlFor={`contact-${index}-sendReminders`}
-                className="ml-2 text-sm text-gray-700"
+                htmlFor={`contact-sendReminders-${index}`}
+                className="flex items-center"
               >
-                Enviar recordatorios
+                <input
+                  type="checkbox"
+                  id={`contact-sendReminders-${index}`}
+                  name="sendReminders"
+                  checked={contact.sendReminders}
+                  onChange={(e) => handleContactChange(index, e)}
+                  className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">
+                  Enviar recordatorios a este teléfono también
+                </span>
               </label>
             </div>
             <div className="mb-4">
-              <h4 className="text-md font-semibold">Dirección</h4>
-              <div className="mb-2">
-                <label
-                  htmlFor={`contact-${index}-address-street`}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Calle
-                </label>
-                <input
-                  type="text"
-                  id={`contact-${index}-address-street`}
-                  value={contact.address.street}
-                  onChange={(e) =>
-                    handleContactChange(index, "address", {
-                      street: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                  placeholder="Calle"
-                />
-              </div>
-              <div className="mb-2">
-                <label
-                  htmlFor={`contact-${index}-address-number`}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Número
-                </label>
-                <input
-                  type="text"
-                  id={`contact-${index}-address-number`}
-                  value={contact.address.number}
-                  onChange={(e) =>
-                    handleContactChange(index, "address", {
-                      number: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                  placeholder="Número"
-                />
-              </div>
-              <div className="mb-2">
-                <label
-                  htmlFor={`contact-${index}-address-postalCode`}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Código Postal
-                </label>
-                <input
-                  type="text"
-                  id={`contact-${index}-address-postalCode`}
-                  value={contact.address.postalCode}
-                  onChange={(e) =>
-                    handleContactChange(index, "address", {
-                      postalCode: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                  placeholder="Código Postal"
-                />
-              </div>
-              <div className="mb-2">
-                <label
-                  htmlFor={`contact-${index}-address-neighborhood`}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Colonia
-                </label>
-                <input
-                  type="text"
-                  id={`contact-${index}-address-neighborhood`}
-                  value={contact.address.neighborhood}
-                  onChange={(e) =>
-                    handleContactChange(index, "address", {
-                      neighborhood: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                  placeholder="Colonia"
-                />
-              </div>
-              <div className="mb-2">
-                <label
-                  htmlFor={`contact-${index}-address-city`}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Ciudad
-                </label>
-                <input
-                  type="text"
-                  id={`contact-${index}-address-city`}
-                  value={contact.address.city}
-                  onChange={(e) =>
-                    handleContactChange(index, "address", {
-                      city: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                  placeholder="Ciudad"
-                />
-              </div>
-              <div className="mb-2">
-                <label
-                  htmlFor={`contact-${index}-address-state`}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  Estado
-                </label>
-                <input
-                  type="text"
-                  id={`contact-${index}-address-state`}
-                  value={contact.address.state}
-                  onChange={(e) =>
-                    handleContactChange(index, "address", {
-                      state: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                  placeholder="Estado"
-                />
-              </div>
-              <div className="mb-2">
-                <label
-                  htmlFor={`contact-${index}-address-country`}
-                  className="block text-sm font-medium text-gray-700"
-                >
-                  País
-                </label>
-                <input
-                  type="text"
-                  id={`contact-${index}-address-country`}
-                  value={contact.address.country}
-                  onChange={(e) =>
-                    handleContactChange(index, "address", {
-                      country: e.target.value,
-                    })
-                  }
-                  className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                  placeholder="País"
-                />
-              </div>
+              <label
+                htmlFor={`contact-street-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Calle
+              </label>
+              <input
+                type="text"
+                id={`contact-street-${index}`}
+                name="street"
+                value={contact.street}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Calle"
+              />
             </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-number-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Número
+              </label>
+              <input
+                type="text"
+                id={`contact-number-${index}`}
+                name="number"
+                value={contact.number}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Número"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-postalCode-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Código postal
+              </label>
+              <input
+                type="text"
+                id={`contact-postalCode-${index}`}
+                name="postalCode"
+                value={contact.postalCode}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Código postal"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-neighborhood-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Colonia
+              </label>
+              <input
+                type="text"
+                id={`contact-neighborhood-${index}`}
+                name="neighborhood"
+                value={contact.neighborhood}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Colonia"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-city-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Ciudad
+              </label>
+              <input
+                type="text"
+                id={`contact-city-${index}`}
+                name="city"
+                value={contact.city}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Ciudad"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-state-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Estado
+              </label>
+              <input
+                type="text"
+                id={`contact-state-${index}`}
+                name="state"
+                value={contact.state}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Estado"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-country-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                País
+              </label>
+              <input
+                type="text"
+                id={`contact-country-${index}`}
+                name="country"
+                value={contact.country}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="País"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeContact(index)}
+              className="text-red-600 hover:text-red-800 focus:outline-none"
+            >
+              Eliminar contacto
+            </button>
           </div>
         ))}
         <button
           type="button"
           onClick={addContact}
-          className="w-full py-2 px-4 bg-blue-500 text-white rounded hover:bg-blue-600"
+          className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md"
         >
-          Agregar Contacto
+          Añadir Contacto
         </button>
       </div>
+      <div className="mb-4">
+        <label className="flex items-center">
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={() => setConsent(!consent)}
+            className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
+            required
+          />
+          <span className="ml-2 text-sm text-gray-700">
+            Acepto el consentimiento para el tratamiento de mis datos.
+          </span>
+        </label>
+      </div>
+      {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
       <button
         type="submit"
-        className="w-full py-2 px-4 bg-green-500 text-white rounded hover:bg-green-600"
+        className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         Registrar Paciente
       </button>
-      {error && <p className="mt-4 text-red-600">{error}</p>}
     </form>
   );
 };
