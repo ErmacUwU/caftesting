@@ -1,5 +1,5 @@
 import ActualizarPaciente from "@/app/components/ActualizarPaciente";
-import ActualizarTerapeuta from "@/app/components/ActualizarTerapeuta";
+
 
 const getPatientById = async (id) => {
   try {
@@ -30,6 +30,7 @@ export default async function updatePatient({ params }) {
     nationality,
     birthState,
     idType,
+    contacts
   } = patient;
 
   return (
@@ -44,6 +45,7 @@ export default async function updatePatient({ params }) {
     nationality={nationality}
     birthState={birthState}
     idType={idType}
+    contacts={contacts}
     />
   );
 }

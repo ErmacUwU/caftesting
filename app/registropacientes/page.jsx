@@ -3,6 +3,9 @@
 import React, { useState } from "react";
 import uniquid from "uniquid";
 
+// Expresión regular para validar el CURP
+const curpPattern = /^[a-zA-Z0-9]{18}$/;
+
 const RegistroPaciente = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -13,7 +16,24 @@ const RegistroPaciente = () => {
   const [nationality, setNationality] = useState("");
   const [birthState, setBirthState] = useState("");
   const [idType, setIdType] = useState("");
-  const [contacts, setContacts] = useState([]);
+  const [contacts, setContacts] = useState([
+    {
+      firstName: "",
+      lastName: "",
+      middleName: "",
+      phone: "",
+      email: "",
+      additionalPhone: "",
+      sendReminders: false,
+      street: "",
+      number: "",
+      postalCode: "",
+      neighborhood: "",
+      city: "",
+      state: "",
+      country: "",
+    },
+  ]);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
 
@@ -56,8 +76,24 @@ const RegistroPaciente = () => {
     setContacts(updatedContacts);
   };
 
+  // Función para validar el CURP
+  const validateCURP = (curp) => {
+    return curpPattern.test(curp);
+  };
+
   const agregarPaciente = async (e) => {
     e.preventDefault();
+
+    if (contacts.length === 0) {
+      alert("Debe haber al menos un contacto de emergencia.");
+      return;
+    }
+
+    // Validar el CURP
+    if (!validateCURP(idType)) {
+      alert("El CURP debe tener 18 caracteres, solo letras y números.");
+      return;
+    }
 
     const res = await fetch("/api/patient", {
       method: "POST",
@@ -94,7 +130,24 @@ const RegistroPaciente = () => {
     setNationality("");
     setBirthState("");
     setIdType("");
-    setContacts([]);
+    setContacts([
+      {
+        firstName: "",
+        lastName: "",
+        middleName: "",
+        phone: "",
+        email: "",
+        additionalPhone: "",
+        sendReminders: false,
+        street: "",
+        number: "",
+        postalCode: "",
+        neighborhood: "",
+        city: "",
+        state: "",
+        country: "",
+      },
+    ]);
     setConsent(false);
     setError("");
   };
@@ -150,7 +203,7 @@ const RegistroPaciente = () => {
           (DD/MM/AAAA)
         </label>
         <input
-          type="text"
+          type="date"
           id="birthdate"
           name="birthdate"
           value={birthdate}
@@ -282,7 +335,7 @@ const RegistroPaciente = () => {
                 htmlFor={`contact-firstName-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Nombre(s)
+                Nombre(s) *
               </label>
               <input
                 type="text"
@@ -300,7 +353,7 @@ const RegistroPaciente = () => {
                 htmlFor={`contact-lastName-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Apellido Paterno
+                Apellido Paterno *
               </label>
               <input
                 type="text"
@@ -335,7 +388,7 @@ const RegistroPaciente = () => {
                 htmlFor={`contact-phone-${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Teléfono
+                Teléfono *
               </label>
               <input
                 type="text"
@@ -345,6 +398,7 @@ const RegistroPaciente = () => {
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
                 placeholder="Teléfono"
+                required
               />
             </div>
             <div className="mb-4">

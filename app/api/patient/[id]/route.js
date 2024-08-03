@@ -14,6 +14,7 @@ export async function PUT(request, { params }) {
     newNationality: nationality,
     newBirthState: birthState,
     newIdType: idType,
+    newContacts: contacts
   } = await request.json();
   await dbConnect();
   await Patient.findByIdAndUpdate(id, {
@@ -26,6 +27,7 @@ export async function PUT(request, { params }) {
     nationality,
     birthState,
     idType,
+    contacts
   });
   return NextResponse.json({ message: "Paciente Actualizado" });
 }
