@@ -555,7 +555,7 @@ const ActualizarPaciente = ({
           </button>
 
         </Link>
-        <Link href={"/pacientes"}>Regresar</Link>
+        <Link href={"/pacientes"} className=" text-black">Regresar</Link>
       </div>
     </form>
   );
