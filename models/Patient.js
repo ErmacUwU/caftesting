@@ -23,6 +23,19 @@ const ContactSchema = new mongoose.Schema(
   { _id: false } // Para que no se cree un ID adicional para cada contacto
 );
 
+const EstadoDeCuentaSchema = new mongoose.Schema(
+  {
+    total: { type: Number, default: 0 },
+    pagos: [
+      {
+        fecha: { type: Date, default: Date.now },
+        cantidad: { type: Number, required: true },
+      },
+    ],
+  },
+  { _id: false }
+);
+
 const PatientSchema = new mongoose.Schema(
   {
     idPatient: {
@@ -55,10 +68,10 @@ const PatientSchema = new mongoose.Schema(
     nationality: String,
     birthState: String,
     idType: String,
-    contacts: [ContactSchema], // Aquí añades el array de contactos
+    contacts: [ContactSchema],
+    estadoDeCuenta: EstadoDeCuentaSchema, // Asegúrate de que este campo esté presente en el modelo
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Patient ||
-  mongoose.model("Patient", PatientSchema);
+export default mongoose.models.Patient || mongoose.model("Patient", PatientSchema);

@@ -36,5 +36,8 @@ export async function GET(request, { params }) {
   const { id } = params;
   await dbConnect();
   const patient = await Patient.findOne({ _id: id });
+  if (!patient) {
+    return NextResponse.json({ msg: "Paciente no encontrado" }, { status: 404 });
+  }
   return NextResponse.json({ patient }, { status: 200 });
 }

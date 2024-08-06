@@ -5,34 +5,34 @@ import BotonDeletePaciente from "./BotonDeletePaciente";
 import { PenBoxIcon } from "lucide-react";
 
 const TarjetaPaciente = () => {
-  const [patient, setPatient] = useState([]);
+  const [patients, setPatients] = useState([]);
 
   useEffect(() => {
-    const getPatient = async () => {
+    const getPatients = async () => {
       try {
         const res = await fetch("http://localhost:3000/api/patient", {
           cache: "no-store",
         });
 
         if (!res.ok) {
-          throw new Error("Failed to fetch therapists");
+          throw new Error("Failed to fetch patients");
         }
 
         const data = await res.json();
-        setPatient(data.patient || []); // Assuming your API response has an object with 'patient' array
+        setPatients(data.patients || []); // Asegúrate de que 'patients' sea la propiedad correcta en la respuesta de la API
       } catch (error) {
-        console.error("Error fetching therapists:", error);
-        setPatient([]); // Set empty array on error
+        console.error("Error fetching patients:", error);
+        setPatients([]); // Set empty array on error
       }
     };
 
-    getPatient();
+    getPatients();
   }, []);
 
   return (
     <div>
       <h1>Lista de Pacientes</h1>
-      {patient.map((p) => (
+      {patients.map((p) => (
         <div
           key={p._id}
           className="p-4 border border-slate-300 my-3 flex justify-between gap-5 items-start"
