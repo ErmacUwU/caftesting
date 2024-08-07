@@ -32,6 +32,8 @@ const Citas = () => {
           axios.get("/api/date"),
         ]);
 
+        console.log("Patients:", patientsRes.data);
+
         // Establecer estados con datos obtenidos
         setPatients(patientsRes.data.patient || []);
         setTherapists(therapistsRes.data.therapist || []);
@@ -114,7 +116,7 @@ const Citas = () => {
             {patients.map((patient) => (
               <option key={patient._id} value={patient._id}>
                 {patient.firstName} {patient.lastName}
-              </option>
+                </option>
             ))}
           </select>
         </label>

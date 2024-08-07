@@ -77,15 +77,19 @@ export async function PATCH(req) {
     const paciente = await Patient.findById(pacienteId);
 
     if (!paciente) {
-      return NextResponse.json({ msg: "Paciente no encontrado", success: false });
+      return NextResponse.json({
+        msg: "Paciente no encontrado",
+        success: false,
+      });
     }
 
     const nuevoPago = {
       fecha: new Date(),
-      cantidad
+      cantidad,
     };
 
-    paciente.estadoDeCuenta.total -= cantidad;
+    // Asegúrate de sumar la cantidad al total
+    paciente.estadoDeCuenta.total += cantidad;
     paciente.estadoDeCuenta.pagos.push(nuevoPago);
 
     await paciente.save();
@@ -93,9 +97,12 @@ export async function PATCH(req) {
     return NextResponse.json({
       msg: ["Pago registrado con éxito"],
       success: true,
-      estadoDeCuenta: paciente.estadoDeCuenta
+      estadoDeCuenta: paciente.estadoDeCuenta,
     });
   } catch (error) {
-    return NextResponse.json({ msg: "Error al registrar el pago", success: false });
+    return NextResponse.json({
+      msg: "Error al registrar el pago",
+      success: false,
+    });
   }
 }
