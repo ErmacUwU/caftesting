@@ -14,7 +14,7 @@ const Pagos = () => {
     const fetchPatients = async () => {
       try {
         const response = await axios.get("/api/patient");
-        setPatients(response.data.patients || []);
+        setPatients(response.data.patient || []);
       } catch (error) {
         console.error("Error fetching patients:", error);
         setErrorMessage("Error al cargar la lista de pacientes.");

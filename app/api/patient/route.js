@@ -58,8 +58,8 @@ export async function POST(req) {
 
 export async function GET() {
   await dbConnect();
-  const patients = await Patient.find();
-  return NextResponse.json({ patients });
+  const patient = await Patient.find();
+  return NextResponse.json({ patient });
 }
 
 export async function DELETE(req) {
