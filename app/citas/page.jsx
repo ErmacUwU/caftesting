@@ -20,7 +20,7 @@ const Citas = () => {
   const [appointmentEndTime, setAppointmentEndTime] = useState("");
   const [appointmentTitle, setAppointmentTitle] = useState("");
   const [appointmentDescription, setAppointmentDescription] = useState("");
-
+  const [cost, setCost] = useState("");
   // Efecto para cargar datos al montar el componente
   useEffect(() => {
     const fetchData = async () => {
@@ -60,46 +60,55 @@ const Citas = () => {
 
   // Función para manejar envío del formulario para crear una cita
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    const appointmentData = {
-      idDate: uniquid(),
-      date: appointmentDate,
-      start: new Date(`${appointmentDate}T${appointmentStartTime}`),
-      end: new Date(`${appointmentDate}T${appointmentEndTime}`),
-      therapist: selectedTherapist,
-      patient: selectedPatient,
-      title: appointmentTitle,
-      description: appointmentDescription,
-    };
-
-    try {
-      // Enviar datos al backend para crear la cita
-      const response = await axios.post("/api/date", appointmentData);
-      console.log("Appointment created:", response.data);
-
-      // Actualizar estado de citas con la nueva cita creada
-      setAppointments([
-        ...appointments,
-        {
-          id: response.data.idDate,
-          title: response.data.title,
-          start: new Date(response.data.start),
-          end: new Date(response.data.end),
-        },
-      ]);
-
-      // Limpiar el formulario después de enviar
-      setSelectedPatient("");
-      setSelectedTherapist("");
-      setAppointmentDate("");
-      setAppointmentStartTime("");
-      setAppointmentEndTime("");
-      setAppointmentTitle("");
-      setAppointmentDescription("");
-    } catch (error) {
-      console.error("Error creating appointment:", error);
-    }
+  e.preventDefault();
+  const appointmentData = {
+    idDate: uniquid(),
+    date: appointmentDate,
+    start: new Date(`${appointmentDate}T${appointmentStartTime}`),
+    end: new Date(`${appointmentDate}T${appointmentEndTime}`),
+    therapist: selectedTherapist,
+    patient: selectedPatient,
+    title: appointmentTitle,
+    description: appointmentDescription,
+    cost: cost,
   };
+
+  try {
+    // Enviar datos al backend para crear la cita
+    const response = await axios.post("/api/date", appointmentData);
+    console.log("Appointment created:", response.data);
+
+    // Actualizar estado de citas con la nueva cita creada
+    setAppointments([
+      ...appointments,
+      {
+        id: response.data.idDate,
+        title: response.data.title,
+        start: new Date(response.data.start),
+        end: new Date(response.data.end),
+      },
+    ]);
+
+    // Actualizar el estado de cuenta del paciente
+    await axios.patch(`/api/patient/${selectedPatient}`, {
+      pacienteId: selectedPatient,
+      cantidad: cost,  // Asegúrate de que esto sea negativo si es un cargo
+    });
+
+    // Limpiar el formulario después de enviar
+    setSelectedPatient("");
+    setSelectedTherapist("");
+    setAppointmentDate("");
+    setAppointmentStartTime("");
+    setAppointmentEndTime("");
+    setAppointmentTitle("");
+    setAppointmentDescription("");
+    setCost("");
+  } catch (error) {
+    console.error("Error creating appointment or updating account:", error);
+  }
+};
+
 
   // Renderizado del componente
   return (
@@ -179,6 +188,13 @@ const Citas = () => {
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
           />
         </label>
+        <label className="block mb-2">Agrega un costo</label>
+        <input
+            type="number"
+            value={cost}
+            onChange={(e) => setCost(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          />
         <button
           type="submit"
           className="px-4 py-2 bg-blue-500 text-white rounded "

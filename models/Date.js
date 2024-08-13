@@ -27,7 +27,8 @@ const DateSchema = new mongoose.Schema(
       required: true,
     },
     title: String,
-    description: String
+    description: String,
+    cost:Number
   },
   { timestamps: true }
 );

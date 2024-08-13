@@ -88,8 +88,8 @@ export async function PATCH(req) {
       cantidad,
     };
 
-    // Asegúrate de sumar la cantidad al total
-    paciente.estadoDeCuenta.total += cantidad;
+    // Resta la cantidad del total para reflejar el costo de la cita
+    paciente.estadoDeCuenta.total -= cantidad;
     paciente.estadoDeCuenta.pagos.push(nuevoPago);
 
     await paciente.save();
