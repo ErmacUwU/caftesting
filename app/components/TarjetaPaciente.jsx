@@ -19,7 +19,7 @@ const TarjetaPaciente = () => {
         }
 
         const data = await res.json();
-        setPatients(data.patients || []); // Asegúrate de que 'patients' sea la propiedad correcta en la respuesta de la API
+        setPatients(data.patient || []); // Asegúrate de que 'patients' sea la propiedad correcta en la respuesta de la API
       } catch (error) {
         console.error("Error fetching patients:", error);
         setPatients([]); // Set empty array on error
