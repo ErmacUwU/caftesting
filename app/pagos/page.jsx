@@ -1,6 +1,10 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { Line } from "react-chartjs-2";
+import { Chart, registerables } from "chart.js";
+
+Chart.register(...registerables);
 
 const Pagos = () => {
   const [patients, setPatients] = useState([]);
@@ -40,9 +44,7 @@ const Pagos = () => {
   // Manejar el registro de un pago
   const handleAddPayment = async () => {
     if (!selectedPatient || paymentAmount <= 0) {
-      setErrorMessage(
-        "Debe seleccionar un paciente y la cantidad debe ser mayor a cero."
-      );
+      setErrorMessage("Debe seleccionar un paciente y la cantidad debe ser mayor a cero.");
       return;
     }
 
@@ -52,37 +54,65 @@ const Pagos = () => {
         cantidad: parseFloat(paymentAmount),
       });
 
-      console.log("Respuesta de la API:", response.data);
-
       if (response.data.success) {
-        if (
-          response.data.estadoDeCuenta &&
-          typeof response.data.estadoDeCuenta.total === "number"
-        ) {
-          const updatedPatient = { ...selectedPatient };
-          updatedPatient.estadoDeCuenta = response.data.estadoDeCuenta;
+        const updatedPatient = { ...selectedPatient };
+        updatedPatient.estadoDeCuenta = response.data.estadoDeCuenta;
 
-          setSelectedPatient(updatedPatient);
-          setTotalPayments(response.data.estadoDeCuenta.total);
-          setErrorMessage(""); // Limpiar mensaje de error
-        } else {
-          console.error("Estado de cuenta no actualizado o no existe");
-          setErrorMessage("Estado de cuenta no actualizado o no existe");
-        }
+        setSelectedPatient(updatedPatient);
+        setTotalPayments(response.data.estadoDeCuenta.total);
+        setErrorMessage(""); // Limpiar mensaje de error
       } else {
-        console.error(response.data.msg);
-        setErrorMessage(
-          response.data.msg || "Error desconocido al registrar el pago"
-        );
+        setErrorMessage(response.data.msg || "Error desconocido al registrar el pago");
       }
 
       setPaymentAmount("");
     } catch (error) {
       console.error("Error adding payment:", error);
-      setErrorMessage(
-        "Error al registrar el pago. Por favor, intenta de nuevo."
-      );
+      setErrorMessage("Error al registrar el pago. Por favor, intenta de nuevo.");
     }
+  };
+
+  // Configurar los datos para la gráfica
+  const chartData = {
+    labels: selectedPatient?.estadoDeCuenta?.pagos?.map(pago => new Date(pago.fecha).toLocaleDateString()) || [],
+    datasets: [
+      {
+        label: "Pagos Realizados",
+        data: selectedPatient?.estadoDeCuenta?.pagos?.map(pago => pago.cantidad) || [],
+        borderColor: "rgba(75, 192, 192, 1)",
+        backgroundColor: "rgba(75, 192, 192, 0.2)",
+        fill: true,
+      },
+      {
+        label: "Deuda Total",
+        data: selectedPatient?.estadoDeCuenta?.pagos?.map(() => selectedPatient.estadoDeCuenta.total) || [],
+        borderColor: "rgba(255, 99, 132, 1)",
+        backgroundColor: "rgba(255, 99, 132, 0.2)",
+        fill: true,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    scales: {
+      y: {
+        beginAtZero: true,
+        title: {
+          display: true,
+          text: 'Monto en USD',
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Pagos y Deuda Total',
+      },
+    },
   };
 
   return (
@@ -101,10 +131,9 @@ const Pagos = () => {
       {selectedPatient && (
         <div className="mt-4">
           <h2 className="text-xl">
-            Estado de cuenta de {selectedPatient.firstName}{" "}
-            {selectedPatient.lastName}
+            Estado de cuenta de {selectedPatient.firstName} {selectedPatient.lastName}
           </h2>
-          <p>Total: ${totalPayments}</p>
+          <p>Total: ${totalPayments.toFixed(2)}</p>
           <h3 className="mt-2">Registrar Pago</h3>
           {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
           <input
@@ -115,6 +144,10 @@ const Pagos = () => {
             className="text-black"
           />
           <button onClick={handleAddPayment}>Registrar Pago</button>
+
+          {/* Gráfica de pagos */}
+          <h3 className="mt-4">Gráfica de Pagos y Deuda</h3>
+          <Line data={chartData} options={options} />
         </div>
       )}
     </div>
