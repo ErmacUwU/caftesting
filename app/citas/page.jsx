@@ -1,4 +1,4 @@
-"use client"
+"use client";
 // Importaciones de librerías y componentes necesarios
 import React, { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
@@ -21,16 +21,20 @@ const Citas = () => {
   const [appointmentTitle, setAppointmentTitle] = useState("");
   const [appointmentDescription, setAppointmentDescription] = useState("");
   const [cost, setCost] = useState("");
+  const [recurrence, setRecurrence] = useState("once"); // Nuevo estado para la recurrencia
+
   // Efecto para cargar datos al montar el componente
   useEffect(() => {
     const fetchData = async () => {
       try {
         // Obtener datos de pacientes, terapeutas y citas
-        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all([
-          axios.get("/api/patient"),
-          axios.get("/api/therapist"),
-          axios.get("/api/date"),
-        ]);
+        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all(
+          [
+            axios.get("/api/patient"),
+            axios.get("/api/therapist"),
+            axios.get("/api/date"),
+          ]
+        );
 
         console.log("Patients:", patientsRes.data);
 
@@ -43,6 +47,10 @@ const Citas = () => {
             title: appointment.title,
             start: new Date(appointment.start),
             end: new Date(appointment.end),
+            description: appointment.description,
+            therapist: appointment.therapist,
+            patient: appointment.patient,
+            cost: appointment.cost,
           })) || []
         );
       } catch (error) {
@@ -53,62 +61,125 @@ const Citas = () => {
     fetchData();
   }, []);
 
-  // Función para manejar clic en una fecha del calendario
-  const handleDateClick = (arg) => {
-    alert(arg.dateStr);
+  // Función para manejar clic en un evento del calendario
+  const handleEventClick = (info) => {
+    const appointment = appointments.find((app) => app.id === info.event.id);
+    if (appointment) {
+      // Buscar los nombres del paciente y terapeuta
+      const patient = patients.find((p) => p._id === appointment.patient);
+      const therapist = therapists.find((t) => t._id === appointment.therapist);
+
+      alert(`
+        Título: ${appointment.title}
+        Descripción: ${appointment.description}
+        Fecha: ${appointment.start.toLocaleDateString()}
+        Hora de Inicio: ${appointment.start.toLocaleTimeString()}
+        Hora de Fin: ${appointment.end.toLocaleTimeString()}
+        Paciente: ${
+          patient ? `${patient.firstName} ${patient.lastName}` : "Desconocido"
+        }
+        Terapeuta: ${
+          therapist
+            ? `${therapist.firstName} ${therapist.lastName}`
+            : "Desconocido"
+        }
+        Costo: $${appointment.cost}
+      `);
+    }
   };
 
-  // Función para manejar envío del formulario para crear una cita
+  // Función para manejar el envío del formulario para crear citas
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  const appointmentData = {
-    idDate: uniquid(),
-    date: appointmentDate,
-    start: new Date(`${appointmentDate}T${appointmentStartTime}`),
-    end: new Date(`${appointmentDate}T${appointmentEndTime}`),
-    therapist: selectedTherapist,
-    patient: selectedPatient,
-    title: appointmentTitle,
-    description: appointmentDescription,
-    cost: cost,
+    e.preventDefault();
+
+    // Función para generar citas recurrentes
+    const generateAppointments = (startDate, endDate, recurrenceType) => {
+      const appointmentsList = [];
+      let currentDate = new Date(startDate);
+      const end = new Date(endDate);
+
+      while (currentDate <= end) {
+        appointmentsList.push({
+          idDate: uniquid(),
+          date: currentDate.toISOString().split("T")[0],
+          start: new Date(
+            `${currentDate.toISOString().split("T")[0]}T${appointmentStartTime}`
+          ),
+          end: new Date(
+            `${currentDate.toISOString().split("T")[0]}T${appointmentEndTime}`
+          ),
+          therapist: selectedTherapist,
+          patient: selectedPatient,
+          title: appointmentTitle,
+          description: appointmentDescription,
+          cost: cost,
+        });
+
+        if (recurrenceType === "daily") {
+          currentDate.setDate(currentDate.getDate() + 1);
+        } else if (recurrenceType === "weekly") {
+          currentDate.setDate(currentDate.getDate() + 7);
+        } else if (recurrenceType === "monthly") {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+        }
+      }
+
+      return appointmentsList;
+    };
+
+    try {
+      // Calcular el rango de fechas para la recurrencia
+      const startDate = new Date(appointmentDate);
+      const endDate = new Date(appointmentDate);
+      endDate.setDate(startDate.getDate() + 1); // Por defecto es un día después
+
+      const appointmentsList = generateAppointments(
+        startDate,
+        endDate,
+        recurrence
+      );
+
+      for (const appointmentData of appointmentsList) {
+        // Enviar datos al backend para crear la cita
+        const response = await axios.post("/api/date", appointmentData);
+        console.log("Appointment created:", response.data);
+
+        // Actualizar estado de citas con la nueva cita creada
+        setAppointments((prevAppointments) => [
+          ...prevAppointments,
+          {
+            id: response.data.idDate,
+            title: response.data.title,
+            start: new Date(response.data.start),
+            end: new Date(response.data.end),
+            description: response.data.description,
+            therapist: response.data.therapist,
+            patient: response.data.patient,
+            cost: response.data.cost,
+          },
+        ]);
+
+        // Actualizar el estado de cuenta del paciente
+        await axios.patch(`/api/patient/${selectedPatient}`, {
+          pacienteId: selectedPatient,
+          cantidad: cost, // Asegúrate de que esto sea negativo si es un cargo
+        });
+      }
+
+      // Limpiar el formulario después de enviar
+      setSelectedPatient("");
+      setSelectedTherapist("");
+      setAppointmentDate("");
+      setAppointmentStartTime("");
+      setAppointmentEndTime("");
+      setAppointmentTitle("");
+      setAppointmentDescription("");
+      setCost("");
+      setRecurrence("once"); // Resetear la recurrencia
+    } catch (error) {
+      console.error("Error creating appointment or updating account:", error);
+    }
   };
-
-  try {
-    // Enviar datos al backend para crear la cita
-    const response = await axios.post("/api/date", appointmentData);
-    console.log("Appointment created:", response.data);
-
-    // Actualizar estado de citas con la nueva cita creada
-    setAppointments([
-      ...appointments,
-      {
-        id: response.data.idDate,
-        title: response.data.title,
-        start: new Date(response.data.start),
-        end: new Date(response.data.end),
-      },
-    ]);
-
-    // Actualizar el estado de cuenta del paciente
-    await axios.patch(`/api/patient/${selectedPatient}`, {
-      pacienteId: selectedPatient,
-      cantidad: cost,  // Asegúrate de que esto sea negativo si es un cargo
-    });
-
-    // Limpiar el formulario después de enviar
-    setSelectedPatient("");
-    setSelectedTherapist("");
-    setAppointmentDate("");
-    setAppointmentStartTime("");
-    setAppointmentEndTime("");
-    setAppointmentTitle("");
-    setAppointmentDescription("");
-    setCost("");
-  } catch (error) {
-    console.error("Error creating appointment or updating account:", error);
-  }
-};
-
 
   // Renderizado del componente
   return (
@@ -125,7 +196,7 @@ const Citas = () => {
             {patients.map((patient) => (
               <option key={patient._id} value={patient._id}>
                 {patient.firstName} {patient.lastName}
-                </option>
+              </option>
             ))}
           </select>
         </label>
@@ -188,16 +259,31 @@ const Citas = () => {
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
           />
         </label>
-        <label className="block mb-2">Agrega un costo</label>
-        <input
+        <label className="block mb-2">
+          Agrega un costo:
+          <input
             type="number"
             value={cost}
             onChange={(e) => setCost(e.target.value)}
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
           />
+        </label>
+        <label className="block mb-2">
+          Repetir Cita:
+          <select
+            value={recurrence}
+            onChange={(e) => setRecurrence(e.target.value)}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          >
+            <option value="once">Una vez</option>
+            <option value="daily">Diariamente</option>
+            <option value="weekly">Semanalmente</option>
+            <option value="monthly">Mensualmente</option>
+          </select>
+        </label>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded "
+          className="px-4 py-2 bg-blue-500 text-white rounded"
         >
           Crear Cita
         </button>
@@ -208,7 +294,7 @@ const Citas = () => {
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         events={appointments}
-        dateClick={handleDateClick}
+        eventClick={handleEventClick} // Maneja el clic en un evento
         headerToolbar={{
           left: "prev,next today",
           center: "title",

@@ -13,6 +13,7 @@ export async function POST(req) {
     patient,
     title,
     description,
+    cost
   } = await req.json();
 
   try {
@@ -26,6 +27,7 @@ export async function POST(req) {
       patient,
       title,
       description,
+      cost,
     });
 
     return NextResponse.json({
