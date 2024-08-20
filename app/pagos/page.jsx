@@ -85,7 +85,10 @@ const Pagos = () => {
       },
       {
         label: "Deuda Total",
-        data: selectedPatient?.estadoDeCuenta?.pagos?.map(() => selectedPatient.estadoDeCuenta.total) || [],
+        data: selectedPatient?.estadoDeCuenta?.pagos?.reduce((acc, pago) => {
+          acc.push(acc.length > 0 ? acc[acc.length - 1] - pago.cantidad : selectedPatient.estadoDeCuenta.total - pago.cantidad);
+          return acc;
+        }, []) || [],
         borderColor: "rgba(255, 99, 132, 1)",
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         fill: true,
@@ -133,7 +136,7 @@ const Pagos = () => {
           <h2 className="text-xl">
             Estado de cuenta de {selectedPatient.firstName} {selectedPatient.lastName}
           </h2>
-          <p>Total: ${totalPayments.toFixed(2)}</p>
+          <p>Total: ${totalPayments ? totalPayments.toFixed(2) : "0.00"}</p>
           <h3 className="mt-2">Registrar Pago</h3>
           {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
           <input
