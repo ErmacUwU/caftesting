@@ -85,7 +85,7 @@ const Citas = () => {
       // Actualizar el estado de cuenta del paciente
       await axios.patch(`/api/patient/${selectedPatient}`, {
         pacienteId: selectedPatient,
-        cantidad: parseFloat(cost), // Restar el costo al total
+        cantidad: parseFloat(cost),
       });
 
       // Limpiar el formulario después de enviar
@@ -202,6 +202,20 @@ const Citas = () => {
         initialView="dayGridMonth"
         events={appointments}
         dateClick={(info) => console.log(info.dateStr)}
+        headerToolbar={{
+          left: "prev,next today",
+          center: "title",
+          right: "dayGridMonth,timeGridWeek,timeGridDay",
+        }}
+        views={{
+          dayGridMonth: { buttonText: "Mes" },
+          timeGridWeek: { buttonText: "Semana" },
+          timeGridDay: { buttonText: "Día" },
+        }}
+        locale="es"
+        buttonText={{
+          today: "Hoy",
+        }}
       />
     </div>
   );
