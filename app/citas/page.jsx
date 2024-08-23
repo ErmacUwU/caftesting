@@ -1,4 +1,4 @@
-"use client"
+"use client";
 // Importaciones de librerías y componentes necesarios
 import React, { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
@@ -21,20 +21,19 @@ const Citas = () => {
   const [appointmentTitle, setAppointmentTitle] = useState("");
   const [appointmentDescription, setAppointmentDescription] = useState("");
   const [cost, setCost] = useState("");
+
   // Efecto para cargar datos al montar el componente
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Obtener datos de pacientes, terapeutas y citas
-        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all([
-          axios.get("/api/patient"),
-          axios.get("/api/therapist"),
-          axios.get("/api/date"),
-        ]);
+        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all(
+          [
+            axios.get("/api/patient"),
+            axios.get("/api/therapist"),
+            axios.get("/api/date"),
+          ]
+        );
 
-        console.log("Patients:", patientsRes.data);
-
-        // Establecer estados con datos obtenidos
         setPatients(patientsRes.data.patient || []);
         setTherapists(therapistsRes.data.therapist || []);
         setAppointments(
@@ -53,62 +52,55 @@ const Citas = () => {
     fetchData();
   }, []);
 
-  // Función para manejar clic en una fecha del calendario
-  const handleDateClick = (arg) => {
-    alert(arg.dateStr);
-  };
-
   // Función para manejar envío del formulario para crear una cita
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  const appointmentData = {
-    idDate: uniquid(),
-    date: appointmentDate,
-    start: new Date(`${appointmentDate}T${appointmentStartTime}`),
-    end: new Date(`${appointmentDate}T${appointmentEndTime}`),
-    therapist: selectedTherapist,
-    patient: selectedPatient,
-    title: appointmentTitle,
-    description: appointmentDescription,
-    cost: cost,
+    e.preventDefault();
+
+    const appointmentData = {
+      idDate: uniquid(),
+      date: appointmentDate,
+      start: new Date(`${appointmentDate}T${appointmentStartTime}`),
+      end: new Date(`${appointmentDate}T${appointmentEndTime}`),
+      therapist: selectedTherapist,
+      patient: selectedPatient,
+      title: appointmentTitle,
+      description: appointmentDescription,
+      cost: parseFloat(cost),
+    };
+
+    try {
+      const response = await axios.post("/api/date", appointmentData);
+      console.log("Appointment created:", response.data);
+
+      setAppointments([
+        ...appointments,
+        {
+          id: response.data.idDate,
+          title: response.data.title,
+          start: new Date(response.data.start),
+          end: new Date(response.data.end),
+        },
+      ]);
+
+      // Actualizar el estado de cuenta del paciente
+      await axios.patch(`/api/patient/${selectedPatient}`, {
+        pacienteId: selectedPatient,
+        cantidad: parseFloat(cost),
+      });
+
+      // Limpiar el formulario después de enviar
+      setSelectedPatient("");
+      setSelectedTherapist("");
+      setAppointmentDate("");
+      setAppointmentStartTime("");
+      setAppointmentEndTime("");
+      setAppointmentTitle("");
+      setAppointmentDescription("");
+      setCost("");
+    } catch (error) {
+      console.error("Error creating appointment or updating account:", error);
+    }
   };
-
-  try {
-    // Enviar datos al backend para crear la cita
-    const response = await axios.post("/api/date", appointmentData);
-    console.log("Appointment created:", response.data);
-
-    // Actualizar estado de citas con la nueva cita creada
-    setAppointments([
-      ...appointments,
-      {
-        id: response.data.idDate,
-        title: response.data.title,
-        start: new Date(response.data.start),
-        end: new Date(response.data.end),
-      },
-    ]);
-
-    // Actualizar el estado de cuenta del paciente
-    await axios.patch(`/api/patient/${selectedPatient}`, {
-      pacienteId: selectedPatient,
-      cantidad: cost,  // Asegúrate de que esto sea negativo si es un cargo
-    });
-
-    // Limpiar el formulario después de enviar
-    setSelectedPatient("");
-    setSelectedTherapist("");
-    setAppointmentDate("");
-    setAppointmentStartTime("");
-    setAppointmentEndTime("");
-    setAppointmentTitle("");
-    setAppointmentDescription("");
-    setCost("");
-  } catch (error) {
-    console.error("Error creating appointment or updating account:", error);
-  }
-};
-
 
   // Renderizado del componente
   return (
@@ -125,7 +117,7 @@ const Citas = () => {
             {patients.map((patient) => (
               <option key={patient._id} value={patient._id}>
                 {patient.firstName} {patient.lastName}
-                </option>
+              </option>
             ))}
           </select>
         </label>
@@ -188,27 +180,28 @@ const Citas = () => {
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
           />
         </label>
-        <label className="block mb-2">Agrega un costo</label>
-        <input
+        <label className="block mb-2">
+          Costo de la Cita:
+          <input
             type="number"
             value={cost}
             onChange={(e) => setCost(e.target.value)}
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
           />
+        </label>
         <button
           type="submit"
-          className="px-4 py-2 bg-blue-500 text-white rounded "
+          className="block w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-4"
         >
           Crear Cita
         </button>
       </form>
 
-      {/* Calendario FullCalendar para mostrar citas */}
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView="dayGridMonth"
         events={appointments}
-        dateClick={handleDateClick}
+        dateClick={(info) => console.log(info.dateStr)}
         headerToolbar={{
           left: "prev,next today",
           center: "title",
