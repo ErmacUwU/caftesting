@@ -18,9 +18,15 @@ const Citas = () => {
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentStartTime, setAppointmentStartTime] = useState("");
   const [appointmentEndTime, setAppointmentEndTime] = useState("");
-  const [appointmentTitle, setAppointmentTitle] = useState("");
-  const [appointmentDescription, setAppointmentDescription] = useState("");
+  const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
+
+  // Servicios predefinidos con sus duraciones y costos
+  const services = [
+    { id: 1, name: "Consulta General", duration: 30, cost: 500 },
+    { id: 2, name: "Terapia Física", duration: 60, cost: 1000 },
+    { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
+  ];
 
   // Efecto para cargar datos al montar el componente
   useEffect(() => {
@@ -52,6 +58,28 @@ const Citas = () => {
     fetchData();
   }, []);
 
+  // Función para manejar cambio de servicio seleccionado
+  const handleServiceChange = (e) => {
+    const selectedServiceId = e.target.value;
+    const service = services.find((s) => s.id.toString() === selectedServiceId);
+    setSelectedService(service?.name || "");
+    setCost(service?.cost || "");
+    setAppointmentEndTime(
+      service && appointmentStartTime
+        ? calculateEndTime(appointmentStartTime, service.duration)
+        : ""
+    );
+  };
+
+  // Función para calcular la hora de finalización de la cita
+  const calculateEndTime = (startTime, duration) => {
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const end = new Date();
+    end.setHours(hours);
+    end.setMinutes(minutes + duration);
+    return end.toTimeString().slice(0, 5); // Retorna en formato HH:MM
+  };
+
   // Función para manejar envío del formulario para crear una cita
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,8 +91,8 @@ const Citas = () => {
       end: new Date(`${appointmentDate}T${appointmentEndTime}`),
       therapist: selectedTherapist,
       patient: selectedPatient,
-      title: appointmentTitle,
-      description: appointmentDescription,
+      title: selectedService,
+      description: selectedService, // Puedes reemplazar esto si necesitas una descripción diferente
       cost: parseFloat(cost),
     };
 
@@ -94,8 +122,7 @@ const Citas = () => {
       setAppointmentDate("");
       setAppointmentStartTime("");
       setAppointmentEndTime("");
-      setAppointmentTitle("");
-      setAppointmentDescription("");
+      setSelectedService("");
       setCost("");
     } catch (error) {
       console.error("Error creating appointment or updating account:", error);
@@ -150,9 +177,34 @@ const Citas = () => {
           <input
             type="time"
             value={appointmentStartTime}
-            onChange={(e) => setAppointmentStartTime(e.target.value)}
+            onChange={(e) => {
+              setAppointmentStartTime(e.target.value);
+              if (selectedService) {
+                const service = services.find(
+                  (s) => s.name === selectedService
+                );
+                setAppointmentEndTime(
+                  calculateEndTime(e.target.value, service?.duration || 0)
+                );
+              }
+            }}
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
           />
+        </label>
+        <label className="block mb-2">
+          Servicio:
+          <select
+            value={selectedService}
+            onChange={handleServiceChange}
+            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+          >
+            <option value="">Seleccione un servicio</option>
+            {services.map((service) => (
+              <option key={service.id} value={service.id}>
+                {service.name}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="block mb-2">
           Hora de Cierre de la Cita:
@@ -160,23 +212,7 @@ const Citas = () => {
             type="time"
             value={appointmentEndTime}
             onChange={(e) => setAppointmentEndTime(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-          />
-        </label>
-        <label className="block mb-2">
-          Título de la Cita:
-          <input
-            type="text"
-            value={appointmentTitle}
-            onChange={(e) => setAppointmentTitle(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-          />
-        </label>
-        <label className="block mb-2">
-          Descripción de la Cita:
-          <textarea
-            value={appointmentDescription}
-            onChange={(e) => setAppointmentDescription(e.target.value)}
+            step="300" // Incrementos de 5 minutos
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
           />
         </label>
@@ -187,6 +223,7 @@ const Citas = () => {
             value={cost}
             onChange={(e) => setCost(e.target.value)}
             className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+            step="1" // Incrementos de 1 peso
           />
         </label>
         <button
