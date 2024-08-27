@@ -7,9 +7,22 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import uniquid from "uniquid";
+import Modal from "react-modal";
+
+// Estilos para el modal (puedes personalizar)
+const customStyles = {
+  content: {
+    top: '50%',
+    left: '50%',
+    right: 'auto',
+    bottom: 'auto',
+    marginRight: '-50%',
+    transform: 'translate(-50%, -50%)',
+  },
+};
 
 const Citas = () => {
-  // Estados para manejar pacientes, terapeutas, citas y datos del formulario
+  // Estados para manejar pacientes, terapeutas, citas, formulario y modales
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -20,6 +33,9 @@ const Citas = () => {
   const [appointmentEndTime, setAppointmentEndTime] = useState("");
   const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
+  const [isFormVisible, setIsFormVisible] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
 
   // Servicios predefinidos con sus duraciones y costos
   const services = [
@@ -48,6 +64,7 @@ const Citas = () => {
             title: appointment.title,
             start: new Date(appointment.start),
             end: new Date(appointment.end),
+            ...appointment
           })) || []
         );
       } catch (error) {
@@ -124,136 +141,205 @@ const Citas = () => {
       setAppointmentEndTime("");
       setSelectedService("");
       setCost("");
+      setIsFormVisible(false);
     } catch (error) {
       console.error("Error creating appointment or updating account:", error);
     }
   };
 
+  // Función para abrir el modal con la información de la cita seleccionada
+  const openModal = (appointment) => {
+    setSelectedAppointment(appointment);
+    setModalIsOpen(true);
+  };
+
+  // Función para cerrar el modal
+  const closeModal = () => {
+    setModalIsOpen(false);
+    setSelectedAppointment(null);
+  };
+
+  // Función para mostrar el formulario de creación de citas
+  const handleDateClick = (info) => {
+    setAppointmentDate(info.dateStr);
+    setIsFormVisible(true);
+  };
+
+  // Función para cerrar el formulario de creación de citas
+  const handleCloseForm = () => {
+    setIsFormVisible(false);
+    // Limpiar el formulario
+    setSelectedPatient("");
+    setSelectedTherapist("");
+    setAppointmentDate("");
+    setAppointmentStartTime("");
+    setAppointmentEndTime("");
+    setSelectedService("");
+    setCost("");
+  };
+
   // Renderizado del componente
   return (
-    <div>
-      <form onSubmit={handleSubmit} className="mb-4">
-        <label className="block mb-2">
-          Paciente:
-          <select
-            value={selectedPatient}
-            onChange={(e) => setSelectedPatient(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
+    <div className="flex">
+      {isFormVisible && (
+        <div className="w-1/3 p-4 bg-gray-100 relative">
+          <button
+            onClick={handleCloseForm}
+            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded"
           >
-            <option value="">Seleccione un paciente</option>
-            {patients.map((patient) => (
-              <option key={patient._id} value={patient._id}>
-                {patient.firstName} {patient.lastName}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block mb-2">
-          Terapeuta:
-          <select
-            value={selectedTherapist}
-            onChange={(e) => setSelectedTherapist(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-          >
-            <option value="">Seleccione un terapeuta</option>
-            {therapists.map((therapist) => (
-              <option key={therapist._id} value={therapist._id}>
-                {therapist.firstName} {therapist.lastName}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block mb-2">
-          Fecha de la Cita:
-          <input
-            type="date"
-            value={appointmentDate}
-            onChange={(e) => setAppointmentDate(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-          />
-        </label>
-        <label className="block mb-2">
-          Hora de Inicio de la Cita:
-          <input
-            type="time"
-            value={appointmentStartTime}
-            onChange={(e) => {
-              setAppointmentStartTime(e.target.value);
-              if (selectedService) {
-                const service = services.find(
-                  (s) => s.name === selectedService
-                );
-                setAppointmentEndTime(
-                  calculateEndTime(e.target.value, service?.duration || 0)
-                );
-              }
-            }}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-          />
-        </label>
-        <label className="block mb-2">
-          Servicio:
-          <select
-            value={selectedService}
-            onChange={handleServiceChange}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-          >
-            <option value="">Seleccione un servicio</option>
-            {services.map((service) => (
-              <option key={service.id} value={service.id}>
-                {service.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block mb-2">
-          Hora de Cierre de la Cita:
-          <input
-            type="time"
-            value={appointmentEndTime}
-            onChange={(e) => setAppointmentEndTime(e.target.value)}
-            step="300" // Incrementos de 5 minutos
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-          />
-        </label>
-        <label className="block mb-2">
-          Costo de la Cita:
-          <input
-            type="number"
-            value={cost}
-            onChange={(e) => setCost(e.target.value)}
-            className="block w-full p-2 border border-gray-300 rounded mt-1 bg-gray-400"
-            step="1" // Incrementos de 1 peso
-          />
-        </label>
-        <button
-          type="submit"
-          className="block w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-4"
-        >
-          Crear Cita
-        </button>
-      </form>
+            X
+          </button>
+          <form onSubmit={handleSubmit} className="mb-4">
+            <label className="block mb-2">
+              Paciente:
+              <select
+                value={selectedPatient}
+                onChange={(e) => setSelectedPatient(e.target.value)}
+                className="block w-full p-2 border border-gray-300 rounded mt-1"
+              >
+                <option value="">Seleccione un paciente</option>
+                {patients.map((patient) => (
+                  <option key={patient._id} value={patient._id}>
+                    {patient.firstName} {patient.lastName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block mb-2">
+              Terapeuta:
+              <select
+                value={selectedTherapist}
+                onChange={(e) => setSelectedTherapist(e.target.value)}
+                className="block w-full p-2 border border-gray-300 rounded mt-1"
+              >
+                <option value="">Seleccione un terapeuta</option>
+                {therapists.map((therapist) => (
+                  <option key={therapist._id} value={therapist._id}>
+                    {therapist.firstName} {therapist.lastName}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block mb-2">
+              Fecha de la Cita:
+              <input
+                type="date"
+                value={appointmentDate}
+                onChange={(e) => setAppointmentDate(e.target.value)}
+                className="block w-full p-2 border border-gray-300 rounded mt-1"
+              />
+            </label>
+            <label className="block mb-2">
+              Hora de Inicio de la Cita:
+              <input
+                type="time"
+                value={appointmentStartTime}
+                onChange={(e) => {
+                  setAppointmentStartTime(e.target.value);
+                  if (selectedService) {
+                    const service = services.find(
+                      (s) => s.name === selectedService
+                    );
+                    setAppointmentEndTime(
+                      calculateEndTime(e.target.value, service?.duration || 0)
+                    );
+                  }
+                }}
+                className="block w-full p-2 border border-gray-300 rounded mt-1"
+              />
+            </label>
+            <label className="block mb-2">
+              Servicio:
+              <select
+                value={selectedService}
+                onChange={handleServiceChange}
+                className="block w-full p-2 border border-gray-300 rounded mt-1"
+              >
+                <option value="">Seleccione un servicio</option>
+                {services.map((service) => (
+                  <option key={service.id} value={service.id}>
+                    {service.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block mb-2">
+              Hora de Cierre de la Cita:
+              <input
+                type="time"
+                value={appointmentEndTime}
+                onChange={(e) => setAppointmentEndTime(e.target.value)}
+                step="300" // Incrementos de 5 minutos
+                className="block w-full p-2 border border-gray-300 rounded mt-1"
+              />
+            </label>
+            <label className="block mb-2">
+              Costo de la Cita:
+              <input
+                type="number"
+                value={cost}
+                onChange={(e) => setCost(e.target.value)}
+                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                step="1" // Incrementos de 1 peso
+              />
+            </label>
+            <button
+              type="submit"
+              className="block w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-4"
+            >
+              Crear Cita
+            </button>
+          </form>
+        </div>
+      )}
 
-      <FullCalendar
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-        initialView="dayGridMonth"
-        events={appointments}
-        dateClick={(info) => console.log(info.dateStr)}
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay",
-        }}
-        views={{
-          dayGridMonth: { buttonText: "Mes" },
-          timeGridWeek: { buttonText: "Semana" },
-          timeGridDay: { buttonText: "Día" },
-        }}
-        locale="es"
-        buttonText={{
-          today: "Hoy",
-        }}
-      />
+      <div className="w-2/3 p-4">
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          events={appointments}
+          dateClick={handleDateClick}
+          eventClick={(info) => openModal(info.event.extendedProps)}
+          headerToolbar={{
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay",
+          }}
+          views={{
+            dayGridMonth: { buttonText: "Mes" },
+            timeGridWeek: { buttonText: "Semana" },
+            timeGridDay: { buttonText: "Día" },
+          }}
+          locale="es"
+          buttonText={{
+            today: "Hoy",
+          }}
+        />
+      </div>
+
+      {selectedAppointment && (
+        <Modal
+          isOpen={modalIsOpen}
+          onRequestClose={closeModal}
+          style={customStyles}
+          contentLabel="Detalles de la Cita"
+        >
+          <h2>{selectedAppointment.title}</h2>
+          <p>Paciente: {selectedAppointment.patient}</p>
+          <p>Terapeuta: {selectedAppointment.therapist}</p>
+          <p>Fecha: {new Date(selectedAppointment.start).toLocaleDateString()}</p>
+          <p>
+            Hora:{" "}
+            {`${new Date(selectedAppointment.start).toLocaleTimeString()} - ${new Date(
+              selectedAppointment.end
+            ).toLocaleTimeString()}`}
+          </p>
+          <p>Costo: ${selectedAppointment.cost}</p>
+          <button onClick={closeModal} className="mt-4 bg-red-500 text-white p-2 rounded">
+            Cerrar
+          </button>
+        </Modal>
+      )}
     </div>
   );
 };
