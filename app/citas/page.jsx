@@ -9,6 +9,8 @@ import axios from "axios";
 import uniquid from "uniquid";
 import Modal from "react-modal";
 
+
+
 // Estilos para el modal (puedes personalizar)
 const customStyles = {
   content: {
@@ -76,17 +78,22 @@ const Citas = () => {
   }, []);
 
   // Función para manejar cambio de servicio seleccionado
-  const handleServiceChange = (e) => {
-    const selectedServiceId = e.target.value;
-    const service = services.find((s) => s.id.toString() === selectedServiceId);
-    setSelectedService(service?.name || "");
-    setCost(service?.cost || "");
-    setAppointmentEndTime(
-      service && appointmentStartTime
-        ? calculateEndTime(appointmentStartTime, service.duration)
-        : ""
-    );
-  };
+     const handleServiceChange = (e) => {
+       const selectedServiceId = e.target.value;
+       setSelectedService(selectedServiceId); // Guarda el ID del servicio
+       const service = services.find(
+         (s) => s.id.toString() === selectedServiceId
+       );
+       setCost(service?.cost || "");
+       setAppointmentEndTime(
+         service && appointmentStartTime
+           ? calculateEndTime(appointmentStartTime, service.duration)
+           : ""
+       );
+     };
+
+
+
 
   // Función para calcular la hora de finalización de la cita
   const calculateEndTime = (startTime, duration) => {
@@ -101,17 +108,36 @@ const Citas = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Busca el terapeuta seleccionado basado en su ID
+    const therapist = therapists.find((t) => t._id === selectedTherapist);
+    const therapistName = therapist
+      ? `${therapist.firstName} ${therapist.lastName}`
+      : "";
+
+    // Busca el paciente seleccionado basado en su ID
+    const patient = patients.find((p) => p._id === selectedPatient);
+    const patientName = patient
+      ? `${patient.firstName} ${patient.lastName}`
+      : "";
+
+    // Buscar el nombre del servicio utilizando el ID almacenado
+    const service = services.find((s) => s.id.toString() === selectedService);
+
     const appointmentData = {
       idDate: uniquid(),
       date: appointmentDate,
       start: new Date(`${appointmentDate}T${appointmentStartTime}`),
       end: new Date(`${appointmentDate}T${appointmentEndTime}`),
-      therapist: selectedTherapist,
-      patient: selectedPatient,
-      title: selectedService,
-      description: selectedService, // Puedes reemplazar esto si necesitas una descripción diferente
+      therapist: therapistName,
+      patient: patientName,
+      title: service?.name || "", // Guarda el nombre del servicio como título
+      description: service?.name || "", // También guarda el nombre como descripción si es necesario
       cost: parseFloat(cost),
     };
+
+    // Imprime el objeto appointmentData en la consola
+    console.log("Appointment Data:", appointmentData.date);
+    
 
     try {
       const response = await axios.post("/api/date", appointmentData);
@@ -121,7 +147,8 @@ const Citas = () => {
         ...appointments,
         {
           id: response.data.idDate,
-          title: response.data.title,
+          title: response.data.title, // Esto ahora contiene el nombre del servicio
+          date: response.data.date,
           start: new Date(response.data.start),
           end: new Date(response.data.end),
         },
@@ -147,8 +174,11 @@ const Citas = () => {
     }
   };
 
+
   // Función para abrir el modal con la información de la cita seleccionada
   const openModal = (appointment) => {
+    
+    console.log("Appointment data in openModal:", appointment);
     setSelectedAppointment(appointment);
     setModalIsOpen(true);
   };
@@ -189,7 +219,7 @@ const Citas = () => {
           >
             X
           </button>
-          <form onSubmit={handleSubmit} className="mb-4">
+          <form onSubmit={handleSubmit} className="mb-4 text-black">
             <label className="block mb-2">
               Paciente:
               <select
@@ -323,19 +353,32 @@ const Citas = () => {
           onRequestClose={closeModal}
           style={customStyles}
           contentLabel="Detalles de la Cita"
+          ariaHideApp={false} // Esto desactiva la advertencia, pero no es recomendado
         >
-          <h2>{selectedAppointment.title}</h2>
-          <p>Paciente: {selectedAppointment.patient}</p>
-          <p>Terapeuta: {selectedAppointment.therapist}</p>
-          <p>Fecha: {new Date(selectedAppointment.start).toLocaleDateString()}</p>
+          <h2 className="text-black">{selectedAppointment.description}</h2>
+          {console.log("Fecha :", selectedAppointment.date)}
+          <p className="text-black">Paciente: {selectedAppointment.patient}</p>
+          <p className="text-black">
+            Terapeuta: {selectedAppointment.therapist}
+          </p>
+
+          <p>
+            Fecha: {new Date(selectedAppointment.start).toLocaleDateString()}
+          </p>
           <p>
             Hora:{" "}
-            {`${new Date(selectedAppointment.start).toLocaleTimeString()} - ${new Date(
+            {`${new Date(
+              selectedAppointment.start
+            ).toLocaleTimeString()} - ${new Date(
               selectedAppointment.end
             ).toLocaleTimeString()}`}
           </p>
-          <p>Costo: ${selectedAppointment.cost}</p>
-          <button onClick={closeModal} className="mt-4 bg-red-500 text-white p-2 rounded">
+
+          <p className="text-black">Costo: ${selectedAppointment.cost}</p>
+          <button
+            onClick={closeModal}
+            className="mt-4 bg-red-500 text-white p-2 rounded"
+          >
             Cerrar
           </button>
         </Modal>
