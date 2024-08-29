@@ -77,6 +77,8 @@ const Citas = () => {
     fetchData();
   }, []);
 
+  //
+
   // Función para manejar cambio de servicio seleccionado
      const handleServiceChange = (e) => {
        const selectedServiceId = e.target.value;
