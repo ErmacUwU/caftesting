@@ -9,22 +9,27 @@ import axios from "axios";
 import uniquid from "uniquid";
 import Modal from "react-modal";
 
-
-
-// Estilos para el modal (puedes personalizar)
+// Estilos para el modal (bloquear interacción fuera y centrado)
 const customStyles = {
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.75)", // Fondo oscuro cuando el modal está abierto
+    zIndex: 1000, // Asegurar que se superponga a otros elementos
+  },
   content: {
-    top: '50%',
-    left: '50%',
-    right: 'auto',
-    bottom: 'auto',
-    marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
+    top: "50%",
+    left: "50%",
+    right: "auto",
+    bottom: "auto",
+    marginRight: "-50%",
+    transform: "translate(-50%, -50%)",
+    borderRadius: "10px", // Estilo más suave en las esquinas
+    padding: "20px", // Agregar espacio interno
+    maxWidth: "500px", // Limitar el ancho máximo
+    width: "90%", // Responsivo
   },
 };
 
 const Citas = () => {
-  // Estados para manejar pacientes, terapeutas, citas, formulario y modales
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [appointments, setAppointments] = useState([]);
@@ -39,14 +44,13 @@ const Citas = () => {
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [modalIsOpen, setModalIsOpen] = useState(false);
 
-  // Servicios predefinidos con sus duraciones y costos
   const services = [
     { id: 1, name: "Consulta General", duration: 30, cost: 500 },
     { id: 2, name: "Terapia Física", duration: 60, cost: 1000 },
     { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
   ];
 
-  // Efecto para cargar datos al montar el componente
+  // Carga inicial de datos
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -64,9 +68,11 @@ const Citas = () => {
           appointmentsRes.data.therapist.map((appointment) => ({
             id: appointment.idDate,
             title: appointment.title,
-            start: new Date(appointment.start),
-            end: new Date(appointment.end),
-            ...appointment
+            date: appointment.date, // Usamos el campo date directamente
+            therapist: appointment.therapist, // Nombre del terapeuta
+            patient: appointment.patient, // Nombre del paciente
+            description: appointment.description, // Descripción o título de la cita
+            cost: appointment.cost, // Costo de la cita
           })) || []
         );
       } catch (error) {
@@ -77,69 +83,33 @@ const Citas = () => {
     fetchData();
   }, []);
 
-  //
-
-  // Función para manejar cambio de servicio seleccionado
-     const handleServiceChange = (e) => {
-       const selectedServiceId = e.target.value;
-       setSelectedService(selectedServiceId); // Guarda el ID del servicio
-       const service = services.find(
-         (s) => s.id.toString() === selectedServiceId
-       );
-       setCost(service?.cost || "");
-       setAppointmentEndTime(
-         service && appointmentStartTime
-           ? calculateEndTime(appointmentStartTime, service.duration)
-           : ""
-       );
-     };
-
-
-
-
-  // Función para calcular la hora de finalización de la cita
-  const calculateEndTime = (startTime, duration) => {
-    const [hours, minutes] = startTime.split(":").map(Number);
-    const end = new Date();
-    end.setHours(hours);
-    end.setMinutes(minutes + duration);
-    return end.toTimeString().slice(0, 5); // Retorna en formato HH:MM
-  };
-
-  // Función para manejar envío del formulario para crear una cita
+  // Envío del formulario para crear una cita
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Busca el terapeuta seleccionado basado en su ID
     const therapist = therapists.find((t) => t._id === selectedTherapist);
     const therapistName = therapist
       ? `${therapist.firstName} ${therapist.lastName}`
       : "";
 
-    // Busca el paciente seleccionado basado en su ID
     const patient = patients.find((p) => p._id === selectedPatient);
     const patientName = patient
       ? `${patient.firstName} ${patient.lastName}`
       : "";
 
-    // Buscar el nombre del servicio utilizando el ID almacenado
     const service = services.find((s) => s.id.toString() === selectedService);
 
     const appointmentData = {
       idDate: uniquid(),
       date: appointmentDate,
-      start: new Date(`${appointmentDate}T${appointmentStartTime}`),
-      end: new Date(`${appointmentDate}T${appointmentEndTime}`),
+      start: `${appointmentDate}T${appointmentStartTime}:00`, // Formato ISO para la fecha y hora de inicio
+      end: `${appointmentDate}T${appointmentEndTime}:00`, // Formato ISO para la fecha y hora de fin
       therapist: therapistName,
       patient: patientName,
-      title: service?.name || "", // Guarda el nombre del servicio como título
-      description: service?.name || "", // También guarda el nombre como descripción si es necesario
+      title: service?.name || "",
+      description: service?.name || "",
       cost: parseFloat(cost),
     };
-
-    // Imprime el objeto appointmentData en la consola
-    console.log("Appointment Data:", appointmentData.date);
-    
 
     try {
       const response = await axios.post("/api/date", appointmentData);
@@ -149,20 +119,20 @@ const Citas = () => {
         ...appointments,
         {
           id: response.data.idDate,
-          title: response.data.title, // Esto ahora contiene el nombre del servicio
+          title: response.data.title,
           date: response.data.date,
-          start: new Date(response.data.start),
-          end: new Date(response.data.end),
+          therapist: response.data.therapist,
+          patient: response.data.patient,
+          description: response.data.description,
+          cost: response.data.cost,
         },
       ]);
 
-      // Actualizar el estado de cuenta del paciente
       await axios.patch(`/api/patient/${selectedPatient}`, {
         pacienteId: selectedPatient,
         cantidad: parseFloat(cost),
       });
 
-      // Limpiar el formulario después de enviar
       setSelectedPatient("");
       setSelectedTherapist("");
       setAppointmentDate("");
@@ -176,31 +146,33 @@ const Citas = () => {
     }
   };
 
-
   // Función para abrir el modal con la información de la cita seleccionada
   const openModal = (appointment) => {
-    
-    console.log("Appointment data in openModal:", appointment);
-    setSelectedAppointment(appointment);
+    // Asegúrate de que la fecha está en el formato adecuado
+    const formattedDate = new Date(appointment.date).toLocaleDateString(); // Convertir a una fecha legible
+
+    setSelectedAppointment({
+      ...appointment,
+      formattedDate,
+    });
     setModalIsOpen(true);
   };
 
-  // Función para cerrar el modal
+  // Cerrar el modal
   const closeModal = () => {
     setModalIsOpen(false);
     setSelectedAppointment(null);
   };
 
-  // Función para mostrar el formulario de creación de citas
+  // Manejo de clic en la fecha para crear una nueva cita
   const handleDateClick = (info) => {
     setAppointmentDate(info.dateStr);
     setIsFormVisible(true);
   };
 
-  // Función para cerrar el formulario de creación de citas
+  // Cerrar el formulario de citas
   const handleCloseForm = () => {
     setIsFormVisible(false);
-    // Limpiar el formulario
     setSelectedPatient("");
     setSelectedTherapist("");
     setAppointmentDate("");
@@ -210,14 +182,13 @@ const Citas = () => {
     setCost("");
   };
 
-  // Renderizado del componente
   return (
-    <div className="flex">
+    <div className="flex justify-center">
       {isFormVisible && (
         <div className="w-1/3 p-4 bg-gray-100 relative">
           <button
             onClick={handleCloseForm}
-            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded"
+            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded cursor-pointer"
           >
             X
           </button>
@@ -227,7 +198,7 @@ const Citas = () => {
               <select
                 value={selectedPatient}
                 onChange={(e) => setSelectedPatient(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               >
                 <option value="">Seleccione un paciente</option>
                 {patients.map((patient) => (
@@ -242,7 +213,7 @@ const Citas = () => {
               <select
                 value={selectedTherapist}
                 onChange={(e) => setSelectedTherapist(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               >
                 <option value="">Seleccione un terapeuta</option>
                 {therapists.map((therapist) => (
@@ -258,7 +229,7 @@ const Citas = () => {
                 type="date"
                 value={appointmentDate}
                 onChange={(e) => setAppointmentDate(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               />
             </label>
             <label className="block mb-2">
@@ -277,7 +248,7 @@ const Citas = () => {
                     );
                   }
                 }}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               />
             </label>
             <label className="block mb-2">
@@ -285,7 +256,7 @@ const Citas = () => {
               <select
                 value={selectedService}
                 onChange={handleServiceChange}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               >
                 <option value="">Seleccione un servicio</option>
                 {services.map((service) => (
@@ -302,7 +273,7 @@ const Citas = () => {
                 value={appointmentEndTime}
                 onChange={(e) => setAppointmentEndTime(e.target.value)}
                 step="300" // Incrementos de 5 minutos
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               />
             </label>
             <label className="block mb-2">
@@ -311,13 +282,13 @@ const Citas = () => {
                 type="number"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
                 step="1" // Incrementos de 1 peso
               />
             </label>
             <button
               type="submit"
-              className="block w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-4"
+              className="block w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-4 cursor-pointer"
             >
               Crear Cita
             </button>
@@ -355,34 +326,24 @@ const Citas = () => {
           onRequestClose={closeModal}
           style={customStyles}
           contentLabel="Detalles de la Cita"
-          ariaHideApp={false} // Esto desactiva la advertencia, pero no es recomendado
+          ariaHideApp={false}
         >
-          <h2 className="text-black">{selectedAppointment.description}</h2>
-          {console.log("Fecha :", selectedAppointment.date)}
-          <p className="text-black">Paciente: {selectedAppointment.patient}</p>
-          <p className="text-black">
-            Terapeuta: {selectedAppointment.therapist}
-          </p>
+          <div className="relative">
+            <h2 className="text-black font-bold text-xl mb-4">
+              {selectedAppointment.description}
+            </h2>
+            <p className="text-black">Paciente: {selectedAppointment.patient}</p>
+            <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
+            <p className="text-black">Fecha: {selectedAppointment.formattedDate}</p>
+            <p className="text-black">Costo: ${selectedAppointment.cost}</p>
 
-          <p>
-            Fecha: {new Date(selectedAppointment.start).toLocaleDateString()}
-          </p>
-          <p>
-            Hora:{" "}
-            {`${new Date(
-              selectedAppointment.start
-            ).toLocaleTimeString()} - ${new Date(
-              selectedAppointment.end
-            ).toLocaleTimeString()}`}
-          </p>
-
-          <p className="text-black">Costo: ${selectedAppointment.cost}</p>
-          <button
-            onClick={closeModal}
-            className="mt-4 bg-red-500 text-white p-2 rounded"
-          >
-            Cerrar
-          </button>
+            <button
+              onClick={closeModal}
+              className="mt-4 bg-red-500 text-white p-2 rounded absolute top-2 right-2 cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
         </Modal>
       )}
     </div>
@@ -390,3 +351,4 @@ const Citas = () => {
 };
 
 export default Citas;
+
