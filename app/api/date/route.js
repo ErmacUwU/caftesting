@@ -50,8 +50,8 @@ export async function POST(req) {
 
 export async function GET() {
   await dbConnect();
-  const therapist = await Date.find();
-  return NextResponse.json({ therapist });
+  const date = await Date.find();
+  return NextResponse.json({ date });
 }
 
 export async function DELETE(req) {

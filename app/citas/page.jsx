@@ -65,7 +65,7 @@ const Citas = () => {
         setPatients(patientsRes.data.patient || []);
         setTherapists(therapistsRes.data.therapist || []);
         setAppointments(
-          appointmentsRes.data.therapist.map((appointment) => ({
+          appointmentsRes.data.date.map((appointment) => ({
             id: appointment.idDate,
             title: appointment.title,
             date: appointment.date, // Usamos el campo date directamente
