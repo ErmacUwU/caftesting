@@ -111,6 +111,8 @@ const Citas = () => {
       cost: parseFloat(cost),
     };
 
+     
+
     try {
       const response = await axios.post("/api/date", appointmentData);
       console.log("Appointment created:", response.data);
@@ -149,6 +151,7 @@ const Citas = () => {
   // Función para abrir el modal con la información de la cita seleccionada
   const openModal = (appointment) => {
     // Asegúrate de que la fecha está en el formato adecuado
+    console.log("Appointment data in openModal:", appointment);
     const formattedDate = new Date(appointment.date).toLocaleDateString(); // Convertir a una fecha legible
 
     setSelectedAppointment({

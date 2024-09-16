@@ -5,7 +5,6 @@ const Agendas = () => {
   return (
     <div>
       <h1 className='uppercase text-2xl text-center'>Lista de Citas</h1>
-      <p>Filtros</p>
       <div>
         <TarjetaCitas/>
       </div>

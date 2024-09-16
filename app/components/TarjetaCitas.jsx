@@ -10,6 +10,7 @@ const TarjetaCitas = () => {
   const [selectedTherapist, setSelectedTherapist] = useState(''); // Estado para el terapeuta seleccionado
   const [selectedPatient, setSelectedPatient] = useState(''); // Estado para el paciente seleccionado
   const [selectedService, setSelectedService] = useState(''); // Estado para el servicio seleccionado
+  const [selectedDate, setSelectedDate] = useState(''); // Estado para la fecha específica seleccionada
 
   useEffect(() => {
     const getDates = async () => {
@@ -45,7 +46,7 @@ const TarjetaCitas = () => {
     getDates();
   }, []);
 
-  // Manejar cambios en los filtros
+  // Función para manejar cambios en los filtros
   const handleTherapistChange = (event) => {
     setSelectedTherapist(event.target.value);
   };
@@ -58,23 +59,31 @@ const TarjetaCitas = () => {
     setSelectedService(event.target.value);
   };
 
+  const handleDateChange = (event) => {
+    setSelectedDate(event.target.value);
+  };
+
   // Filtramos las citas según los filtros seleccionados
   useEffect(() => {
     const filtered = dates.filter((d) => {
-      return (
-        (selectedTherapist === '' || d.therapist === selectedTherapist) && // Filtrar por terapeuta
-        (selectedPatient === '' || d.patient === selectedPatient) && // Filtrar por paciente
-        (selectedService === '' || d.description === selectedService) // Filtrar por servicio
-      );
+      // Convertimos la fecha de la cita a formato local "YYYY-MM-DD"
+      const appointmentDate = new Date(d.date).toLocaleDateString('en-CA'); // Formato 'YYYY-MM-DD'
+
+      const isTherapistMatch = selectedTherapist === '' || d.therapist === selectedTherapist;
+      const isPatientMatch = selectedPatient === '' || d.patient === selectedPatient;
+      const isServiceMatch = selectedService === '' || d.description === selectedService;
+      const isDateMatch = selectedDate === '' || appointmentDate === selectedDate; // Comparamos solo la fecha, sin la hora
+
+      return isTherapistMatch && isPatientMatch && isServiceMatch && isDateMatch;
     });
     setFilteredDates(filtered);
-  }, [selectedTherapist, selectedPatient, selectedService, dates]);
+  }, [selectedTherapist, selectedPatient, selectedService, selectedDate, dates]);
 
   return (
     <div>
-      <div className='flex justify-between'>
+      {/* Filtro de terapeuta */}
       <div className="mb-4">
-        <label>Terapeuta: </label>
+        <label>Filtrar por terapeuta: </label>
         <select value={selectedTherapist} onChange={handleTherapistChange}>
           <option value="">Todos</option>
           {therapists.map((therapist) => (
@@ -85,9 +94,9 @@ const TarjetaCitas = () => {
         </select>
       </div>
 
-     
+      {/* Filtro de paciente */}
       <div className="mb-4">
-        <label>Paciente: </label>
+        <label>Filtrar por paciente: </label>
         <select value={selectedPatient} onChange={handlePatientChange}>
           <option value="">Todos</option>
           {patients.map((patient) => (
@@ -98,9 +107,9 @@ const TarjetaCitas = () => {
         </select>
       </div>
 
-      
+      {/* Filtro de servicio */}
       <div className="mb-4">
-        <label>Servicio: </label>
+        <label>Filtrar por servicio: </label>
         <select value={selectedService} onChange={handleServiceChange}>
           <option value="">Todos</option>
           {services.map((service) => (
@@ -110,6 +119,11 @@ const TarjetaCitas = () => {
           ))}
         </select>
       </div>
+
+      {/* Filtro de fecha */}
+      <div className="mb-4">
+        <label>Fecha Unica: </label>
+        <input type="date" value={selectedDate} onChange={handleDateChange} />
       </div>
 
       {/* Renderizamos las citas filtradas */}
