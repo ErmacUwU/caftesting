@@ -83,6 +83,30 @@ const Citas = () => {
     fetchData();
   }, []);
 
+  // Función para calcular la hora de finalización en base al servicio
+  const calculateEndTime = (startTime, duration) => {
+    const [hours, minutes] = startTime.split(":").map(Number);
+    const endTime = new Date();
+    endTime.setHours(hours);
+    endTime.setMinutes(minutes + duration);
+    return endTime.toTimeString().slice(0, 5);
+  };
+
+  // Manejo de cambio de servicio
+  const handleServiceChange = (e) => {
+    const selectedServiceId = e.target.value;
+    setSelectedService(selectedServiceId);
+
+    if (appointmentStartTime && selectedServiceId) {
+      const selectedService = services.find(
+        (service) => service.id.toString() === selectedServiceId
+      );
+      setAppointmentEndTime(
+        calculateEndTime(appointmentStartTime, selectedService.duration)
+      );
+    }
+  };
+
   // Envío del formulario para crear una cita
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -111,14 +135,13 @@ const Citas = () => {
       cost: parseFloat(cost),
     };
 
-     
-
     try {
       const response = await axios.post("/api/date", appointmentData);
       console.log("Appointment created:", response.data);
 
-      setAppointments([
-        ...appointments,
+      // Actualización del estado de citas con patrón de función
+      setAppointments((prevAppointments) => [
+        ...prevAppointments,
         {
           id: response.data.idDate,
           title: response.data.title,
@@ -150,9 +173,8 @@ const Citas = () => {
 
   // Función para abrir el modal con la información de la cita seleccionada
   const openModal = (appointment) => {
-    // Asegúrate de que la fecha está en el formato adecuado
-    console.log("Appointment data in openModal:", appointment);
-    const formattedDate = new Date(appointment.date).toLocaleDateString(); // Convertir a una fecha legible
+    // Convertir la fecha a un formato legible
+    const formattedDate = new Date(appointment.date).toLocaleDateString();
 
     setSelectedAppointment({
       ...appointment,
@@ -204,11 +226,12 @@ const Citas = () => {
                 className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               >
                 <option value="">Seleccione un paciente</option>
-                {patients.map((patient) => (
-                  <option key={patient._id} value={patient._id}>
-                    {patient.firstName} {patient.lastName}
-                  </option>
-                ))}
+                {patients.length > 0 &&
+                  patients.map((patient) => (
+                    <option key={patient._id} value={patient._id}>
+                      {patient.firstName} {patient.lastName}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="block mb-2">
@@ -219,11 +242,12 @@ const Citas = () => {
                 className="block w-full p-2 border border-gray-300 rounded mt-1 cursor-pointer"
               >
                 <option value="">Seleccione un terapeuta</option>
-                {therapists.map((therapist) => (
-                  <option key={therapist._id} value={therapist._id}>
-                    {therapist.firstName} {therapist.lastName}
-                  </option>
-                ))}
+                {therapists.length > 0 &&
+                  therapists.map((therapist) => (
+                    <option key={therapist._id} value={therapist._id}>
+                      {therapist.firstName} {therapist.lastName}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="block mb-2">
@@ -337,7 +361,7 @@ const Citas = () => {
             </h2>
             <p className="text-black">Paciente: {selectedAppointment.patient}</p>
             <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
-            <p className="text-black">Fecha: {selectedAppointment.formattedDate}</p>
+            <p className="text-black">Fecha: {new Date(selectedAppointment.date).toLocaleDateString()}</p>
             <p className="text-black">Costo: ${selectedAppointment.cost}</p>
 
             <button
