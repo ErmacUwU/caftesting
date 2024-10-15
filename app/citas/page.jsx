@@ -137,9 +137,9 @@ const Citas = () => {
 
     try {
       const response = await axios.post("/api/date", appointmentData);
-      console.log("Appointment created:", response.data);
+      console.log("Cita creada:", response.data);
 
-      // Actualización del estado de citas con patrón de función
+      // Actualización del estado de citas
       setAppointments((prevAppointments) => [
         ...prevAppointments,
         {
@@ -158,6 +158,7 @@ const Citas = () => {
         cantidad: parseFloat(cost),
       });
 
+      // Restablecer campos del formulario
       setSelectedPatient("");
       setSelectedTherapist("");
       setAppointmentDate("");
@@ -167,14 +168,14 @@ const Citas = () => {
       setCost("");
       setIsFormVisible(false);
     } catch (error) {
-      console.error("Error creating appointment or updating account:", error);
+      console.error("Error creando cita o actualizando cuenta:", error);
     }
   };
 
   // Función para abrir el modal con la información de la cita seleccionada
   const openModal = (appointment) => {
     // Convertir la fecha a un formato legible
-    const formattedDate = new Date(appointment.date).toLocaleDateString();
+    const formattedDate = new Date(appointment.date).toString();
 
     setSelectedAppointment({
       ...appointment,
@@ -268,7 +269,7 @@ const Citas = () => {
                   setAppointmentStartTime(e.target.value);
                   if (selectedService) {
                     const service = services.find(
-                      (s) => s.name === selectedService
+                      (s) => s.id === parseInt(selectedService)
                     );
                     setAppointmentEndTime(
                       calculateEndTime(e.target.value, service?.duration || 0)
@@ -348,34 +349,35 @@ const Citas = () => {
       </div>
 
       {selectedAppointment && (
-        <Modal
-          isOpen={modalIsOpen}
-          onRequestClose={closeModal}
-          style={customStyles}
-          contentLabel="Detalles de la Cita"
-          ariaHideApp={false}
-        >
-          <div className="relative">
-            <h2 className="text-black font-bold text-xl mb-4">
-              {selectedAppointment.description}
-            </h2>
-            <p className="text-black">Paciente: {selectedAppointment.patient}</p>
-            <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
-            <p className="text-black">Fecha: {new Date(selectedAppointment.date).toLocaleDateString()}</p>
-            <p className="text-black">Costo: ${selectedAppointment.cost}</p>
+  <Modal
+    isOpen={modalIsOpen}
+    onRequestClose={closeModal}
+    style={customStyles}
+    contentLabel="Detalles de la Cita"
+    ariaHideApp={false}
+  >
+    <div className="relative">
+      <h2 className="text-black font-bold text-xl mb-4">
+        {selectedAppointment.description}
+      </h2>
+      <p className="text-black">Paciente: {selectedAppointment.patient}</p>
+      <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
+      <p className="text-black">
+        Fecha: {new Date(selectedAppointment.date).toLocaleDateString('es-ES')}
+      </p>
+      <p className="text-black">Costo: ${selectedAppointment.cost}</p>
 
-            <button
-              onClick={closeModal}
-              className="mt-4 bg-red-500 text-white p-2 rounded absolute top-2 right-2 cursor-pointer"
-            >
-              Cerrar
-            </button>
-          </div>
-        </Modal>
-      )}
+      <button
+        onClick={closeModal}
+        className="mt-4 bg-red-500 text-white p-2 rounded absolute top-2 right-2 cursor-pointer"
+      >
+        Cerrar
+      </button>
+    </div>
+  </Modal>
+)}
     </div>
   );
 };
 
 export default Citas;
-

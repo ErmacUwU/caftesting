@@ -1,16 +1,16 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react';
 
 const TarjetaCitas = () => {
   const [dates, setDates] = useState([]);
   const [filteredDates, setFilteredDates] = useState([]);
-  const [therapists, setTherapists] = useState([]); // Estado para los terapeutas únicos
-  const [patients, setPatients] = useState([]); // Estado para los pacientes únicos
-  const [services, setServices] = useState([]); // Estado para los servicios únicos
-  const [selectedTherapist, setSelectedTherapist] = useState(''); // Estado para el terapeuta seleccionado
-  const [selectedPatient, setSelectedPatient] = useState(''); // Estado para el paciente seleccionado
-  const [selectedService, setSelectedService] = useState(''); // Estado para el servicio seleccionado
-  const [selectedDate, setSelectedDate] = useState(''); // Estado para la fecha específica seleccionada
+  const [therapists, setTherapists] = useState([]);
+  const [patients, setPatients] = useState([]);
+  const [services, setServices] = useState([]);
+  const [selectedTherapist, setSelectedTherapist] = useState('');
+  const [selectedPatient, setSelectedPatient] = useState('');
+  const [selectedService, setSelectedService] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
 
   useEffect(() => {
     const getDates = async () => {
@@ -25,9 +25,8 @@ const TarjetaCitas = () => {
 
         const data = await res.json();
         setDates(data.date || []);
-        setFilteredDates(data.date || []); // Inicializamos las citas filtradas con todas
+        setFilteredDates(data.date || []);
 
-        // Extraer listas únicas de terapeutas, pacientes y servicios
         const uniqueTherapists = [...new Set(data.date.map(d => d.therapist))];
         const uniquePatients = [...new Set(data.date.map(d => d.patient))];
         const uniqueServices = [...new Set(data.date.map(d => d.description))];
@@ -46,45 +45,34 @@ const TarjetaCitas = () => {
     getDates();
   }, []);
 
-  // Función para manejar cambios en los filtros
-  const handleTherapistChange = (event) => {
-    setSelectedTherapist(event.target.value);
-  };
+  const handleTherapistChange = (event) => setSelectedTherapist(event.target.value);
+  const handlePatientChange = (event) => setSelectedPatient(event.target.value);
+  const handleServiceChange = (event) => setSelectedService(event.target.value);
+  const handleDateChange = (event) => setSelectedDate(event.target.value);
 
-  const handlePatientChange = (event) => {
-    setSelectedPatient(event.target.value);
-  };
-
-  const handleServiceChange = (event) => {
-    setSelectedService(event.target.value);
-  };
-
-  const handleDateChange = (event) => {
-    setSelectedDate(event.target.value);
-  };
-
-  // Filtramos las citas según los filtros seleccionados
   useEffect(() => {
     const filtered = dates.filter((d) => {
-      // Convertimos la fecha de la cita a formato local "YYYY-MM-DD"
-      const appointmentDate = new Date(d.date).toLocaleDateString('en-CA'); // Formato 'YYYY-MM-DD'
-
-      const isTherapistMatch = selectedTherapist === '' || d.therapist === selectedTherapist;
-      const isPatientMatch = selectedPatient === '' || d.patient === selectedPatient;
-      const isServiceMatch = selectedService === '' || d.description === selectedService;
-      const isDateMatch = selectedDate === '' || appointmentDate === selectedDate; // Comparamos solo la fecha, sin la hora
-
-      return isTherapistMatch && isPatientMatch && isServiceMatch && isDateMatch;
+      const appointmentDate = new Date(d.date).toLocaleDateString('en-CA');
+      return (selectedTherapist === '' || d.therapist === selectedTherapist) &&
+             (selectedPatient === '' || d.patient === selectedPatient) &&
+             (selectedService === '' || d.description === selectedService) &&
+             (selectedDate === '' || appointmentDate === selectedDate);
     });
     setFilteredDates(filtered);
   }, [selectedTherapist, selectedPatient, selectedService, selectedDate, dates]);
 
   return (
-    <div>
+    <div className="p-6 bg-white rounded-lg shadow-lg">
+      <h2 className="text-2xl font-bold mb-4">Filtrar Citas</h2>
+      
       {/* Filtro de terapeuta */}
       <div className="mb-4">
-        <label>Filtrar por terapeuta: </label>
-        <select value={selectedTherapist} onChange={handleTherapistChange}>
+        <label className="block mb-1 font-semibold">Filtrar por terapeuta:</label>
+        <select 
+          value={selectedTherapist} 
+          onChange={handleTherapistChange} 
+          className="border border-gray-400 rounded-md p-2 w-full"
+        >
           <option value="">Todos</option>
           {therapists.map((therapist) => (
             <option key={therapist} value={therapist}>
@@ -96,8 +84,12 @@ const TarjetaCitas = () => {
 
       {/* Filtro de paciente */}
       <div className="mb-4">
-        <label>Filtrar por paciente: </label>
-        <select value={selectedPatient} onChange={handlePatientChange}>
+        <label className="block mb-1 font-semibold">Filtrar por paciente:</label>
+        <select 
+          value={selectedPatient} 
+          onChange={handlePatientChange} 
+          className="border border-gray-400 rounded-md p-2 w-full"
+        >
           <option value="">Todos</option>
           {patients.map((patient) => (
             <option key={patient} value={patient}>
@@ -109,8 +101,12 @@ const TarjetaCitas = () => {
 
       {/* Filtro de servicio */}
       <div className="mb-4">
-        <label>Filtrar por servicio: </label>
-        <select value={selectedService} onChange={handleServiceChange}>
+        <label className="block mb-1 font-semibold">Filtrar por servicio:</label>
+        <select 
+          value={selectedService} 
+          onChange={handleServiceChange} 
+          className="border border-gray-400 rounded-md p-2 w-full"
+        >
           <option value="">Todos</option>
           {services.map((service) => (
             <option key={service} value={service}>
@@ -122,8 +118,13 @@ const TarjetaCitas = () => {
 
       {/* Filtro de fecha */}
       <div className="mb-4">
-        <label>Fecha Unica: </label>
-        <input type="date" value={selectedDate} onChange={handleDateChange} />
+        <label className="block mb-1 font-semibold">Fecha Única:</label>
+        <input 
+          type="date" 
+          value={selectedDate} 
+          onChange={handleDateChange} 
+          className="border border-gray-400 rounded-md p-2 w-full"
+        />
       </div>
 
       {/* Renderizamos las citas filtradas */}
@@ -135,10 +136,10 @@ const TarjetaCitas = () => {
         return (
           <div
             key={d._id}
-            className="p-4 border border-slate-300 my-3 flex justify-between gap-5 items-start"
+            className="p-4 border border-gray-300 rounded-md my-3 flex justify-between gap-5 items-start bg-gray-50 shadow-sm"
           >
             <div>
-              <div>{d.title}</div>
+              <div className="font-semibold">{d.title}</div>
               <div>Terapeuta: {d.therapist}</div>
               <div>Paciente: {d.patient}</div>
               <div>Fecha: {formattedDate}</div>

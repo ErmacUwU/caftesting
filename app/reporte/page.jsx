@@ -1,29 +1,34 @@
-"use client";
-import React, { useState, useEffect } from "react";
-import { Document, Packer, Paragraph, TextRun } from "docx";
+"use client"; // Indica que es un componente cliente
+import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { Document, Packer, Paragraph, TextRun } from "docx"; // Importar para crear documentos DOCX
 
 const Reportes = () => {
   const [patients, setPatients] = useState([]);
-  const [therapists, setTherapists] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState("");
-  const [filteredAppointments, setFilteredAppointments] = useState([]);
-  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [selectedAppointmentId, setSelectedAppointmentId] = useState("");
+  const [observations, setObservations] = useState("");
 
-  // Cargar los datos de pacientes, terapeutas y citas
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all([
+        const [patientsRes, appointmentsRes] = await Promise.all([
           axios.get("/api/patient"),
-          axios.get("/api/therapist"),
           axios.get("/api/date"),
         ]);
-
+        
+        // Asegurarse de que los datos tengan el formato esperado
         setPatients(patientsRes.data.patient || []);
-        setTherapists(therapistsRes.data.therapist || []);
-        setAppointments(appointmentsRes.data.date || []);
+        const appointmentsData = appointmentsRes.data.date.map((appointment) => ({
+          idDate: appointment.idDate,
+          date: appointment.date,
+          therapist: appointment.therapist,
+          patient: appointment.patient, // Este debería ser idPatient si coincide con el modelo Patient
+          description: appointment.description,
+          cost: appointment.cost,
+        })) || [];
+        setAppointments(appointmentsData);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -32,53 +37,40 @@ const Reportes = () => {
     fetchData();
   }, []);
 
-  // Filtrar citas cuando un paciente es seleccionado
-  useEffect(() => {
-    if (selectedPatient) {
-      const patientAppointments = appointments.filter(
-        (appointment) => appointment.patient === selectedPatient
-      );
-      setFilteredAppointments(patientAppointments);
-      setSelectedAppointment(patientAppointments.length > 0 ? patientAppointments[0] : null);
-    } else {
-      setFilteredAppointments([]);
-      setSelectedAppointment(null);
-    }
-  }, [selectedPatient, appointments]);
+  const filteredAppointments = appointments.filter(
+    (appointment) => appointment.patient === selectedPatient
+  );
 
-  // Función para generar el documento .docx
-  const generateDocx = () => {
-    if (!selectedAppointment) {
+  const generateDocx = async () => {
+    if (!selectedAppointmentId) {
       alert("Por favor, selecciona una cita");
       return;
     }
 
-    const { date, patient, therapist, description, cost } = selectedAppointment;
+    const appointment = appointments.find(appt => appt.idDate === selectedAppointmentId);
+    if (!appointment) return;
+
     const doc = new Document({
       sections: [
         {
           children: [
             new Paragraph({
-              children: [
-                new TextRun({
-                  text: "Reporte de Citas",
-                  bold: true,
-                  size: 28,
-                }),
-              ],
+              children: [new TextRun({ text: "Reporte de Citas", bold: true, size: 28 })],
             }),
-            new Paragraph(`Fecha: ${new Date(date).toLocaleDateString()}`),
-            new Paragraph(`Paciente: ${patient}`),
-            new Paragraph(`Terapeuta: ${therapist}`),
-            new Paragraph(`Servicio: ${description}`),
-            new Paragraph(`Costo: $${cost}`),
+            new Paragraph(`Fecha: ${new Date(appointment.date).toLocaleDateString()}`),
+            new Paragraph(`Paciente: ${appointment.patient}`),
+            new Paragraph(`Terapeuta: ${appointment.therapist}`),
+            new Paragraph(`Servicio: ${appointment.description}`),
+            new Paragraph(`Costo: $${appointment.cost}`),
+            new Paragraph("Observaciones:"),
+            new Paragraph(observations || "No hay observaciones."),
           ],
         },
       ],
     });
 
-    // Crear el archivo .docx usando la API de Blob
-    Packer.toBlob(doc).then((blob) => {
+    try {
+      const blob = await Packer.toBlob(doc);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
@@ -87,72 +79,69 @@ const Reportes = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    });
+    } catch (err) {
+      console.error("Error generando el docx:", err);
+    }
   };
 
   return (
     <div className="p-4">
       <h2 className="text-xl font-bold mb-4">Generar Reporte</h2>
       
-      {/* Selección del paciente */}
+      {/* Selector de Paciente */}
       <div className="mb-4">
-        <label className="block mb-2">
-          Paciente:
+        <label className="block mb-2">Selecciona un Paciente:</label>
+        <select
+          value={selectedPatient}
+          onChange={(e) => {
+            setSelectedPatient(e.target.value);
+            setSelectedAppointmentId("");
+            setObservations("");
+          }}
+          className="border rounded p-2 w-full"
+        >
+          <option value="">Seleccione un paciente</option>
+          {patients.map((patient) => (
+            <option key={patient.idPatient} value={patient.idPatient}>
+              {patient.firstName} {patient.lastName}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Selector de Cita */}
+      {filteredAppointments.length > 0 && (
+        <div className="mb-4">
+          <label className="block mb-2">Selecciona una Cita:</label>
           <select
-            value={selectedPatient}
-            onChange={(e) => setSelectedPatient(e.target.value)}
+            value={selectedAppointmentId}
+            onChange={(e) => setSelectedAppointmentId(e.target.value)}
             className="border rounded p-2 w-full"
           >
-            <option value="">Seleccione un paciente</option>
-            {patients.map((patient) => (
-              <option key={patient._id} value={patient._id}>
-                {patient.firstName} {patient.lastName}
+            <option value="">Seleccione una cita</option>
+            {filteredAppointments.map((appointment) => (
+              <option key={appointment.idDate} value={appointment.idDate}>
+                {new Date(appointment.date).toLocaleDateString()} - {appointment.description}
               </option>
             ))}
           </select>
-        </label>
+        </div>
+      )}
 
-        {/* Mostrar citas filtradas si existen */}
-        {filteredAppointments.length > 0 && (
-          <div className="mb-4">
-            <label className="block mb-2">
-              Seleccionar cita:
-              <select
-                value={selectedAppointment ? selectedAppointment.idDate : ""}
-                onChange={(e) =>
-                  setSelectedAppointment(
-                    filteredAppointments.find((appointment) => appointment.idDate === e.target.value)
-                  )
-                }
-                className="border rounded p-2 w-full"
-              >
-                {filteredAppointments.map((appointment) => (
-                  <option key={appointment.idDate} value={appointment.idDate}>
-                    {new Date(appointment.date).toLocaleDateString()} - {appointment.description}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-        )}
-
-        {/* Mostrar la cita seleccionada si existe */}
-        {selectedAppointment && (
-          <div className="border p-4 mt-4 rounded">
-            <h3 className="text-lg font-bold">Cita Seleccionada</h3>
-            <p>Fecha: {new Date(selectedAppointment.date).toLocaleDateString()}</p>
-            <p>Terapeuta: {selectedAppointment.therapist}</p>
-            <p>Servicio: {selectedAppointment.description}</p>
-            <p>Costo: ${selectedAppointment.cost}</p>
-          </div>
-        )}
+      {/* Campo para Observaciones */}
+      <div className="mt-4">
+        <label className="block mb-2">Observaciones:</label>
+        <textarea
+          value={observations}
+          onChange={(e) => setObservations(e.target.value)}
+          className="border rounded p-2 w-full h-24"
+        />
       </div>
 
-      {/* Botón para generar el reporte */}
+      {/* Botón para Descargar Reporte */}
       <button
         onClick={generateDocx}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-        disabled={!selectedAppointment}
+        className="bg-blue-500 text-white px-4 py-2 rounded mt-4"
       >
         Descargar Reporte
       </button>

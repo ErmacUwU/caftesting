@@ -15,7 +15,7 @@ const DateSchema = new mongoose.Schema(
       required: true,
     },
     end: {
-      type: Date, // Asegúrate de manejar el formato de fecha adecuadamente
+      type: Date, 
       required: true,
     },
     therapist: {

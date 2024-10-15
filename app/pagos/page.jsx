@@ -12,16 +12,20 @@ const Pagos = () => {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [totalPayments, setTotalPayments] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
-
+  const [loading, setLoading] = useState(false);
+  
   // Fetch pacientes cuando el componente se monte
   useEffect(() => {
     const fetchPatients = async () => {
+      setLoading(true);
       try {
         const response = await axios.get("/api/patient");
         setPatients(response.data.patient || []);
       } catch (error) {
         console.error("Error fetching patients:", error);
         setErrorMessage("Error al cargar la lista de pacientes.");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -30,6 +34,7 @@ const Pagos = () => {
 
   // Manejar la selección de un paciente
   const handleSelectPatient = async (id) => {
+    setLoading(true);
     try {
       const response = await axios.get(`/api/patient/${id}`);
       setSelectedPatient(response.data.patient);
@@ -38,6 +43,8 @@ const Pagos = () => {
     } catch (error) {
       console.error("Error fetching patient:", error);
       setErrorMessage("Error al cargar los datos del paciente.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -48,6 +55,7 @@ const Pagos = () => {
       return;
     }
 
+    setLoading(true);
     try {
       const response = await axios.patch("/api/patient", {
         pacienteId: selectedPatient._id,
@@ -55,9 +63,7 @@ const Pagos = () => {
       });
 
       if (response.data.success) {
-        const updatedPatient = { ...selectedPatient };
-        updatedPatient.estadoDeCuenta = response.data.estadoDeCuenta;
-
+        const updatedPatient = { ...selectedPatient, estadoDeCuenta: response.data.estadoDeCuenta };
         setSelectedPatient(updatedPatient);
         setTotalPayments(response.data.estadoDeCuenta.total);
         setErrorMessage(""); // Limpiar mensaje de error
@@ -69,26 +75,24 @@ const Pagos = () => {
     } catch (error) {
       console.error("Error adding payment:", error);
       setErrorMessage("Error al registrar el pago. Por favor, intenta de nuevo.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Configurar los datos para la gráfica
+  // Configurar los datos para la gráfica (solo deuda total)
+  const totalDebt = selectedPatient?.estadoDeCuenta?.total || 0;
+  
   const chartData = {
     labels: selectedPatient?.estadoDeCuenta?.pagos?.map(pago => new Date(pago.fecha).toLocaleDateString()) || [],
     datasets: [
       {
-        label: "Pagos Realizados",
-        data: selectedPatient?.estadoDeCuenta?.pagos?.map(pago => pago.cantidad) || [],
-        borderColor: "rgba(75, 192, 192, 1)",
-        backgroundColor: "rgba(75, 192, 192, 0.2)",
-        fill: true,
-      },
-      {
         label: "Deuda Total",
         data: selectedPatient?.estadoDeCuenta?.pagos?.reduce((acc, pago) => {
-          acc.push(acc.length > 0 ? acc[acc.length - 1] - pago.cantidad : selectedPatient.estadoDeCuenta.total - pago.cantidad);
+          const lastDebt = acc[acc.length - 1] || totalDebt; // Si no hay pagos previos, comenzamos con la deuda total
+          acc.push(Math.max(0, lastDebt - pago.cantidad)); // Asegurarse de no valores negativos
           return acc;
-        }, []) || [],
+        }, [totalDebt]) || [totalDebt], // Si no hay pagos, iniciar con deuda total en un array
         borderColor: "rgba(255, 99, 132, 1)",
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         fill: true,
@@ -98,6 +102,7 @@ const Pagos = () => {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     scales: {
       y: {
         beginAtZero: true,
@@ -105,6 +110,8 @@ const Pagos = () => {
           display: true,
           text: 'Monto en USD',
         },
+        min: 0, // Comenzar desde 0
+        max: totalDebt // Limitar el máximo al total de la deuda
       },
     },
     plugins: {
@@ -113,44 +120,63 @@ const Pagos = () => {
       },
       title: {
         display: true,
-        text: 'Pagos y Deuda Total',
+        text: 'Deuda Total',
       },
     },
   };
 
   return (
-    <div>
-      <h1>Pagos y Estado de Cuenta</h1>
-      <div>
-        <h2>Lista de Pacientes</h2>
-        {patients.map((patient) => (
-          <div key={patient._id}>
-            <button onClick={() => handleSelectPatient(patient._id)}>
-              Ver Estado de Cuenta de {patient.firstName} {patient.lastName}
-            </button>
-          </div>
-        ))}
-      </div>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold">Pagos y Estado de Cuenta</h1>
+      {loading ? (
+        <p>Cargando...</p>
+      ) : (
+        <div>
+          <h2 className="text-xl mt-4">Lista de Pacientes</h2>
+          {patients.length ? (
+            patients.map((patient) => (
+              <div key={patient._id} className="mt-2">
+                <button
+                  onClick={() => handleSelectPatient(patient._id)}
+                  className="bg-blue-500 text-white px-4 py-2 rounded"
+                >
+                  Ver Estado de Cuenta de {patient.firstName} {patient.lastName}
+                </button>
+              </div>
+            ))
+          ) : (
+            <p>No hay pacientes disponibles.</p>
+          )}
+        </div>
+      )}
+
       {selectedPatient && (
-        <div className="mt-4">
-          <h2 className="text-xl">
+        <div className="mt-4 border p-4 rounded shadow">
+          <h2 className="text-xl font-semibold">
             Estado de cuenta de {selectedPatient.firstName} {selectedPatient.lastName}
           </h2>
-          <p>Total: ${totalPayments ? totalPayments.toFixed(2) : "0.00"}</p>
-          <h3 className="mt-2">Registrar Pago</h3>
+          <p className="mt-2">Total: ${totalPayments.toFixed(2)}</p>
+          <h3 className="text-lg mt-4">Registrar Pago</h3>
           {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
           <input
             type="number"
             value={paymentAmount}
             onChange={(e) => setPaymentAmount(e.target.value)}
             placeholder="Cantidad"
-            className="text-black"
+            className="border p-2 rounded w-full mt-2"
           />
-          <button onClick={handleAddPayment}>Registrar Pago</button>
+          <button
+            onClick={handleAddPayment}
+            className="bg-green-500 text-white px-4 py-2 mt-2 rounded"
+          >
+            Registrar Pago
+          </button>
 
-          {/* Gráfica de pagos */}
-          <h3 className="mt-4">Gráfica de Pagos y Deuda</h3>
-          <Line data={chartData} options={options} />
+          {/* Gráfica de deuda total */}
+          <h3 className="mt-4 text-lg">Gráfica de Deuda Total</h3>
+          <div style={{ height: "400px" }}>
+            <Line data={chartData} options={options} />
+          </div>
         </div>
       )}
     </div>
