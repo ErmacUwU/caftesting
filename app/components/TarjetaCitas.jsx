@@ -1,5 +1,8 @@
 'use client'
 import React, { useEffect, useState } from 'react';
+import Link from "next/link";
+import { PenBoxIcon } from "lucide-react";
+import BotonDeleteCitas from './BotonDeleteCitas';
 
 const TarjetaCitas = () => {
   const [dates, setDates] = useState([]);
@@ -144,6 +147,17 @@ const TarjetaCitas = () => {
               <div>Paciente: {d.patient}</div>
               <div>Fecha: {formattedDate}</div>
               <div>Hora: {formattedStart} - {formattedEnd}</div>
+            </div>
+            <div className="flex justify-evenly py-2">
+              <div>
+                <button>
+                    <PenBoxIcon size={24} color="blue" />
+                </button>
+          
+              </div>
+              <div>
+              <BotonDeleteCitas id={d._id} />
+              </div>
             </div>
           </div>
         );

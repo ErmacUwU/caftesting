@@ -8,6 +8,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import uniquid from "uniquid";
 import Modal from "react-modal";
+import BotonDeleteCitas from "../components/BotonDeleteCitas";
 
 // Estilos para el modal (bloquear interacción fuera y centrado)
 const customStyles = {
@@ -66,6 +67,7 @@ const Citas = () => {
         setTherapists(therapistsRes.data.therapist || []);
         setAppointments(
           appointmentsRes.data.date.map((appointment) => ({
+            idd: appointment._id,
             id: appointment.idDate,
             title: appointment.title,
             date: appointment.date, // Usamos el campo date directamente
@@ -73,8 +75,11 @@ const Citas = () => {
             patient: appointment.patient, // Nombre del paciente
             description: appointment.description, // Descripción o título de la cita
             cost: appointment.cost, // Costo de la cita
+            start: appointment.start,
+            end: appointment.end,
           })) || []
         );
+        console.log('Citas cargadas:', appointmentsRes.data.date); // Imprime las citas cargadas
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -138,6 +143,7 @@ const Citas = () => {
     try {
       const response = await axios.post("/api/date", appointmentData);
       console.log("Cita creada:", response.data);
+      console.log(appointmentData)
 
       // Actualización del estado de citas
       setAppointments((prevAppointments) => [
@@ -174,15 +180,35 @@ const Citas = () => {
 
   // Función para abrir el modal con la información de la cita seleccionada
   const openModal = (appointment) => {
-    // Convertir la fecha a un formato legible
-    const formattedDate = new Date(appointment.date).toString();
-
+    console.log('Datos de la cita seleccionada antes de abrir el modal:', appointment);
+  
+    // Asegúrate de que date, start y end existen antes de formatear
+    const formattedDate = appointment.date
+      ? new Date(appointment.date).toLocaleDateString('es-ES')
+      : "Fecha no disponible";
+    
+    const formattedStart = appointment.start
+      ? new Date(appointment.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : "Hora de inicio no disponible";
+    
+    const formattedEnd = appointment.end
+      ? new Date(appointment.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : "Hora de fin no disponible";
+  
+    // Asegúrate de que se está actualizando correctamente el estado
     setSelectedAppointment({
       ...appointment,
       formattedDate,
+      formattedStart,
+      formattedEnd,
     });
+  
+    // Abre el modal
     setModalIsOpen(true);
   };
+  
+  
+  
 
   // Cerrar el modal
   const closeModal = () => {
@@ -219,7 +245,7 @@ const Citas = () => {
             X
           </button>
           <form onSubmit={handleSubmit} className="mb-4 text-black">
-            <label className="block mb-2">
+          <label className="block mb-2">
               Paciente:
               <select
                 value={selectedPatient}
@@ -320,6 +346,7 @@ const Citas = () => {
             >
               Crear Cita
             </button>
+
           </form>
         </div>
       )}
@@ -349,33 +376,39 @@ const Citas = () => {
       </div>
 
       {selectedAppointment && (
-  <Modal
-    isOpen={modalIsOpen}
-    onRequestClose={closeModal}
-    style={customStyles}
-    contentLabel="Detalles de la Cita"
-    ariaHideApp={false}
-  >
-    <div className="relative">
-      <h2 className="text-black font-bold text-xl mb-4">
-        {selectedAppointment.description}
-      </h2>
-      <p className="text-black">Paciente: {selectedAppointment.patient}</p>
-      <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
-      <p className="text-black">
-        Fecha: {new Date(selectedAppointment.date).toLocaleDateString('es-ES')}
-      </p>
-      <p className="text-black">Costo: ${selectedAppointment.cost}</p>
+        <Modal
+          isOpen={modalIsOpen}
+          onRequestClose={closeModal}
+          style={customStyles}
+          contentLabel="Detalles de la Cita"
+          ariaHideApp={false}
+        >
+          {console.log('Datos en selectedAppointment:', selectedAppointment)}
 
-      <button
-        onClick={closeModal}
-        className="mt-4 bg-red-500 text-white p-2 rounded absolute top-2 right-2 cursor-pointer"
-      >
-        Cerrar
-      </button>
-    </div>
-  </Modal>
-)}
+          <div className="relative">
+            <h2 className="text-black font-bold text-xl mb-4">
+              {selectedAppointment.description}
+            </h2>
+            <p className="text-black">Paciente: {selectedAppointment.patient}</p>
+            <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
+            <p className="text-black">Fecha: {selectedAppointment.formattedDate}</p>
+            <p className="text-black">
+              Hora: {selectedAppointment.formattedStart} - {selectedAppointment.formattedEnd}
+            </p>
+            <p className="text-black">Costo: ${selectedAppointment.cost}</p>
+
+            <button
+              onClick={closeModal}
+              className="mt-4 bg-red-500 text-white p-2 rounded absolute top-2 right-2 cursor-pointer"
+            >
+              Cerrar
+            </button>
+            <div>
+              <BotonDeleteCitas id={selectedAppointment.idd} />
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };
