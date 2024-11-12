@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const TherapistSchema = new mongoose.Schema({
+
+  idTherapist:{
+    type: String,
+    required: true,
+  },
   firstName: {
     type: String,
     required: true,

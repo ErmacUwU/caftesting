@@ -1,67 +1,49 @@
 "use client";
 
 import React, { useState } from "react";
-import axios from "axios";
-import uniquid from "uniquid";
+import Link from "next/link";
 
-const registroTerapeuta = () => {
+const actualizarTerapeuta = ({id,firstName, lastName, email, phone, specialization, address, city, country}) => {
+  const [newFirstName, setNewFirstName] = useState(firstName);
+  const [newLastName, setNewLastName] = useState(lastName);
+  const [newEmail, setNewEmail] = useState(email);
+  const [newPhone, setNewPhone] = useState(phone);
+  const [newSpecialization, setNewSpecialization] = useState(specialization);
+  const [newAddress, setNewAddress] = useState(address);
+  const [newCity, setNewCity] = useState(city);
+  const [newCountry, setNewCountry] = useState(country);
 
-  
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("");
-  const [error, setError] = useState("");
+  const updateTherapist = async (e) => {
 
-  const agregarTerapista = async (e) =>{
     e.preventDefault();
 
-    const res = await fetch("/api/therapist", {
-      method: "POST",
+    const res = await fetch("", {
+      method: "PUT",
       headers: {
         "Content-type": "application/json",
       },
       body: JSON.stringify({
-        idTherapist: uniquid(),
-        firstName,
-        lastName,
-        email,
-        phone,
-        specialization,
-        address,
-        city,
-        country
+        
+        newFirstName,
+        newLastName,
+        newEmail,
+        newPhone,
+        newSpecialization,
+        newAddress,
+        newCity,
+        newCountry
       }),
     });
 
-      limpiarCampos();
-      const { msg } = await res.json();
-      setError(msg);
+     if (!res.ok) {
+       throw new Error("Error al actualizar el Terapeuta");
+     }
+
   }
 
-  const limpiarCampos = () => {
-    setFirstName("");
-    setLastName("");
-    setPhone("");
-    setEmail("");
-    setSpecialization("");
-    setAddress("");
-    setCity("");
-    setCountry("");
-    setError("");
-    
-  };
-
   return (
-    <form
-      className="max-w-md mx-auto p-4 bg-gray-100"
-      onSubmit={agregarTerapista}
-    >
-      <h1 className="text-black font-extrabold">REGISTRO DE TERAPEUTAS</h1>
+    <form className="max-w-md mx-auto p-4 bg-gray-100">
+      <h1 className="text-black font-extrabold">ACTUALIZACION DE TERAPEUTAS</h1>
       <div className="mb-4">
         <label
           htmlFor="firstName"
@@ -73,8 +55,8 @@ const registroTerapeuta = () => {
           type="text"
           id="firstName"
           name="firstName"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
+          value={newFirstName}
+          onChange={(e) => setNewFirstName(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe el nombre del terapeuta"
           required
@@ -92,8 +74,8 @@ const registroTerapeuta = () => {
           type="text"
           id="lastName"
           name="lastName"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
+          value={newLastName}
+          onChange={(e) => setNewLastName(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe los apellidos del terapeuta"
           required
@@ -111,8 +93,8 @@ const registroTerapeuta = () => {
           type="email"
           id="email"
           name="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          value={newEmail}
+          onChange={(e) => setNewEmail(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe el correo electrónico del terapeuta"
           required
@@ -130,8 +112,8 @@ const registroTerapeuta = () => {
           type="tel"
           id="phone"
           name="phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          value={newPhone}
+          onChange={(e) => setNewPhone(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe el teléfono del terapeuta"
           required
@@ -149,8 +131,8 @@ const registroTerapeuta = () => {
           type="text"
           id="specialization"
           name="specialization"
-          value={specialization}
-          onChange={(e) => setSpecialization(e.target.value)}
+          value={newSpecialization}
+          onChange={(e) => setNewSpecialization(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe la especialización del terapeuta"
         />
@@ -167,8 +149,8 @@ const registroTerapeuta = () => {
           type="text"
           id="address"
           name="address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
+          value={newAddress}
+          onChange={(e) => setNewAddress(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe la dirección del terapeuta"
         />
@@ -185,8 +167,8 @@ const registroTerapeuta = () => {
           type="text"
           id="city"
           name="city"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
+          value={newCity}
+          onChange={(e) => setNewCity(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe la ciudad del terapeuta"
         />
@@ -203,23 +185,30 @@ const registroTerapeuta = () => {
           type="text"
           id="country"
           name="country"
-          value={country}
-          onChange={(e) => setCountry(e.target.value)}
+          value={newCountry}
+          onChange={(e) => setNewCountry(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe el país del terapeuta"
         />
       </div>
-      {error && <p className="text-red-600">{error}</p>}
+
       <div className="mt-4">
         <button
           type="submit"
-          className="w-full px-4 py-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+          className="w-full px-4 py-2 my-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
-          Guardar
+          Actualizar
         </button>
+        <Link href={"/terapeuta"}>
+        <button
+          
+          className="w-full px-4 py-2 my-2 bg-red-600 text-white rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:bg-red-500 focus:ring-offset-2"
+        >
+          Cancelar
+        </button></Link>
       </div>
     </form>
   );
 };
 
-export default registroTerapeuta;
+export default actualizarTerapeuta;

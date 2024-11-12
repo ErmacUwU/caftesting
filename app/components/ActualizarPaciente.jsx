@@ -1,45 +1,56 @@
 "use client";
 
 import React, { useState } from "react";
-import uniquid from "uniquid";
+import axios from "axios";
+import Link from "next/link";
 
 // Expresión regular para validar el CURP
 const curpPattern = /^[a-zA-Z0-9]{18}$/;
 
-const RegistroPaciente = () => {
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [birthdate, setBirthdate] = useState("");
-  const [gender, setGender] = useState("");
-  const [patientStatus, setPatientStatus] = useState("");
-  const [birthCity, setBirthCity] = useState("");
-  const [nationality, setNationality] = useState("");
-  const [birthState, setBirthState] = useState("");
-  const [idType, setIdType] = useState("");
-  const [contacts, setContacts] = useState([
-    {
-      firstName: "",
-      lastName: "",
-      middleName: "",
-      phone: "",
-      email: "",
-      additionalPhone: "",
-      sendReminders: false,
-      street: "",
-      number: "",
-      postalCode: "",
-      neighborhood: "",
-      city: "",
-      state: "",
-      country: "",
-    },
-  ]);
-  const [consent, setConsent] = useState(false);
-  const [error, setError] = useState("");
+const ActualizarPaciente = ({
+  id,
+  firstName,
+  lastName,
+  birthdate,
+  gender,
+  patientStatus,
+  birthCity,
+  nationality,
+  birthState,
+  idType,
+  contacts,
+}) => {
+  const [newFirstName, setNewFirstName] = useState(firstName);
+  const [newLastName, setNewLastName] = useState(lastName);
+  const [newBirthdate, setNewBirthdate] = useState(birthdate);
+  const [newGender, setNewGender] = useState(gender);
+  const [newPatientStatus, setNewPatientStatus] = useState(patientStatus);
+  const [newBirthCity, setNewBirthCity] = useState(birthCity);
+  const [newNationality, setNewNationality] = useState(nationality);
+  const [newBirthState, setNewBirthState] = useState(birthState);
+  const [newIdType, setNewIdType] = useState(idType);
+  const [newContacts, setNewContacts] = useState(contacts);
+
+  const handleContactChange = (index, event) => {
+    const { name, value, type, checked } = event.target;
+    const updatedContacts = [...newContacts];
+    if (type === "checkbox") {
+      updatedContacts[index][name] = checked;
+    } else {
+      updatedContacts[index][name] = value;
+    }
+    setNewContacts(updatedContacts);
+  };
+
+  const removeContact = (index) => {
+    const updatedContacts = [...newContacts];
+    updatedContacts.splice(index, 1);
+    setNewContacts(updatedContacts);
+  };
 
   const addContact = () => {
-    setContacts([
-      ...contacts,
+    setNewContacts([
+      ...newContacts,
       {
         firstName: "",
         lastName: "",
@@ -57,23 +68,6 @@ const RegistroPaciente = () => {
         country: "",
       },
     ]);
-  };
-
-  const handleContactChange = (index, event) => {
-    const { name, value, type, checked } = event.target;
-    const updatedContacts = [...contacts];
-    if (type === "checkbox") {
-      updatedContacts[index][name] = checked;
-    } else {
-      updatedContacts[index][name] = value;
-    }
-    setContacts(updatedContacts);
-  };
-
-  const removeContact = (index) => {
-    const updatedContacts = [...contacts];
-    updatedContacts.splice(index, 1);
-    setContacts(updatedContacts);
   };
 
   // Función para validar el CURP
@@ -81,83 +75,49 @@ const RegistroPaciente = () => {
     return curpPattern.test(curp);
   };
 
-  const agregarPaciente = async (e) => {
+  const updatePatient = async (e) => {
     e.preventDefault();
 
-    if (contacts.length === 0) {
+    if (newContacts.length === 0) {
       alert("Debe haber al menos un contacto de emergencia.");
       return;
     }
 
     // Validar el CURP
-    if (!validateCURP(idType)) {
+    if (!validateCURP(newIdType)) {
       alert("El CURP debe tener 18 caracteres, solo letras y números.");
       return;
     }
 
-    const res = await fetch("/api/patient", {
-      method: "POST",
-      headers: {
-        "Content-type": "application/json",
-      },
-      body: JSON.stringify({
-        idPatient: uniquid(),
-        firstName,
-        lastName,
-        birthdate,
-        gender,
-        patientStatus,
-        birthCity,
-        nationality,
-        birthState,
-        idType,
-        contacts,
-      }),
-    });
+      const res = await fetch(`http://localhost:3000/api/patient/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify({
+          newFirstName,
+          newLastName,
+          newBirthdate,
+          newGender,
+          newPatientStatus,
+          newBirthCity,
+          newNationality,
+          newBirthState,
+          newIdType,
+          newContacts,
+        }),
+      });
 
-    limpiarCampos();
-    const { msg } = await res.json();
-    setError(msg);
-  };
-
-  const limpiarCampos = () => {
-    setFirstName("");
-    setLastName("");
-    setBirthdate("");
-    setGender("");
-    setPatientStatus("");
-    setBirthCity("");
-    setNationality("");
-    setBirthState("");
-    setIdType("");
-    setContacts([
-      {
-        firstName: "",
-        lastName: "",
-        middleName: "",
-        phone: "",
-        email: "",
-        additionalPhone: "",
-        sendReminders: false,
-        street: "",
-        number: "",
-        postalCode: "",
-        neighborhood: "",
-        city: "",
-        state: "",
-        country: "",
-      },
-    ]);
-    setConsent(false);
-    setError("");
+      if (!res.ok) {
+        throw new Error("Error al actualizar el Paciente");
+      }
+      alert("Paciente actualizado exitosamente");
+    
   };
 
   return (
-    <form
-      className="max-w-md mx-auto p-4 bg-gray-100"
-      onSubmit={agregarPaciente}
-    >
-      <h1 className="text-black font-extrabold">REGISTRO DE PACIENTES</h1>
+    <form className="max-w-md mx-auto p-4 bg-gray-100">
+      <h1 className="text-black font-extrabold">ACTUALIZACIÓN DE PACIENTES</h1>
       <div className="mb-4">
         <label
           htmlFor="firstName"
@@ -169,8 +129,8 @@ const RegistroPaciente = () => {
           type="text"
           id="firstName"
           name="firstName"
-          value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
+          value={newFirstName}
+          onChange={(e) => setNewFirstName(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe el nombre del paciente"
           required
@@ -187,8 +147,8 @@ const RegistroPaciente = () => {
           type="text"
           id="lastName"
           name="lastName"
-          value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
+          value={newLastName}
+          onChange={(e) => setNewLastName(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Escribe los apellidos del paciente"
           required
@@ -206,8 +166,8 @@ const RegistroPaciente = () => {
           type="date"
           id="birthdate"
           name="birthdate"
-          value={birthdate}
-          onChange={(e) => setBirthdate(e.target.value)}
+          value={newBirthdate}
+          onChange={(e) => setNewBirthdate(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="DD/MM/AAAA"
           required
@@ -224,8 +184,8 @@ const RegistroPaciente = () => {
           type="text"
           id="gender"
           name="gender"
-          value={gender}
-          onChange={(e) => setGender(e.target.value)}
+          value={newGender}
+          onChange={(e) => setNewGender(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="M o F"
           required
@@ -241,8 +201,8 @@ const RegistroPaciente = () => {
         <select
           id="patientStatus"
           name="patientStatus"
-          value={patientStatus}
-          onChange={(e) => setPatientStatus(e.target.value)}
+          value={newPatientStatus}
+          onChange={(e) => setNewPatientStatus(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           required
         >
@@ -264,8 +224,8 @@ const RegistroPaciente = () => {
           type="text"
           id="birthCity"
           name="birthCity"
-          value={birthCity}
-          onChange={(e) => setBirthCity(e.target.value)}
+          value={newBirthCity}
+          onChange={(e) => setNewBirthCity(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Ingrese la ciudad de nacimiento del paciente"
         />
@@ -281,8 +241,8 @@ const RegistroPaciente = () => {
           type="text"
           id="nationality"
           name="nationality"
-          value={nationality}
-          onChange={(e) => setNationality(e.target.value)}
+          value={newNationality}
+          onChange={(e) => setNewNationality(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Ingrese la nacionalidad del paciente"
         />
@@ -298,8 +258,8 @@ const RegistroPaciente = () => {
           type="text"
           id="birthState"
           name="birthState"
-          value={birthState}
-          onChange={(e) => setBirthState(e.target.value)}
+          value={newBirthState}
+          onChange={(e) => setNewBirthState(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="Ingrese el estado de nacimiento del paciente"
         />
@@ -315,138 +275,133 @@ const RegistroPaciente = () => {
           type="text"
           id="idType"
           name="idType"
-          value={idType}
-          onChange={(e) => setIdType(e.target.value)}
+          value={newIdType}
+          onChange={(e) => setNewIdType(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-          placeholder="Ingrese el tipo de identificación del paciente"
+          placeholder="Escribe el CURP del paciente"
         />
       </div>
       <div className="mb-4">
-        <label
-          htmlFor="contacts"
-          className="block text-sm font-medium text-gray-700"
-        >
+        <label className="block text-sm font-medium text-gray-700">
           Contactos
         </label>
-        {contacts.map((contact, index) => (
-          <div key={index} className="mb-4 border p-4 rounded-md shadow-sm">
+        {newContacts.map((contact, index) => (
+          <div key={index} className="mb-4 border p-4 rounded-lg">
+            <h2 className="text-lg font-semibold">Contacto {index + 1}</h2>
             <div className="mb-4">
               <label
-                htmlFor={`contact-firstName-${index}`}
+                htmlFor={`contactFirstName_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Nombre(s) *
+                Nombre
               </label>
               <input
                 type="text"
-                id={`contact-firstName-${index}`}
+                id={`contactFirstName_${index}`}
                 name="firstName"
                 value={contact.firstName}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Nombre(s)"
-                required
+                placeholder="Nombre del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-lastName-${index}`}
+                htmlFor={`contactLastName_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Apellido Paterno *
+                Apellido
               </label>
               <input
                 type="text"
-                id={`contact-lastName-${index}`}
+                id={`contactLastName_${index}`}
                 name="lastName"
                 value={contact.lastName}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Apellido Paterno"
-                required
+                placeholder="Apellido del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-middleName-${index}`}
+                htmlFor={`contactMiddleName_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Apellido Materno
+                Segundo Apellido
               </label>
               <input
                 type="text"
-                id={`contact-middleName-${index}`}
+                id={`contactMiddleName_${index}`}
                 name="middleName"
                 value={contact.middleName}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Apellido Materno"
+                placeholder="Segundo apellido del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-phone-${index}`}
+                htmlFor={`contactPhone_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Teléfono *
+                Teléfono
               </label>
               <input
-                type="text"
-                id={`contact-phone-${index}`}
+                type="tel"
+                id={`contactPhone_${index}`}
                 name="phone"
                 value={contact.phone}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Teléfono"
-                required
+                placeholder="Número de teléfono del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-email-${index}`}
+                htmlFor={`contactEmail_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Email
               </label>
               <input
                 type="email"
-                id={`contact-email-${index}`}
+                id={`contactEmail_${index}`}
                 name="email"
                 value={contact.email}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Email"
+                placeholder="Correo electrónico del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-additionalPhone-${index}`}
+                htmlFor={`contactAdditionalPhone_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Teléfono adicional
+                Teléfono Adicional
               </label>
               <input
-                type="text"
-                id={`contact-additionalPhone-${index}`}
+                type="tel"
+                id={`contactAdditionalPhone_${index}`}
                 name="additionalPhone"
                 value={contact.additionalPhone}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Teléfono adicional"
+                placeholder="Número de teléfono adicional del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-sendReminders-${index}`}
+                htmlFor={`contactSendReminders_${index}`}
                 className="flex items-center"
               >
                 <input
                   type="checkbox"
-                  id={`contact-sendReminders-${index}`}
+                  id={`contactSendReminders_${index}`}
                   name="sendReminders"
                   checked={contact.sendReminders}
                   onChange={(e) => handleContactChange(index, e)}
-                  className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
+                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                 />
                 <span className="ml-2 text-sm text-gray-700">
                   Enviar recordatorios a este teléfono también
@@ -455,163 +410,155 @@ const RegistroPaciente = () => {
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-street-${index}`}
+                htmlFor={`contactStreet_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Calle
               </label>
               <input
                 type="text"
-                id={`contact-street-${index}`}
+                id={`contactStreet_${index}`}
                 name="street"
                 value={contact.street}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Calle"
+                placeholder="Calle del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-number-${index}`}
+                htmlFor={`contactNumber_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Número
               </label>
               <input
                 type="text"
-                id={`contact-number-${index}`}
+                id={`contactNumber_${index}`}
                 name="number"
                 value={contact.number}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Número"
+                placeholder="Número del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-postalCode-${index}`}
+                htmlFor={`contactPostalCode_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
-                Código postal
+                Código Postal
               </label>
               <input
                 type="text"
-                id={`contact-postalCode-${index}`}
+                id={`contactPostalCode_${index}`}
                 name="postalCode"
                 value={contact.postalCode}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Código postal"
+                placeholder="Código postal del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-neighborhood-${index}`}
+                htmlFor={`contactNeighborhood_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Colonia
               </label>
               <input
                 type="text"
-                id={`contact-neighborhood-${index}`}
+                id={`contactNeighborhood_${index}`}
                 name="neighborhood"
                 value={contact.neighborhood}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Colonia"
+                placeholder="Colonia del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-city-${index}`}
+                htmlFor={`contactCity_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Ciudad
               </label>
               <input
                 type="text"
-                id={`contact-city-${index}`}
+                id={`contactCity_${index}`}
                 name="city"
                 value={contact.city}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Ciudad"
+                placeholder="Ciudad del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-state-${index}`}
+                htmlFor={`contactState_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 Estado
               </label>
               <input
                 type="text"
-                id={`contact-state-${index}`}
+                id={`contactState_${index}`}
                 name="state"
                 value={contact.state}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="Estado"
+                placeholder="Estado del contacto"
               />
             </div>
             <div className="mb-4">
               <label
-                htmlFor={`contact-country-${index}`}
+                htmlFor={`contactCountry_${index}`}
                 className="block text-sm font-medium text-gray-700"
               >
                 País
               </label>
               <input
                 type="text"
-                id={`contact-country-${index}`}
+                id={`contactCountry_${index}`}
                 name="country"
                 value={contact.country}
                 onChange={(e) => handleContactChange(index, e)}
                 className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-                placeholder="País"
+                placeholder="País del contacto"
               />
             </div>
             <button
               type="button"
               onClick={() => removeContact(index)}
-              className="text-red-600 hover:text-red-800 focus:outline-none"
+              className="text-red-600 hover:text-red-700"
             >
-              Eliminar contacto
+              Eliminar Contacto
             </button>
           </div>
         ))}
         <button
           type="button"
           onClick={addContact}
-          className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md"
+          className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
         >
-          Añadir Contacto
+          Agregar Contacto
         </button>
       </div>
-      <div className="mb-4">
-        <label className="flex items-center">
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={() => setConsent(!consent)}
-            className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
-            required
-          />
-          <span className="ml-2 text-sm text-gray-700">
-            Acepto el consentimiento para el tratamiento de mis datos.
-          </span>
-        </label>
+      <div className="mt-4 flex justify-between items-center">
+        <Link href={"/pacientes"}>
+          <button
+            type="submit"
+            onClick={updatePatient}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+          >
+            Actualizar Paciente
+          </button>
+
+        </Link>
+        <Link href={"/pacientes"} className=" text-black">Regresar</Link>
       </div>
-      {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
-      <button
-        type="submit"
-        className="bg-indigo-600 text-white px-4 py-2 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-      >
-        Registrar Paciente
-      </button>
     </form>
   );
 };
 
-export default RegistroPaciente;
+export default ActualizarPaciente;
