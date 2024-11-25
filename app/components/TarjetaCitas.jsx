@@ -51,11 +51,15 @@ const TarjetaCitas = () => {
   const handleTherapistChange = (event) => setSelectedTherapist(event.target.value);
   const handlePatientChange = (event) => setSelectedPatient(event.target.value);
   const handleServiceChange = (event) => setSelectedService(event.target.value);
-  const handleDateChange = (event) => setSelectedDate(event.target.value);
+
+  const handleDateChange = (event) => {
+    const selectedDateISO = new Date(event.target.value).toISOString().split("T")[0]; // Solo la fecha en formato ISO
+    setSelectedDate(selectedDateISO);
+  };
 
   useEffect(() => {
     const filtered = dates.filter((d) => {
-      const appointmentDate = new Date(d.date).toLocaleDateString('en-CA');
+      const appointmentDate = new Date(d.date).toISOString().split("T")[0]; // Solo la fecha en formato ISO
       return (selectedTherapist === '' || d.therapist === selectedTherapist) &&
              (selectedPatient === '' || d.patient === selectedPatient) &&
              (selectedService === '' || d.description === selectedService) &&
@@ -63,6 +67,18 @@ const TarjetaCitas = () => {
     });
     setFilteredDates(filtered);
   }, [selectedTherapist, selectedPatient, selectedService, selectedDate, dates]);
+
+  const formatToLocalDate = (dateString) => {
+    const [year, month, day] = dateString.split("T")[0].split("-");
+    const localDate = new Date(year, month - 1, day); // Mes en JavaScript empieza desde 0
+    return localDate.toLocaleDateString("es-ES", { timeZone: "America/Tijuana" });
+  };
+  
+
+  const formatToLocalTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: "America/Tijuana" });
+  };
 
   return (
     <div className="p-6 bg-white rounded-lg shadow-lg">
@@ -132,9 +148,9 @@ const TarjetaCitas = () => {
 
       {/* Renderizamos las citas filtradas */}
       {filteredDates.map((d) => {
-        const formattedDate = new Date(d.date).toLocaleDateString();
-        const formattedStart = new Date(d.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const formattedEnd = new Date(d.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const formattedDate = formatToLocalDate(d.date);
+        const formattedStart = formatToLocalTime(d.start);
+        const formattedEnd = formatToLocalTime(d.end);
 
         return (
           <div
@@ -153,10 +169,9 @@ const TarjetaCitas = () => {
                 <button>
                     <PenBoxIcon size={24} color="blue" />
                 </button>
-          
               </div>
               <div>
-              <BotonDeleteCitas id={d._id} />
+                <BotonDeleteCitas id={d._id} />
               </div>
             </div>
           </div>

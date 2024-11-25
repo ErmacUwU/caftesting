@@ -8,6 +8,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import uniquid from "uniquid";
 import Modal from "react-modal";
+import ActualizarCita from "../components/ActualizarCitas";
 import BotonDeleteCitas from "../components/BotonDeleteCitas";
 
 // Estilos para el modal
@@ -44,6 +45,7 @@ const Citas = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [detailsModalIsOpen, setDetailsModalIsOpen] = useState(false);
 
   const services = [
     { id: 1, name: "Consulta General", duration: 30, cost: 500 },
@@ -65,6 +67,7 @@ const Citas = () => {
         setTherapists(therapistsRes.data.therapist || []);
         setAppointments(
           (appointmentsRes.data?.date || []).map((appointment) => ({
+            idd: appointment._id,
             id: appointment.idDate,
             title: appointment.title,
             start: new Date(appointment.start),
@@ -142,6 +145,7 @@ const Citas = () => {
       setAppointments((prevAppointments) => [
         ...prevAppointments,
         {
+          idd: response.data._id,
           id: response.data.idDate,
           title: response.data.title,
           start: new Date(response.data.start),
@@ -188,11 +192,18 @@ const Citas = () => {
         formattedEnd,
       });
 
-      setModalIsOpen(true);
+      setDetailsModalIsOpen(true); // Abre el modal de detalles
+      
     }
   };
 
-  // Cerrar el modal
+  // Cerrar el modal de detalles
+  const closeDetailsModal = () => {
+    setDetailsModalIsOpen(false);
+    setSelectedAppointment(null);
+  };
+
+  // Cerrar el modal de edición
   const closeModal = () => {
     setModalIsOpen(false);
     setSelectedAppointment(null);
@@ -337,8 +348,8 @@ const Citas = () => {
 
       {selectedAppointment && (
         <Modal
-          isOpen={modalIsOpen}
-          onRequestClose={closeModal}
+          isOpen={detailsModalIsOpen}
+          onRequestClose={closeDetailsModal}
           style={customStyles}
           contentLabel="Detalles de la Cita"
           ariaHideApp={false}
@@ -351,17 +362,50 @@ const Citas = () => {
             <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
             <p className="text-black">Fecha: {selectedAppointment.formattedDate}</p>
             <p className="text-black">
-              Hora: {selectedAppointment.formattedStart} -{" "}
-              {selectedAppointment.formattedEnd}
+              Hora: {selectedAppointment.formattedStart} - {selectedAppointment.formattedEnd}
             </p>
             <p className="text-black">Costo: ${selectedAppointment.cost}</p>
             <button
-              onClick={closeModal}
+              onClick={() => {
+                setModalIsOpen(true); // Abre el modal de edición
+                closeDetailsModal(); // Cierra el modal de detalles
+                
+              }}
+              className="mt-4 bg-blue-500 text-white p-2 rounded"
+            >
+              Editar Cita
+            </button>
+            <button
+              onClick={closeDetailsModal}
               className="mt-4 bg-red-500 text-white p-2 rounded absolute top-2 right-2"
             >
               Cerrar
             </button>
+            <div>
+                <BotonDeleteCitas id={selectedAppointment.idd} />
+              </div>
           </div>
+        </Modal>
+      )}
+
+      {selectedAppointment && (
+        <Modal
+          isOpen={modalIsOpen}
+          onRequestClose={closeModal}
+          style={customStyles}
+          ariaHideApp={false}
+        >
+          <ActualizarCita
+            id={selectedAppointment.idd}
+            selectedPatient={selectedAppointment.patient}
+            selectedTherapist={selectedAppointment.therapist}
+            selectedService={selectedAppointment.title}
+            appointmentDate={selectedAppointment.start.toISOString().split("T")[0]}
+            appointmentStartTime={selectedAppointment.start.toTimeString().slice(0, 5)}
+            appointmentEndTime={selectedAppointment.end.toTimeString().slice(0, 5)}
+            cost={selectedAppointment.cost}
+            onClose={closeModal}
+          />
         </Modal>
       )}
     </div>

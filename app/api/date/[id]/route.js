@@ -2,26 +2,47 @@ import dbConnect from "@/lib/dbConnect";
 import Date from "@/models/Date";
 import { NextResponse } from "next/server";
 
-export async function PATCH(req, { params }) {
-  const { id } = params; // El id de la cita a actualizar
-  const updatedData = await req.json();
+export async function PUT(request, { params }) {
+  const { id } = params; // Este es el id que se recibe de la URL
+  const {
+    newIdDate: idDate,
+    newDate: date,
+    newStart: start,
+    newEnd: end,
+    newTherapist: therapist,
+    newPatient: patient,
+    newTitle: title,
+    newDescription: description,
+    newCost: cost,
+  } = await request.json();
 
-  try {
-    await dbConnect();
+  await dbConnect();
 
-    // Encuentra la cita por su _id y actualiza los campos
-    const updatedDate = await Date.findByIdAndUpdate(id, updatedData, {
-      new: true,
-      runValidators: true,
-    });
+  const updatedDate = await Date.findByIdAndUpdate(id, {
+    idDate,
+    date,
+    start,
+    end,
+    therapist,
+    patient,
+    title,
+    description,
+    cost,
+  }, { new: true }); 
 
-    if (!updatedDate) {
-      return NextResponse.json({ msg: "Cita no encontrada" }, { status: 404 });
-    }
-
-    return NextResponse.json(updatedDate);
-  } catch (error) {
-    console.error("Error actualizando la cita:", error);
-    return NextResponse.json({ msg: "Error actualizando la cita" }, { status: 500 });
+  if (!updatedDate) {
+    return NextResponse.json({ message: "Cita no encontrada" }, { status: 404 });
   }
+
+  return NextResponse.json({ message: "Fecha Actualizada", updatedDate });
+}
+
+export async function GET(request, { params }) {
+  const { id } = params; // id es el parámetro de la ruta dinámica
+  await dbConnect();
+  const dateEntry = await Date.findOne({ _id: id }); // Busca por id en la base de datos
+  if (!dateEntry) {
+    return NextResponse.json({ message: "Cita no encontrada" }, { status: 404 });
+  }
+  return NextResponse.json({ date: dateEntry }, { status: 200 });
 }
