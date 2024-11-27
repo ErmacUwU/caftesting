@@ -1,91 +1,135 @@
-"use client"; // Indica que este componente debe ser renderizado en el cliente
-import React, { useState, useEffect, useRef } from 'react'; // Importa las utilidades de React
-import axios from 'axios'; // Importa Axios para realizar solicitudes HTTP
-import html2pdf from 'html2pdf.js'; // Importa html2pdf.js
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import axios from "axios";
 
 const Reporte = () => {
-  // Definir estados para almacenar citas, terapeutas, paciente, cita, notas e imágenes
-  const [appointments, setAppointments] = useState([]); // Citas obtenidas de la API
-  const [selectedTherapist, setSelectedTherapist] = useState(''); // Terapeuta seleccionado
-  const [selectedPatient, setSelectedPatient] = useState(''); // Paciente seleccionado
-  const [selectedAppointment, setSelectedAppointment] = useState(''); // Cita seleccionada
-  const [notes, setNotes] = useState(''); // Notas ingresadas por el usuario
-  const [images, setImages] = useState([]); // Almacena las URL de las imágenes
-  const pdfRef = useRef(); // Referencia al contenido que se quiere exportar a PDF
+  const [appointments, setAppointments] = useState([]);
+  const [selectedTherapist, setSelectedTherapist] = useState("");
+  const [selectedPatient, setSelectedPatient] = useState("");
+  const [notes, setNotes] = useState("");
+  const [images, setImages] = useState([]);
+  const pdfRef = useRef();
+  const fileInputRef = useRef();
 
-  // Función para cargar datos de citas desde la API al montar el componente
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const appointmentsRes = await axios.get("/api/date"); // Realiza la solicitud a la API
+        const appointmentsRes = await axios.get("/api/date");
         setAppointments(
           appointmentsRes.data.date.map((appointment) => ({
             id: appointment.idDate,
-            title: appointment.title,
-            date: appointment.date,
             therapist: appointment.therapist,
             patient: appointment.patient,
-            description: appointment.description,
-            cost: appointment.cost,
           })) || []
         );
       } catch (error) {
-        console.error("Error fetching data:", error); // Manejo de errores
+        console.error("Error fetching data:", error);
       }
     };
 
-    fetchData(); // Llama a la función al montar el componente
+    fetchData();
   }, []);
 
-  // Extraer terapeutas únicos de las citas
-  const uniqueTherapists = [...new Set(appointments.map(appointment => appointment.therapist))];
-  // Extraer pacientes únicos de las citas
-  const uniquePatients = [...new Set(appointments.map(appointment => appointment.patient))];
+  const uniqueTherapists = [...new Set(appointments.map((a) => a.therapist))];
+  const uniquePatients = [...new Set(appointments.map((a) => a.patient))];
 
-  // Filtrar las citas según el terapeuta y el paciente seleccionados
-  const filteredAppointments = appointments.filter(appointment => {
-    return (
-      (selectedTherapist ? appointment.therapist === selectedTherapist : true) && 
-      (selectedPatient ? appointment.patient === selectedPatient : true)
-    );
-  });
-
-  // Función para manejar la carga de imágenes
   const handleImageChange = (event) => {
     const files = Array.from(event.target.files);
-    const newImages = files.map(file => URL.createObjectURL(file));
-    setImages(prevImages => [...prevImages, ...newImages]);
+    const newImages = files.map((file) => URL.createObjectURL(file));
+    setImages((prevImages) => [...prevImages, ...newImages]);
   };
 
-  // Descargar el PDF con la información seleccionada
-  const downloadPDF = () => {
-    const element = pdfRef.current; // Referencia al contenido a exportar
+  const uploadToS3AndSaveToDB = async (pdfBlob) => {
+    try {
+      // Subir archivo a S3
+      const response = await axios.post("/api/s3/upload", {
+        name: `${selectedPatient}_reporte_citas.pdf`,
+        type: "application/pdf",
+      });
+
+      const { url } = response.data;
+
+      await axios.put(url, pdfBlob, {
+        headers: { "Content-Type": "application/pdf" },
+      });
+
+      // Guardar los datos en MongoDB
+      const saveResponse = await axios.post("/api/s3/documents", {
+        name: `${selectedPatient}_reporte_citas.pdf`,
+        type: "application/pdf",
+        size: pdfBlob.size,
+        url: url.split("?")[0], // URL sin firma
+        therapist: selectedTherapist,
+        patient: selectedPatient,
+        notes,
+        images,
+      });
+
+      if (saveResponse.status === 201) {
+        alert("Archivo guardado en S3 y en MongoDB con éxito!");
+      }
+    } catch (error) {
+      console.error("Error al subir y guardar el archivo:", error);
+      alert("Hubo un error al guardar los datos del archivo.");
+    }
+  };
+
+  const resetInputs = () => {
+    setSelectedTherapist("");
+    setSelectedPatient("");
+    setNotes("");
+    setImages([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = null; // Restablecer el input de archivos
+    }
+  };
+
+  const generateAndUploadPDF = async () => {
+    const element = pdfRef.current;
+
     const options = {
       margin: 1,
-      filename: 'reporte_citas.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      filename: `${selectedPatient}_reporte_citas.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
-    html2pdf()
-      .from(element) // Captura el contenido del elemento referenciado
-      .set(options) // Establece las opciones
-      .save(); // Guarda el PDF generado
+    try {
+      const html2pdfModule = await import("html2pdf.js");
+      const pdfBlob = await html2pdfModule.default().from(element).set(options).outputPdf("blob");
+
+      if (pdfBlob.size === 0) {
+        console.error("El PDF generado está vacío.");
+        alert("Hubo un error al generar el PDF.");
+        return;
+      }
+
+      // Subir a S3 y guardar en MongoDB
+      await uploadToS3AndSaveToDB(pdfBlob);
+
+      // Restablecer inputs después de generar y subir
+      resetInputs();
+    } catch (error) {
+      console.error("Error al generar el PDF:", error);
+      alert("Hubo un error al generar el PDF.");
+    }
   };
 
   return (
-    <div className="p-4 bg-gray-50 rounded shadow-lg"> {/* Fondo mejorado y bordes redondeados */}
+    <div className="p-4 bg-gray-50 rounded shadow-lg">
       <h1 className="text-2xl font-bold mb-5 text-center">Creador de Reportes para Citas</h1>
-      
-      {/* Selector para elegir el terapeuta */}
-      <label htmlFor="therapists" className="block mb-1 font-semibold">Elige el doctor:</label>
-      <select 
-          id="therapists" 
-          value={selectedTherapist} 
-          onChange={(e) => setSelectedTherapist(e.target.value)}
-          className="border border-gray-400 p-2 rounded mb-4 w-full"
-        >
+
+      {/* Selección del Terapeuta */}
+      <label htmlFor="therapists" className="block mb-1 font-semibold">
+        Elige el terapeuta:
+      </label>
+      <select
+        id="therapists"
+        value={selectedTherapist}
+        onChange={(e) => setSelectedTherapist(e.target.value)}
+        className="border border-gray-400 p-2 rounded mb-4 w-full"
+      >
         <option value="">--Seleccione un terapeuta--</option>
         {uniqueTherapists.map((therapist, index) => (
           <option key={index} value={therapist}>
@@ -94,13 +138,15 @@ const Reporte = () => {
         ))}
       </select>
 
-      {/* Selector para elegir el paciente */}
-      <label htmlFor="patients" className="block mb-1 font-semibold">Elige el paciente:</label>
-      <select 
-          id="patients" 
-          value={selectedPatient} 
-          onChange={(e) => setSelectedPatient(e.target.value)} 
-          className="border border-gray-400 p-2 rounded mb-4 w-full"
+      {/* Selección del Paciente */}
+      <label htmlFor="patients" className="block mb-1 font-semibold">
+        Elige el paciente:
+      </label>
+      <select
+        id="patients"
+        value={selectedPatient}
+        onChange={(e) => setSelectedPatient(e.target.value)}
+        className="border border-gray-400 p-2 rounded mb-4 w-full"
       >
         <option value="">--Seleccione un paciente--</option>
         {uniquePatients.map((patient, index) => (
@@ -110,84 +156,95 @@ const Reporte = () => {
         ))}
       </select>
 
-      {/* Selector para elegir la cita */}
-      <label htmlFor="appointments" className="block mb-1 font-semibold">Elige la cita:</label>
-      <select 
-          id="appointments" 
-          value={selectedAppointment} 
-          onChange={(e) => setSelectedAppointment(e.target.value)} 
-          className="border border-gray-400 p-2 rounded mb-4 w-full"
-      >
-        <option value="">--Seleccione una cita--</option>
-        {filteredAppointments.map(appointment => (
-          <option key={appointment.id} value={appointment.id}>
-            {appointment.title} - {appointment.date}
-          </option>
-        ))}
-      </select>
-
-      {/* Campo de texto para ingresar notas */}
-      <label htmlFor="notes" className="block mb-1 font-semibold">Notas:</label>
-      <textarea 
-          id="notes" 
-          value={notes} 
-          onChange={(e) => setNotes(e.target.value)} 
-          className="border border-gray-400 p-2 rounded mb-4 w-full"
-          placeholder="Ingresa tus notas aquí..."
-          rows="4"
+      {/* Notas */}
+      <textarea
+        id="notes"
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        className="border border-gray-400 p-2 rounded mb-4 w-full"
+        placeholder="Ingresa tus notas aquí..."
+        rows="4"
       />
 
-      {/* Entrada de archivos para imágenes */}
-      <label htmlFor="images" className="block mb-1 font-semibold">Agregar Imágenes:</label>
-      <input 
-          type="file" 
-          id="images" 
-          accept="image/*" 
-          onChange={handleImageChange}
-          multiple // Permite subir múltiples imágenes
-          className="border border-gray-400 p-2 rounded mb-4 w-full"
+      {/* Subir Imágenes */}
+      <input
+        type="file"
+        id="images"
+        ref={fileInputRef}
+        accept="image/*"
+        onChange={handleImageChange}
+        multiple
+        className="border border-gray-400 p-2 rounded mb-4 w-full"
       />
 
-      {/* Vista previa de las imágenes seleccionadas */}
-      <div className="flex flex-wrap mb-4">
-        {images.map((img, index) => (
-          <div key={index} className="m-1">
-            <img src={img} alt={`preview-${index}`} className="w-24 h-24 object-cover border rounded" />
-          </div>
-        ))}
-      </div>
-
-      {/* Sección para mostrar resultados seleccionados */}
-      <div className="mb-4 p-4 bg-white rounded shadow-sm">
-        <h2 className="text-lg font-semibold">Resultados seleccionados:</h2>
-        <p>Terapeuta seleccionado: <strong>{selectedTherapist || "Ninguno"}</strong></p>
-        <p>Paciente seleccionado: <strong>{selectedPatient || "Ninguno"}</strong></p>
-        <p>Cita seleccionada: <strong>{selectedAppointment || "Ninguna"}</strong></p>
-      </div>
-
-      <button 
-          onClick={downloadPDF} 
-          className="mt-4 w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+      {/* Botón para generar PDF */}
+      <button
+        onClick={generateAndUploadPDF}
+        className="mt-4 w-full p-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
       >
-        Descargar PDF
+        Generar y Guardar PDF
       </button>
 
-      {/* Contenido a exportar a PDF */}
-      <div ref={pdfRef} > 
-        <h1 className="text-xl font-bold">Reporte de Citas</h1>
-        <p><strong>Terapeuta:</strong> {selectedTherapist || "No hay terapeuta seleccionado"}</p>
-        <p><strong>Paciente:</strong> {selectedPatient || "No hay paciente seleccionado"}</p>
-        <p><strong>Cita:</strong> {selectedAppointment || "No hay cita seleccionada"}</p>
-        <h2 className="text-lg font-semibold">Notas:</h2>
-        <p>{notes || "No hay notas ingresadas"}</p>
-        <h2 className="text-lg font-semibold">Imágenes:</h2>
-        {images.length > 0 ? (
-          images.map((img, index) => (
-            <img key={index} src={img} alt={`uploaded-${index}`} className="mb-2" style={{ maxWidth: '100%', height: 'auto' }} />
-          ))
-        ) : (
-          <p>No hay imágenes subidas.</p>
-        )}
+      {/* Contenido del PDF */}
+      <div ref={pdfRef} className="p-6 bg-white border rounded shadow-md">
+        {/* Encabezado */}
+        <div style={{ textAlign: "center", marginBottom: "20px" }}>
+          <h1 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "10px" }}>
+            Reporte de Citas
+          </h1>
+          <p style={{ fontSize: "16px", color: "#555" }}>
+            Generado el {new Date().toLocaleDateString()}
+          </p>
+        </div>
+
+        {/* Información Principal */}
+        <div style={{ marginBottom: "20px" }}>
+          <p>
+            <strong>Terapeuta:</strong> {selectedTherapist || "No hay terapeuta seleccionado"}
+          </p>
+          <p>
+            <strong>Paciente:</strong> {selectedPatient || "No hay paciente seleccionado"}
+          </p>
+        </div>
+
+        {/* Notas */}
+        <div style={{ marginBottom: "20px" }}>
+          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "10px" }}>Notas:</h2>
+          <p style={{ fontSize: "14px", color: "#333" }}>{notes || "No hay notas ingresadas"}</p>
+        </div>
+
+        {/* Imágenes */}
+        <div style={{ marginBottom: "20px" }}>
+          <h2 style={{ fontSize: "18px", fontWeight: "bold", marginBottom: "10px" }}>Imágenes:</h2>
+          {images.length > 0 ? (
+            images.map((img, index) => (
+              <img
+                key={index}
+                src={img}
+                alt={`uploaded-${index}`}
+                style={{
+                  maxWidth: "100%",
+                  marginBottom: "10px",
+                  border: "1px solid #ddd",
+                  padding: "5px",
+                  borderRadius: "5px",
+                }}
+              />
+            ))
+          ) : (
+            <p>No hay imágenes subidas.</p>
+          )}
+        </div>
+
+        {/* Pie de Página */}
+        <div style={{ textAlign: "center", marginTop: "20px" }}>
+          <p style={{ fontSize: "12px", color: "#777" }}>
+            Este reporte fue generado automáticamente por el sistema.
+          </p>
+          <p style={{ fontSize: "12px", fontStyle: "italic", marginTop: "10px", color: "#555" }}>
+            Esta es una vista previa del documento.
+          </p>
+        </div>
       </div>
     </div>
   );

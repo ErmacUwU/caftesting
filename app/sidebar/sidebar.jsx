@@ -12,7 +12,8 @@ import {
   ArchiveBoxIcon,
   DocumentTextIcon,
   UserGroupIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  DocumentIcon 
 } from '@heroicons/react/24/outline';
 
 const Sidebar = () => {
@@ -145,6 +146,14 @@ const Sidebar = () => {
             >
               <Cog6ToothIcon className="h-5 w-5 mr-3" />
               Ajustes
+            </Link>
+          </li>
+          <li>
+            <Link href="/docs"
+            className=" px-4 py-2 hover:bg-gray-700 rounded flex items-center"
+            >
+               <DocumentIcon className="h-5 w-5 mr-3" />
+               Documentos
             </Link>
           </li>
         </ul>
