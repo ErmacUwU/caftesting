@@ -12,6 +12,4 @@ const fileSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }, // Fecha de creación
 });
 
-const File = mongoose.model("File", fileSchema);
-
-module.exports = File;
+module.exports = mongoose.models.File || mongoose.model("File", fileSchema);

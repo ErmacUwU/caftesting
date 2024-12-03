@@ -20,20 +20,25 @@ const ConsultaDocumentos = () => {
           axios.get("/api/patient"),
           axios.get("/api/therapist"),
         ]);
-
-        setPatients(patientsRes.data.patients || []);
-        setTherapists(therapistsRes.data.therapists || []);
+  
+        console.log("Respuesta completa pacientes:", patientsRes.data);
+        console.log("Respuesta completa terapeutas:", therapistsRes.data);
+  
+        setPatients(patientsRes.data?.patient || []);
+        setTherapists(therapistsRes.data?.therapist || []);
       } catch (error) {
-        console.error("Error al cargar filtros:", error);
+        console.error("Error al cargar filtros:", error.response?.data || error.message);
         setErrorMessage("No se pudieron cargar los filtros de pacientes y terapeutas.");
       } finally {
         setLoadingPatients(false);
         setLoadingTherapists(false);
       }
     };
-
+  
     fetchFilters();
   }, []);
+  
+  
 
   const handlePatientChange = (patient) => {
     setSelectedPatients((prev) =>
@@ -82,45 +87,45 @@ const ConsultaDocumentos = () => {
         {/* Lista de pacientes */}
         <h2 className="text-lg font-semibold mb-2">Filtrar por Paciente:</h2>
         <div className="mb-4">
-          {loadingPatients ? (
-            <p className="text-sm text-gray-500">Cargando pacientes...</p>
-          ) : patients.length > 0 ? (
-            patients.map((patient) => (
-              <label key={patient} className="block">
-                <input
-                  type="checkbox"
-                  value={patient}
-                  onChange={() => handlePatientChange(patient)}
-                  className="mr-2"
-                />
-                {patient}
-              </label>
+        {loadingPatients ? (
+          <p className="text-sm text-gray-500">Cargando pacientes...</p>
+        ) : patients.length > 0 ? (
+          patients.map((patient, index) => (
+          <label key={patient._id || index} className="block">
+            <input
+            type="checkbox"
+            value={`${patient.firstName} ${patient.lastName}`} // Combina los campos
+            onChange={() => handlePatientChange(`${patient.firstName} ${patient.lastName}`)}
+            className="mr-2"/>
+            {`${patient.firstName} ${patient.lastName}`} {/* Renderiza el nombre completo */}
+            </label>
             ))
           ) : (
-            <p className="text-sm text-gray-500">No hay pacientes disponibles.</p>
+          <p className="text-sm text-red-500">No hay pacientes disponibles.</p>
           )}
+
         </div>
 
         {/* Lista de terapeutas */}
         <h2 className="text-lg font-semibold mb-2">Filtrar por Terapeuta:</h2>
         <div className="mb-4">
-          {loadingTherapists ? (
-            <p className="text-sm text-gray-500">Cargando terapeutas...</p>
-          ) : therapists.length > 0 ? (
-            therapists.map((therapist) => (
-              <label key={therapist} className="block">
-                <input
-                  type="checkbox"
-                  value={therapist}
-                  onChange={() => handleTherapistChange(therapist)}
-                  className="mr-2"
-                />
-                {therapist}
-              </label>
+        {loadingTherapists ? (
+          <p className="text-sm text-gray-500">Cargando terapeutas...</p>
+        ) : therapists.length > 0 ? (
+          therapists.map((therapist, index) => (
+          <label key={therapist._id || index} className="block">
+            <input
+            type="checkbox"
+            value={`${therapist.firstName} ${therapist.lastName}`} // Combina los campos
+            onChange={() => handleTherapistChange(`${therapist.firstName} ${therapist.lastName}`)}
+            className="mr-2"/>
+            {`${therapist.firstName} ${therapist.lastName}`} {/* Renderiza el nombre completo */}
+            </label>
             ))
           ) : (
-            <p className="text-sm text-gray-500">No hay terapeutas disponibles.</p>
+          <p className="text-sm text-red-500">No hay terapeutas disponibles.</p>
           )}
+
         </div>
 
         {/* Botón para consultar documentos */}

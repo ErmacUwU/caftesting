@@ -1,4 +1,4 @@
-const File = require("../../models/File");
+const File = require("../../../models/File.js"); // Ajusta esta ruta según la ubicación de tu modelo
 const mongoose = require("mongoose");
 
 // Conectar a MongoDB si aún no está conectado
@@ -11,12 +11,12 @@ const connectToDatabase = async () => {
     }
 };
 
-async function handler(req, res) {
+export default async function handler(req, res) { // Cambié aquí a exportación predeterminada
     // Conectar a la base de datos
     await connectToDatabase();
 
     if (req.method === "POST") {
-        const { name, type, size, url } = req.body;
+        const { name, type, size, url, therapist, patient } = req.body;
 
         // Validar datos
         if (!name || !type || !size || !url) {
@@ -25,7 +25,7 @@ async function handler(req, res) {
 
         try {
             // Crear un registro en MongoDB
-            const file = new File({ name, type, size, url });
+            const file = new File({ name, type, size, url, therapist, patient });
             await file.save();
 
             return res.status(201).json({ message: "Archivo registrado con éxito", file });
@@ -38,5 +38,3 @@ async function handler(req, res) {
         return res.status(405).json({ error: `Método ${req.method} no permitido.` });
     }
 }
-
-module.exports = handler;

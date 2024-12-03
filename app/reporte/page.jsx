@@ -54,7 +54,7 @@ const Reporte = () => {
       });
 
       // Guardar los datos en MongoDB
-      const saveResponse = await axios.post("/api/s3/documents", {
+      const saveResponse = await axios.post("/api/s3/files", {
         name: `${selectedPatient}_reporte_citas.pdf`,
         type: "application/pdf",
         size: pdfBlob.size,

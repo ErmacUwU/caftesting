@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const File = require("../../models/File"); // Ajusta esta ruta según la ubicación de tu modelo
+const File = require("../../../models/File.js"); // Ajusta esta ruta según la ubicación de tu modelo
 
 // Conectar a MongoDB
 const connectToDatabase = async () => {
@@ -19,6 +19,7 @@ const connectToDatabase = async () => {
 
 export default async function handler(req, res) {
   await connectToDatabase();
+  
 
   if (req.method === "POST") {
     const { patients, therapists } = req.body;
@@ -44,3 +45,5 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: `Método ${req.method} no permitido.` });
   }
 }
+
+
