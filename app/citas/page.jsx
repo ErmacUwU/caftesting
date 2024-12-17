@@ -10,6 +10,7 @@ import uniquid from "uniquid";
 import Modal from "react-modal";
 import ActualizarCita from "../components/ActualizarCitas";
 import BotonDeleteCitas from "../components/BotonDeleteCitas";
+import "./app.css";
 
 // Estilos para el modal
 const customStyles = {
@@ -53,38 +54,55 @@ const Citas = () => {
     { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
   ];
 
-  // Carga inicial de datos
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all([
-          axios.get("/api/patient"),
-          axios.get("/api/therapist"),
-          axios.get("/api/date"),
-        ]);
+  const getEventColor = (service) => {
+    switch (service) {
+      case "Consulta General":
+        return { backgroundColor: "#3498db", borderColor: "#000" }; // Azul
+      case "Terapia Física":
+        return { backgroundColor: "#2ecc71", borderColor: "#000" }; // Verde
+      case "Consulta Especializada":
+        return { backgroundColor: "#e74c3c", borderColor: "#000" }; // Rojo
+      default:
+        return { backgroundColor: "#bdc3c7", borderColor: "#000" }; // Gris
+    }
+  };
 
-        setPatients(patientsRes.data.patient || []);
-        setTherapists(therapistsRes.data.therapist || []);
-        setAppointments(
-          (appointmentsRes.data?.date || []).map((appointment) => ({
-            idd: appointment._id,
-            id: appointment.idDate,
-            title: appointment.title,
-            start: new Date(appointment.start),
-            end: new Date(appointment.end),
-            description: appointment.description,
-            therapist: appointment.therapist,
-            patient: appointment.patient,
-            cost: appointment.cost,
-          }))
-        );
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
+    // Asigna colores dinámicos a los eventos
+    useEffect(() => {
+      const fetchData = async () => {
+        try {
+          const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all([
+            axios.get("/api/patient"),
+            axios.get("/api/therapist"),
+            axios.get("/api/date"),
+          ]);
 
-    fetchData();
-  }, []);
+          setPatients(patientsRes.data.patient || []);
+          setTherapists(therapistsRes.data.therapist || []);
+          setAppointments(
+            (appointmentsRes.data?.date || []).map((appointment) => {
+              const colors = getEventColor(appointment.title);
+              return {
+                idd: appointment._id,
+                id: appointment.idDate,
+                title: appointment.title,
+                start: new Date(appointment.start),
+                end: new Date(appointment.end),
+                description: appointment.description,
+                therapist: appointment.therapist,
+                patient: appointment.patient,
+                cost: appointment.cost,
+                ...colors, // Agrega colores dinámicos
+              };
+            })
+          );
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+      };
+
+      fetchData();
+    }, []);
 
   // Función para calcular la hora de finalización
   const calculateEndTime = (startTime, duration) => {
@@ -218,7 +236,7 @@ const Citas = () => {
   return (
     <div className="flex justify-center">
       {isFormVisible && (
-        <div className="w-1/3 p-4 bg-gray-100 relative">
+        <div className="w-3/5 p-4 bg-gray-100 relative">
           <button
             onClick={() => setIsFormVisible(false)}
             className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded"
@@ -327,22 +345,39 @@ const Citas = () => {
         </div>
       )}
 
-      <div className="w-2/3 p-4">
+      <div className="calendar-container w-2/5 p-4">
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView="dayGridMonth"
+          initialView="timeGridWeek"
           events={appointments}
           dateClick={handleDateClick}
           eventClick={handleEventClick}
+          selectable={true}
+          slotLabelFormat={{
+            hour: "numeric",
+            minute: "2-digit",
+            meridiem: "short",
+            hour12: true, // Formato 12 horas
+          }}
+          eventTimeFormat={{
+            hour: "numeric",
+            minute: "2-digit",
+            meridiem: "short",
+            hour12: true, // Formato 12 horas
+          }}
           headerToolbar={{
             left: "prev,next today",
             center: "title",
-            right: "dayGridMonth,timeGridWeek,timeGridDay",
+            right: "timeGridWeek,timeGridDay",
           }}
           locale="es"
+          height="auto"
           buttonText={{
             today: "Hoy",
+            week: "Semana", // Personaliza "Week"
+            day: "Día",     // Personaliza "Day"
           }}
+          
         />
       </div>
 

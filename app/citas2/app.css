@@ -1,0 +1,15 @@
+.custom-event {
+    padding: 4px; /* Espaciado */
+    font-size: 0.8rem; /* Tamaño de letra reducido */
+    line-height: 1.1; /* Espaciado entre líneas */
+  }
+  
+  .custom-event .event-details {
+    font-size: 0.5rem; /* Tamaño más pequeño para los detalles */
+    color: #fff; /* Color gris para los detalles */
+  }
+  
+  .fc-event {
+    border-radius: 4px;
+  }
+  

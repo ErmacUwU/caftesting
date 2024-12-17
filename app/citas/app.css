@@ -1,0 +1,26 @@
+.calendar-container {
+    width: 100vw; /* 100% del ancho de la ventana */
+    height: 100vh; /* 100% del alto de la ventana */
+    margin: 0 auto; /* Centrar el calendario */
+  }
+  
+  .custom-event {
+    font-size: 0.8rem; /* Reduce el tamaño de la letra */
+    line-height: 1.2; /* Espaciado entre líneas */
+    padding: 2px; /* Espaciado dentro del evento */
+  }
+  
+  .event-details {
+    font-size: 0.7rem; /* Tamaño aún más pequeño para detalles */
+    color: #555; /* Color gris suave */
+  }
+  
+  .fc-event {
+    border-radius: 5px; /* Bordes redondeados */
+    padding: 4px;
+  }
+  
+  .fc-timegrid-slot-label {
+    font-size: 12px; /* Etiquetas de hora más pequeñas */
+  }
+  
