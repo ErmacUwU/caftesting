@@ -135,7 +135,7 @@ const Citas = () => {
     const therapist = therapists.find((t) => t._id === selectedTherapist);
     const therapistName = therapist
       ? `${therapist.firstName} ${therapist.lastName}`
-      : "";
+      : "";     
 
     const patient = patients.find((p) => p._id === selectedPatient);
     const patientName = patient
@@ -351,6 +351,12 @@ const Citas = () => {
           initialView="timeGridWeek"
           events={appointments}
           dateClick={handleDateClick}
+          eventContent={(eventInfo) => (
+            <div className="custom-event-content">
+              <div className="custom-hour">{eventInfo.timeText}</div>
+              <div className="custom-title">{eventInfo.event.extendedProps.patient}</div>  
+            </div>
+          )}
           eventClick={handleEventClick}
           selectable={true}
           slotLabelFormat={{
@@ -372,6 +378,7 @@ const Citas = () => {
           }}
           locale="es"
           height="auto"
+          slotMinHeight={50}
           buttonText={{
             today: "Hoy",
             week: "Semana", // Personaliza "Week"

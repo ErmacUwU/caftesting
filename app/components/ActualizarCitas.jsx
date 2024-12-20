@@ -46,12 +46,14 @@ const ActualizarCita = ({
 
   useEffect(() => {
     if (selectedTherapist && selectedService) {
+      console.log(selectedPatient);
       console.log(selectedService);
       console.log(selectedTherapist);
+      setNewTherapist(selectedPatient);  // Esto debería asignar el terapeuta seleccionado
       setNewTherapist(selectedTherapist);  // Esto debería asignar el terapeuta seleccionado
       setNewService(selectedService);  // Esto debería asignar el servicio seleccionado
     }
-  }, [selectedTherapist, selectedService]);
+  }, [selectedPatient, selectedTherapist, selectedService]);
   
 
   const calculateEndTime = (startTime, duration) => {
@@ -91,7 +93,6 @@ const ActualizarCita = ({
     const service = services.find((s) => s.id.toString() === newService);
   
     const appointmentData = {
-      newIdDate: id, // El id que se pasa para actualizar
       newDate: newAppointmentDate, // La fecha de la cita
       newStart: startDateTime.toISOString(), // Formatea la hora de inicio correctamente
       newEnd: endDateTime.toISOString(), // Formatea la hora de fin correctamente
@@ -117,11 +118,29 @@ const ActualizarCita = ({
       alert("Error al actualizar la cita");
     }
   };
-  
-  
+ 
   return (
     <form className="max-w-md mx-auto p-4 bg-gray-100">
       <h1 className="text-black font-extrabold">ACTUALIZACIÓN DE CITA</h1>
+
+      <div className="mb-4">
+        <label htmlFor="patient" className="block text-sm font-medium text-gray-700">
+          Paciente<span className="text-red-600">*</span>
+        </label>
+        <select
+          id="patient"
+          value={newPatient}
+          onChange={(e) => setNewPatient(e.target.value)}
+          className="block w-full p-2 mt-1 border border-gray-300 rounded"
+          required
+        >
+          {patients.map((patient) => (
+            <option key={patient._id} value={patient._id}>
+              {patient.firstName} {patient.lastName}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="mb-4">
         <label htmlFor="therapist" className="block text-sm font-medium text-gray-700">
@@ -134,7 +153,6 @@ const ActualizarCita = ({
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
-          <option value="">Seleccione un terapeuta</option>
           {therapists.map((therapist) => (
             <option key={therapist._id} value={therapist._id}>
               {therapist.firstName} {therapist.lastName}
@@ -154,7 +172,6 @@ const ActualizarCita = ({
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
-          <option value="">Seleccione un servicio</option>
           {services.map((service) => (
             <option key={service.id} value={service.id}>
               {service.name}

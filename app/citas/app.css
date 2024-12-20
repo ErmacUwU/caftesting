@@ -22,5 +22,25 @@
   
   .fc-timegrid-slot-label {
     font-size: 12px; /* Etiquetas de hora más pequeñas */
+
   }
+
+  .fc-timegrid-slot {
+    height: 51px !important; /* Ajusta la altura de las ranuras */
+  }
+
+
+  .custom-event-content {
+    color: white; /* Color del texto */   
+
+  }
+
+  .custom-hour{
+    text-align: center;
+    font-size: 8px;
+  }
+  .custom-title{
+    font-size: 10px;
+  }
+  
   
