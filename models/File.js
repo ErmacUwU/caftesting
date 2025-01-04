@@ -4,7 +4,7 @@ const fileSchema = new mongoose.Schema({
   name: { type: String, required: true }, // Nombre del archivo
   type: { type: String, required: true }, // Tipo MIME
   size: { type: Number, required: true }, // Tamaño en bytes
-  url: { type: String, required: true }, // Enlace en S3
+  key: { type: String, required: true }, // Key del archivo en S3
   therapist: { type: String, required: true }, // Terapeuta
   patient: { type: String, required: true }, // Paciente
   notes: { type: String }, // Notas adicionales

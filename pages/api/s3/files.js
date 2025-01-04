@@ -11,21 +11,20 @@ const connectToDatabase = async () => {
     }
 };
 
-export default async function handler(req, res) { // Cambié aquí a exportación predeterminada
-    // Conectar a la base de datos
+export default async function handler(req, res) {
     await connectToDatabase();
 
     if (req.method === "POST") {
-        const { name, type, size, url, therapist, patient } = req.body;
+        const { name, type, size, key, therapist, patient, notes, images } = req.body;
 
         // Validar datos
-        if (!name || !type || !size || !url) {
-            return res.status(400).json({ error: "Todos los campos son obligatorios." });
+        if (!name || !type || !size || !key || !therapist || !patient) {
+            return res.status(400).json({ error: "Todos los campos obligatorios deben ser proporcionados." });
         }
 
         try {
             // Crear un registro en MongoDB
-            const file = new File({ name, type, size, url, therapist, patient });
+            const file = new File({ name, type, size, key, therapist, patient, notes, images });
             await file.save();
 
             return res.status(201).json({ message: "Archivo registrado con éxito", file });
