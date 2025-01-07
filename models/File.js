@@ -1,15 +1,13 @@
 const mongoose = require("mongoose");
-
 const fileSchema = new mongoose.Schema({
-  name: { type: String, required: true }, // Nombre del archivo
-  type: { type: String, required: true }, // Tipo MIME
-  size: { type: Number, required: true }, // Tamaño en bytes
-  key: { type: String, required: true }, // Key del archivo en S3
-  therapist: { type: String, required: true }, // Terapeuta
-  patient: { type: String, required: true }, // Paciente
-  notes: { type: String }, // Notas adicionales
-  images: { type: [String] }, // Lista de URLs de imágenes subidas
-  createdAt: { type: Date, default: Date.now }, // Fecha de creación
+  name: { type: String, required: true },
+  type: { type: String, required: true },
+  size: { type: Number, required: true },
+  key: { type: String, required: true },
+  therapist: { type: String, required: true },
+  patient: { type: String, required: true },
+  notes: { type: String },
+  images: { type: [String] },
+  url: { type: String }, // Agregado
+  createdAt: { type: Date, default: Date.now },
 });
-
-module.exports = mongoose.models.File || mongoose.model("File", fileSchema);
