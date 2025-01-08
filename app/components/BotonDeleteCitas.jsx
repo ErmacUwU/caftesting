@@ -22,8 +22,8 @@ const BotonDeleteCitas = ({ id }) => {
   };
   return (
     <div>
-      <button onClick={deleteDate}>
-        <DeleteIcon size={24} color="red" />
+      <button className="mt-4 bg-red-500 text-white p-2 rounded" onClick={deleteDate}>
+        Borrar Cita
       </button>
     </div>
   );

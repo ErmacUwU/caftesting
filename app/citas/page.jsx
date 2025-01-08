@@ -413,19 +413,19 @@ const Citas = () => {
                 closeDetailsModal(); // Cierra el modal de detalles
                 
               }}
-              className="mt-4 bg-blue-500 text-white p-2 rounded"
+              className="mt-4  bg-blue-500 text-white p-2 rounded"
             >
               Editar Cita
             </button>
             <button
               onClick={closeDetailsModal}
-              className="mt-4 bg-red-500 text-white p-2 rounded absolute top-2 right-2"
+              className="mt-4 bg-green-500 text-white p-2 rounded absolute top-2 right-2"
             >
               Cerrar
             </button>
             <div>
                 <BotonDeleteCitas id={selectedAppointment.idd} />
-              </div>
+            </div>
           </div>
         </Modal>
       )}
