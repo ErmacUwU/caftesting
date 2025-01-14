@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+
 const fileSchema = new mongoose.Schema({
   name: { type: String, required: true },
   type: { type: String, required: true },
@@ -11,3 +12,6 @@ const fileSchema = new mongoose.Schema({
   url: { type: String }, // Agregado
   createdAt: { type: Date, default: Date.now },
 });
+
+module.exports = mongoose.models.File || mongoose.model("File", fileSchema);
+
