@@ -13,7 +13,7 @@ const ActualizarCita = ({
   cost,
   onClose,
 }) => {
-  const [newPatient, setNewPatient] = useState("");
+  const [newPatient, setNewPatient] = useState(selectedPatient);
   const [newTherapist, setNewTherapist] = useState(selectedTherapist);
   const [newService, setNewService] = useState(selectedService);
   const [newAppointmentDate, setNewAppointmentDate] = useState(appointmentDate);
@@ -96,8 +96,8 @@ const ActualizarCita = ({
       newDate: newAppointmentDate, // La fecha de la cita
       newStart: startDateTime.toISOString(), // Formatea la hora de inicio correctamente
       newEnd: endDateTime.toISOString(), // Formatea la hora de fin correctamente
-      newTherapist: therapistName,
-      newPatient: patientName,
+      newTherapist: therapist,
+      newPatient: patient,
       newTitle: service?.name || "",
       newDescription: service?.name || "",
       newCost: parseFloat(newCost),

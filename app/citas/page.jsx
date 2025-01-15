@@ -148,8 +148,8 @@ const Citas = () => {
       date: appointmentDate,
       start: `${appointmentDate}T${appointmentStartTime}:00`,
       end: `${appointmentDate}T${appointmentEndTime}:00`,
-      therapist: therapistName,
-      patient: patientName,
+      therapist: therapist,
+      patient: patient,
       title: service?.name || "",
       description: service?.name || "",
       cost: parseFloat(cost),
@@ -339,11 +339,16 @@ const Citas = () => {
           dateClick={handleDateClick}
           eventClick={handleEventClick}
           eventContent={(eventInfo) => {
+
+            const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
+            const eventTherapist = therapists.find((t) => t._id === eventInfo.event.extendedProps.therapist);
             const colorStyle = getEventColor(eventInfo.event.title);
             return (
               <div className="custom-event-content">
               <div className="custom-hour">{eventInfo.timeText}</div>
-              <div className="custom-title">{eventInfo.event.extendedProps.patient}</div>  
+              <div className="custom-title">
+              {eventPatient ? `${eventPatient.firstName} ${eventPatient.lastName}` : 'No encontrado'}
+              </div>
             </div>
             );
           }}
@@ -382,8 +387,15 @@ const Citas = () => {
             <h2 className="text-black font-bold text-xl mb-4">
               {selectedAppointment.description}
             </h2>
-            <p className="text-black">Paciente: {selectedAppointment.patient}</p>
-            <p className="text-black">Terapeuta: {selectedAppointment.therapist}</p>
+            <p className="text-black">
+              Paciente: {patients.find((p) => p._id === selectedAppointment.patient)
+              ? `${patients.find((p) => p._id === selectedAppointment.patient).firstName} ${
+                patients.find((p) => p._id === selectedAppointment.patient).lastName}`: "No encontrado"}
+            </p>
+            <p className="text-black">Terapeuta: {therapists.find((t) => t._id === selectedAppointment.therapist)
+            ? `${therapists.find((t) => t._id === selectedAppointment.therapist).firstName} ${
+              therapists.find((t) => t._id === selectedAppointment.therapist).lastName}`: "No encontrado"}
+            </p>
             <p className="text-black">Fecha: {selectedAppointment.formattedDate}</p>
             <p className="text-black">
               Hora: {selectedAppointment.formattedStart} - {selectedAppointment.formattedEnd}
