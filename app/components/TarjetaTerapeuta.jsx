@@ -27,6 +27,24 @@ const TarjetaTerapeuta = () => {
       }
     };
 
+/*     const getPatients = async () => {
+      try {
+        const res = await fetch("http://localhost:3000/api/patient", {
+          cache: "no-store",
+        });
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch patients");
+        }
+
+        const data = await res.json();
+        setPatients(data.patient || []); // Asegúrate de que 'patients' sea la propiedad correcta en la respuesta de la API
+      } catch (error) {
+        console.error("Error fetching patients:", error);
+        setPatients([]); // Set empty array on error
+      }
+    }; */
+
     getTherapists();
   }, []);
 
