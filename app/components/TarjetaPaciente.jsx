@@ -10,17 +10,19 @@ const TarjetaPaciente = () => {
   useEffect(() => {
     const getPatients = async () => {
       try {
-        const res = await fetch("/api/patient", { cache: "no-store" });
+        const res = await fetch("http://localhost:3000/api/patient", {
+          cache: "no-store",
+        });
 
         if (!res.ok) {
           throw new Error("Failed to fetch patients");
         }
 
         const data = await res.json();
-        setPatients(data.patient || []); // Asegúrate de que 'patient' sea la propiedad correcta en la API
+        setPatients(data.patient || []); // Asegúrate de que 'patients' sea la propiedad correcta en la respuesta de la API
       } catch (error) {
         console.error("Error fetching patients:", error);
-        setPatients([]);
+        setPatients([]); // Set empty array on error
       }
     };
 
