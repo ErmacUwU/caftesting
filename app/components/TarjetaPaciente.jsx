@@ -11,7 +11,9 @@ const TarjetaPaciente = () => {
   useEffect(() => {
     const getPatients = async () => {
       try {
-        const res = await axios.get("/api/patient");
+        const res = await axios.get("/api/patient",{
+          mode: "no-cors",
+        });
         setPatients(res.data.patient || []); // Ajusta 'patient' si la API tiene otro formato
       } catch (error) {
         console.error("Error al obtener pacientes:", error.message);
