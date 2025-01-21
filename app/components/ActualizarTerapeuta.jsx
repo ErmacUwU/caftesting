@@ -50,7 +50,7 @@ const updateTherapist = async (e) => {
 };
 
   return (
-    <form onClick={updateTherapist} className="max-w-md mx-auto p-4 bg-gray-100">
+    <form onSubmit={updateTherapist} className="max-w-md mx-auto p-4 bg-gray-100">
       <h1 className="text-black font-extrabold">ACTUALIZACION DE TERAPEUTAS</h1>
       <div className="mb-4">
         <label
