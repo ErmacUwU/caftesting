@@ -15,34 +15,32 @@ const ActualizarTerapeuta = ({ id, firstName, lastName, email, phone, specializa
   const [newCity, setNewCity] = useState(city);
   const [newCountry, setNewCountry] = useState(country);
 
-  
-
   const updateTherapist = async (e) => {
     e.preventDefault();
-
+  
     const res = await fetch(`/api/therapist/${id}`, {
       method: "PUT",
       headers: {
         "Content-type": "application/json",
       },
       body: JSON.stringify({
-        newFirstName,
-        newLastName,
-        newEmail,
-        newPhone,
-        newSpecialization,
-        newAddress,
-        newCity,
-        newCountry,
+        firstName: newFirstName,
+        lastName: newLastName,
+        email: newEmail,
+        phone: newPhone,
+        specialization: newSpecialization,
+        address: newAddress,
+        city: newCity,
+        country: newCountry,
       }),
     });
-
+  
     if (!res.ok) {
-      throw new Error("Error al actualizar el Terapeuta");
+      console.error("Error al actualizar el terapeuta");
+      throw new Error("Error al actualizar el terapeuta");
     }
-
-    
   };
+  
 
   return (
     <form onClick={updateTherapist} className="max-w-md mx-auto p-4 bg-gray-100">
