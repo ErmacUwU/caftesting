@@ -15,9 +15,12 @@ const ActualizarTerapeuta = ({ id, firstName, lastName, email, phone, specializa
   const [newCity, setNewCity] = useState(city);
   const [newCountry, setNewCountry] = useState(country);
 
-  const updateTherapist = async (e) => {
-    e.preventDefault();
-  
+  const router = useRouter();
+
+const updateTherapist = async (e) => {
+  e.preventDefault();
+
+  try {
     const res = await fetch(`/api/therapist/${id}`, {
       method: "PUT",
       headers: {
@@ -34,12 +37,18 @@ const ActualizarTerapeuta = ({ id, firstName, lastName, email, phone, specializa
         country: newCountry,
       }),
     });
-  
+
     if (!res.ok) {
-      console.error("Error al actualizar el terapeuta");
       throw new Error("Error al actualizar el terapeuta");
     }
-  };
+
+    // Redirige a la lista de terapeutas
+    router.push("/terapeuta");
+  } catch (error) {
+    setError("Hubo un problema al actualizar el terapeuta. Intenta nuevamente.");
+  }
+};
+
   
 
   return (
