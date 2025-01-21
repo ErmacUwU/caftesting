@@ -2,7 +2,7 @@ import ActualizarTerapeuta from "@/app/components/ActualizarTerapeuta";
 
 const getTherapistById = async (id) => {
   try {
-    const res = await fetch(`http://localhost:3000/api/therapist/${id}`, {
+    const res = await fetch(`/api/therapist/${id}`, {
       cache: "no-store",
     });
 

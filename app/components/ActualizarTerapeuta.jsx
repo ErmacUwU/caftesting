@@ -20,7 +20,7 @@ const ActualizarTerapeuta = ({ id, firstName, lastName, email, phone, specializa
   const updateTherapist = async (e) => {
     e.preventDefault();
 
-    const res = await fetch(`http://localhost:3000/api/therapist/${id}`, {
+    const res = await fetch(`/api/therapist/${id}`, {
       method: "PUT",
       headers: {
         "Content-type": "application/json",
