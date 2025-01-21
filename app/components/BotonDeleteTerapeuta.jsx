@@ -13,7 +13,7 @@ const BotonDeleteTerapeuta = ({id}) => {
         const confirmed = confirm("¿Esta seguro de borrarlo?")
 
         if(confirmed){
-            const res = await fetch(`http://localhost:3000/api/therapist?id=${id}`, {
+            const res = await fetch(`/api/therapist?id=${id}`, {
                 method: "DELETE"
             });
 
