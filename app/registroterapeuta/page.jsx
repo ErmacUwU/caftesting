@@ -8,6 +8,16 @@ import { useRouter } from "next/navigation";
 
 const RegistroTerapeuta = () => {
 
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [error, setError] = useState("");
+
   const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
   const router = useRouter();
 
@@ -22,17 +32,6 @@ const RegistroTerapeuta = () => {
   if (!isAuthenticated) {
     return null;
   }
-
-  
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [specialization, setSpecialization] = useState("");
-  const [address, setAddress] = useState("");
-  const [city, setCity] = useState("");
-  const [country, setCountry] = useState("");
-  const [error, setError] = useState("");
 
   const agregarTerapista = async (e) =>{
     e.preventDefault();
