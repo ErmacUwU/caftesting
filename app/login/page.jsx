@@ -1,0 +1,86 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext.js'; // Importa el contexto de autenticación
+import { useRouter } from 'next/navigation';
+
+const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const { login } = useAuth(); // Usa la función login del contexto
+  const router = useRouter();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault(); // Evita el comportamiento predeterminado del formulario
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }), // Envia las credenciales al servidor
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Llama al método login del contexto para manejar el estado de autenticación
+        login();
+        router.push('/'); // Redirige al usuario a la página principal
+      } else {
+        setError(data.message || 'Error al iniciar sesión');
+      }
+    } catch (err) {
+      console.error(err);
+      setError('Error al conectarse al servidor');
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-8 rounded-lg shadow-md w-96"
+      >
+        <h1 className="text-2xl font-bold mb-6 text-center">Iniciar Sesión</h1>
+        {error && (
+          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
+        )}
+        <input
+          type="email"
+          placeholder="Correo electrónico"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full p-3 mb-4 border rounded-md focus:outline-none focus:ring focus:ring-blue-300"
+        />
+        <input
+          type="password"
+          placeholder="Contraseña"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          className="w-full p-3 mb-6 border rounded-md focus:outline-none focus:ring focus:ring-blue-300"
+        />
+        <button
+          type="submit"
+          className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition"
+        >
+          Entrar
+        </button>
+        <div className="flex justify-end text-sm mt-5 mb-1">
+          <span>
+            ¿No tienes cuenta?{' '}
+            <a href="/signup" className="text-blue-500">
+              Regístrate
+            </a>
+          </span>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default Login;

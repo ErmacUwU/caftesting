@@ -1,10 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import uniquid from "uniquid";
+import { useAuth } from "../context/AuthContext.js"; // Importa el contexto de autenticación
+import { useRouter } from "next/navigation";
 
 const RegistroTerapeuta = () => {
+
+  const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
+  const router = useRouter();
+
+  // Redirige al login si no está autenticado
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  // Evita que se muestre contenido mientras redirige
+  if (!isAuthenticated) {
+    return null;
+  }
 
   
   const [firstName, setFirstName] = useState("");

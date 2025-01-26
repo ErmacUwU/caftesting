@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -15,14 +17,19 @@ import {
   Cog6ToothIcon,
   DocumentIcon 
 } from '@heroicons/react/24/outline';
+import { User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext.js';
 
 const Sidebar = () => {
+
+  const { isAuthenticated, logout } = useAuth(); // Usa el estado de autenticación del contexto
+
   return (
     <div className="h-full bg-gray-800 text-white w-64 flex flex-col">
       <div className="p-4 text-2xl font-semibold">CAF TESTS</div>
       <nav className="mt-8 flex-1">
         <ul>
-          <li className="mb-4">
+        <li className="mb-4">
             <Link
               href="/"
               className=" px-4 py-2 hover:bg-gray-700 rounded flex items-center"
@@ -31,6 +38,32 @@ const Sidebar = () => {
               Inicio
             </Link>
           </li>
+
+          {!isAuthenticated && (
+            <li className="mb-4">
+              <Link
+                href="/login"
+                className=" px-4 py-2 hover:bg-gray-700 rounded flex items-center"
+              >
+                <User className="h-5 w-5 mr-3" />
+                Iniciar Sesión
+              </Link>
+            </li>
+          )}
+
+        {isAuthenticated && (
+          <>
+          {/* Opción de Cerrar Sesión */}
+          <li className="mb-4">
+          <button
+            onClick={logout}
+            className="w-full px-4 py-2 hover:bg-gray-700 rounded flex items-center text-left"
+          >
+            <User className="h-5 w-5 mr-3" />
+            Cerrar Sesión
+          </button>
+        </li>
+
           <li className="mb-4">
             <Link
               href="/registropacientes"
@@ -156,6 +189,8 @@ const Sidebar = () => {
                Documentos
             </Link>
           </li>
+        </>
+          )}
         </ul>
       </nav>
     </div>

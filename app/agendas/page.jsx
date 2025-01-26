@@ -1,7 +1,27 @@
-import React from 'react';
+'use client'
+
 import TarjetaCitas from '../components/TarjetaCitas';
+import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext.js"; // Importa el contexto de autenticación
+import { useRouter } from "next/navigation";
 
 const Agendas = () => {
+
+  const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
+  const router = useRouter();
+
+  // Redirige al login si no está autenticado
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push("/login");
+    }
+  }, [isAuthenticated, router]);
+
+  // Evita que se muestre contenido mientras redirige
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="container mx-auto p-6 bg-gray-100 rounded-lg shadow-md">
       <h1 className='uppercase text-4xl font-bold text-center mb-6 text-gray-800'>Lista de Citas</h1>
