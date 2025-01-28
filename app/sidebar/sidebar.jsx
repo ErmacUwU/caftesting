@@ -18,10 +18,10 @@ import {
   DocumentIcon 
 } from '@heroicons/react/24/outline';
 import { User } from 'lucide-react';
-import { useAuth } from '../context/AuthContext.js';
+import { useAuth } from '../context/AuthContext.js'; // Importa el contexto de autenticación.
 
 const Sidebar = () => {
-
+  // Extrae el estado de autenticación y la función logout desde el contexto de autenticación.
   const { isAuthenticated, logout } = useAuth(); // Usa el estado de autenticación del contexto
 
   return (
@@ -38,7 +38,7 @@ const Sidebar = () => {
               Inicio
             </Link>
           </li>
-
+          {/* Enlace visible solo si el usuario no está autenticado */}
           {!isAuthenticated && (
             <li className="mb-4">
               <Link
@@ -51,6 +51,7 @@ const Sidebar = () => {
             </li>
           )}
 
+        {/* Opciones visibles solo si el usuario está autenticado */}
         {isAuthenticated && (
           <>
           {/* Opción de Cerrar Sesión */}

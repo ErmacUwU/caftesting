@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 
 const Signup = () => {
+
+  // Función que se ejecuta al enviar el formulario de registro.
   const [userName, setUserName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -10,15 +12,18 @@ const Signup = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Función que se ejecuta al enviar el formulario de registro.
   const handleSignup = async (e) => {
     e.preventDefault();
 
+    // Valida que las contraseñas coincidan antes de enviar la solicitud.
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden');
       return;
     }
 
     try {
+      // Realiza una solicitud HTTP POST al endpoint `/api/signup` para crear un nuevo usuario.
       const response = await fetch('/api/signup', {
         method: 'POST',
         headers: {
@@ -30,6 +35,8 @@ const Signup = () => {
       const data = await response.json();
 
       if (response.ok) {
+
+        // Si el servidor devuelve una respuesta exitosa:
         setSuccess('Cuenta creada con éxito. Ahora puedes iniciar sesión.');
         setError('');
         setUserName('');
@@ -37,6 +44,7 @@ const Signup = () => {
         setPassword('');
         setConfirmPassword('');
       } else {
+         // Si el servidor devuelve un error, muestra el mensaje proporcionado o un mensaje genérico.
         setError(data.message || 'Hubo un error al registrarte');
       }
     } catch (err) {

@@ -19,12 +19,12 @@ const RegistroTerapeuta = () => {
   const [error, setError] = useState("");
 
   const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
-  const router = useRouter();
+  const router = useRouter(); // Hook para manejar redirecciones.
 
   // Redirige al login si no está autenticado
   useEffect(() => {
     if (!isAuthenticated) {
-      router.push("/login");
+      router.push("/login"); // Redirige a la página de inicio de sesión.
     }
   }, [isAuthenticated, router]);
 

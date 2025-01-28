@@ -5,15 +5,21 @@ import { useAuth } from '../context/AuthContext.js'; // Importa el contexto de a
 import { useRouter } from 'next/navigation';
 
 const Login = () => {
+
+  // Estados locales para manejar los valores del formulario y los mensajes de error.
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth(); // Usa la función login del contexto
-  const router = useRouter();
+  const router = useRouter(); // Hook para redirigir al usuario después del inicio de sesión.
 
+
+   // Función que se ejecuta al enviar el formulario.
   const handleSubmit = async (e) => {
     e.preventDefault(); // Evita el comportamiento predeterminado del formulario
 
+    // Realiza una solicitud HTTP POST al backend para enviar las credenciales del usuario.
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
@@ -27,7 +33,7 @@ const Login = () => {
 
       if (response.ok) {
         // Llama al método login del contexto para manejar el estado de autenticación
-        login();
+        login(); // Actualiza el estado de autenticación en el contexto global.
         router.push('/'); // Redirige al usuario a la página principal
       } else {
         setError(data.message || 'Error al iniciar sesión');
