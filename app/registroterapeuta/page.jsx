@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import uniquid from "uniquid";
-import { useAuth } from "../context/AuthContext.js"; // Importa el contexto de autenticación
+import { useAuth } from "../context/AuthContext.js"; 
 import { useRouter } from "next/navigation";
 
 const RegistroTerapeuta = () => {

@@ -1,6 +1,10 @@
-import dbConnect from "@/lib/dbConnect";
-import Register from "@/models/Register";
 import { NextResponse } from "next/server";
+
+// Usuario administrador predefinido
+const ADMIN_CREDENTIALS = {
+  email: "admin@caf.com", // Correo del administrador
+  password: "Admin1234", // Contraseña del administrador
+};
 
 // Maneja la solicitud HTTP POST para el inicio de sesión.
 export async function POST(req) {
@@ -8,32 +12,19 @@ export async function POST(req) {
   const { email, password } = await req.json();
 
   try {
-    // Conecta a la base de datos
-    await dbConnect();
-
-    // Busca al usuario por email
-    const user = await Register.findOne({ email });
-
-    // Verifica si el usuario no existe.
-    if (!user) {
+    // Verifica si las credenciales coinciden con las del administrador.
+    if (email !== ADMIN_CREDENTIALS.email || password !== ADMIN_CREDENTIALS.password) {
       return NextResponse.json(
-        { msg: "Usuario no encontrado", success: false },
-        { status: 404 }
+        { msg: "Credenciales incorrectas", success: false },
+        { status: 401 } // Unauthorized
       );
     }
 
-    // Verifica si la contraseña ingresada no coincide con la registrada.
-    if (user.password !== password) {
-      return NextResponse.json(
-        { msg: "Contraseña incorrecta", success: false },
-        { status: 401 }
-      );
-    }
-    // Si el inicio de sesión es exitoso, devuelve un mensaje de éxito y el ID del usuario.
+    // Si las credenciales son correctas, permite el acceso y retorna un mensaje de éxito.
     return NextResponse.json({
       msg: "Inicio de sesión exitoso",
       success: true,
-      userId: user._id,
+      userId: "admin", // Se asigna un ID fijo para el administrador
     });
   } catch (error) {
     console.error(error);

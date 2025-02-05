@@ -35,6 +35,7 @@ const Login = () => {
         // Llama al método login del contexto para manejar el estado de autenticación
         login(); // Actualiza el estado de autenticación en el contexto global.
         router.push('/'); // Redirige al usuario a la página principal
+        alert('Inicio de Sesion Exitoso, Bienvenido')
       } else {
         setError(data.message || 'Error al iniciar sesión');
       }
@@ -76,14 +77,6 @@ const Login = () => {
         >
           Entrar
         </button>
-        <div className="flex justify-end text-sm mt-5 mb-1">
-          <span>
-            ¿No tienes cuenta?{' '}
-            <a href="/signup" className="text-blue-500">
-              Regístrate
-            </a>
-          </span>
-        </div>
       </form>
     </div>
   );
