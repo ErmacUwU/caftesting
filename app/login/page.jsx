@@ -46,12 +46,12 @@ const Login = () => {
   };
 
   return (
-    <div className="flex items-center justify-center  bg-transparent">
+    <div className="flex justify-center  bg-transparent">
       <form
         onSubmit={handleSubmit}
-        className="bg-white bg-opacity-80 p-8 rounded-lg shadow-md w-96"
-      > Inicia Sesion
-        <h1 className="text-2xl font-bold mb-6 text-center"></h1>
+        className="bg-white bg-opacity-50 p-8 rounded-lg shadow-md w-96"
+      >
+        <h1 className="text-2xl font-bold mb-6 text-center">Bienvenido</h1>
         {error && (
           <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
         )}
@@ -61,7 +61,8 @@ const Login = () => {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full p-3 mb-4 border rounded-md focus:outline-none focus:ring focus:ring-blue-300"
+          className="w-full p-3 mb-4 border rounded-md 
+          text-black"
         />
         <input
           type="password"
@@ -69,7 +70,12 @@ const Login = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full p-3 mb-6 border rounded-md focus:outline-none focus:ring focus:ring-blue-300"
+          className="text-red-500
+          w-full p-3 mb-6
+          border
+          
+
+          "
         />
         <button
           type="submit"
