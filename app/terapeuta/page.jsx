@@ -1,5 +1,5 @@
 "use client";
-import React from 'react'
+import React, { useState, useEffect } from "react";
 import TarjetaTerapeuta from '../components/TarjetaTerapeuta'
 import { useAuth } from "../context/AuthContext.js"; 
 import { useRouter } from "next/navigation";
