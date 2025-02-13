@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import uniquid from "uniquid";
+import { useAuth } from "../context/AuthContext.js"; 
+import { useRouter } from "next/navigation";
 
 // Expresión regular para validar el CURP
 const curpPattern = /^[a-zA-Z0-9]{18}$/;
@@ -36,6 +38,20 @@ const RegistroPaciente = () => {
   ]);
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
+  const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
+      const router = useRouter(); // Hook para manejar redirecciones.
+    
+      // Redirige al login si no está autenticado
+      useEffect(() => {
+        if (!isAuthenticated) {
+          router.push("/login"); // Redirige a la página de inicio de sesión.
+        }
+      }, [isAuthenticated, router]);
+    
+      // Evita que se muestre contenido mientras redirige
+      if (!isAuthenticated) {
+        return null;
+      }
 
   const addContact = () => {
     setContacts([
