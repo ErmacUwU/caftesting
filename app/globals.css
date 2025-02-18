@@ -36,4 +36,11 @@ body {
   .input-password{
     color: darkred;
   }
+  .background {
+    background-image: url('/images/back_form_1.jpg'); /* Ruta de la imagen */
+    background-size: cover;
+    background-position: center;
+    height: 100vh; /* Ajusta la altura según sea necesario */
+    width: 100%;
+  }
 }
