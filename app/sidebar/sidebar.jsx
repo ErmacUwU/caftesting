@@ -16,9 +16,11 @@ import {
   UserGroupIcon,
   Cog6ToothIcon,
   DocumentIcon,
+  Bars2Icon
+  
 } from "@heroicons/react/24/outline";
 import { User } from "lucide-react";
-import { useAuth } from "../context/AuthContext.js"; // Importa el contexto de autenticación.
+import { useAuth } from "../context/AuthContext.js"; 
 
 const Sidebar = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -30,20 +32,28 @@ const Sidebar = () => {
   const [openAlmacenDocumentos, setOpenAlmacenDocumentos] = useState(false);
   const [openAdministracion, setOpenAdministracion] = useState(false);
 
-  return (
-    <div className="sticky top-0 left-0 container mx-auto flex bg-black justify-between items-center">
-      <div className="flex flex-row text-white h-16 items-center px-4">
-        <div className="text-2xl font-semibold">CAF TESTS</div>
-      </div>
-      <nav className="flex">
-        <ul className="flex flex-row">
-          <li>
-            <Link href="/" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-              <HomeIcon className="h-5 w-5 mr-3" />
-              Inicio
-            </Link>
-          </li>
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  return (
+    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black">
+      <div className="flex flex-row text-white h-16 items-center">
+      
+        <Link href="/" className="mx-4 my-2 hover:bg-gray-700       rounded flex items-center">
+            <HomeIcon className="h-5 w-5 mr-3" />
+              CAF TEST
+            </Link>
+      </div>
+      
+      <div className="">
+        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-white">
+          
+          <Bars2Icon className="h-5 w-5 mr-3">Menu</Bars2Icon>
+        </button>
+      </div>
+
+      <nav className={`flex ${isMenuOpen ? 'block' : 'hidden'} md:block`}>
+        <ul className="flex flex-col md:flex-row">
+    
           {!isAuthenticated && (
             <li>
               <Link href="/login" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
@@ -55,19 +65,12 @@ const Sidebar = () => {
 
           {isAuthenticated && (
             <>
-              <li>
-                <button onClick={logout} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
-                  <User className="h-5 w-5 mr-3" />
-                  Cerrar Sesión
-                </button>
-              </li>
-
               <div className="mt-4">
                 <button onClick={() => setOpenRegistros(!openRegistros)} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
                   <h3 className="text-sm font-semibold text-gray-400 uppercase">Registros</h3>
                 </button>
                 {openRegistros && (
-                  <>
+                  <ul>
                     <li>
                       <Link href="/registropacientes" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
                         <UserPlusIcon className="h-5 w-5 mr-3" />
@@ -80,7 +83,7 @@ const Sidebar = () => {
                         Registro Terapeutas
                       </Link>
                     </li>
-                  </>
+                  </ul>
                 )}
               </div>
 
@@ -89,7 +92,7 @@ const Sidebar = () => {
                   <h3 className="text-sm font-semibold text-gray-400 uppercase">Gestión</h3>
                 </button>
                 {openGestion && (
-                  <>
+                  <ul>
                     <li>
                       <Link href="/citas" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
                         <CalendarDaysIcon className="h-5 w-5 mr-3" />
@@ -114,7 +117,7 @@ const Sidebar = () => {
                         Pacientes
                       </Link>
                     </li>
-                  </>
+                  </ul>
                 )}
               </div>
 
@@ -202,9 +205,18 @@ const Sidebar = () => {
                         Ajustes
                       </Link>
                     </li>
+
+                    <li>
+                <button onClick={logout} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
+                  <User className="h-5 w-5 mr-3" />
+                  Cerrar Sesión
+                </button>
+              </li>
+
                   </>
                 )}
               </div>
+             
             </>
           )}
         </ul>
