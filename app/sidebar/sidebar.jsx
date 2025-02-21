@@ -35,7 +35,7 @@ const Sidebar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black">
+    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black ">
       <div className="flex flex-row text-white h-16 items-center">
       
         <Link href="/" className="mx-4 my-2 hover:bg-gray-700       rounded flex items-center">
@@ -47,11 +47,11 @@ const Sidebar = () => {
       <div className="">
         <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-white">
           
-          <Bars2Icon className="h-5 w-5 mr-3">Menu</Bars2Icon>
+          <Bars2Icon className="h-5 w-5 mr-3 lg:hidden">Menu</Bars2Icon>
         </button>
       </div>
 
-      <nav className={`flex ${isMenuOpen ? 'block' : 'hidden'} md:block`}>
+      <nav className={`pt-5 fixed w-50 top-8 right-0 z-50 bg-black ${isMenuOpen ? 'block' : 'hidden'} md:block`}>
         <ul className="flex flex-col md:flex-row">
     
           {!isAuthenticated && (
