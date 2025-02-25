@@ -1,30 +1,43 @@
-"use client"
-import { useEffect, useState } from 'react';
-
+"use client";
+import { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext.js";
+import { useRouter } from "next/navigation";
 
 const Ajustes = () => {
     const [isDarkMode, setIsDarkMode] = useState(false);
+    const { isAuthenticated } = useAuth();
+    const router = useRouter();
 
     useEffect(() => {
-        // Verifica y aplica el modo guardado en localStorage
-        const storedTheme = localStorage.getItem('theme') === 'dark';
-        setIsDarkMode(storedTheme);
-        if (storedTheme) {
-            document.documentElement.classList.add('dark');
+        // Manejo de autenticación
+        if (!isAuthenticated) {
+            router.replace("/login");
+            return;
         }
-    }, []);
+
+        // Verificar y aplicar el modo guardado en localStorage
+        if (typeof window !== "undefined") { // ✅ Evita errores en SSR
+            const storedTheme = localStorage.getItem("theme") === "dark";
+            setIsDarkMode(storedTheme);
+            if (storedTheme) {
+                document.documentElement.classList.add("dark");
+            }
+        }
+    }, [isAuthenticated, router]); // Se ejecuta cuando cambia la autenticación o el router
+
+    if (!isAuthenticated) {
+        return null;
+    }
 
     const toggleTheme = () => {
         const newTheme = !isDarkMode;
         setIsDarkMode(newTheme);
-        // Aplica o quita la clase `dark` en el HTML
         if (newTheme) {
-            document.documentElement.classList.add('dark');
+            document.documentElement.classList.add("dark");
         } else {
-            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.remove("dark");
         }
-        // Guarda la preferencia en localStorage
-        localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+        localStorage.setItem("theme", newTheme ? "dark" : "light");
     };
 
     return (
@@ -34,7 +47,7 @@ const Ajustes = () => {
                 onClick={toggleTheme}
                 className="mt-4 p-2 bg-blue-500 text-white rounded"
             >
-                Cambiar a modo {isDarkMode ? 'claro' : 'oscuro'}
+                Cambiar a modo {isDarkMode ? "claro" : "oscuro"}
             </button>
         </div>
     );
