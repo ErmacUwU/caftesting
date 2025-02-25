@@ -1,228 +1,154 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
-import {
-  HomeIcon,
-  UserPlusIcon,
-  UsersIcon,
-  CalendarDaysIcon,
-  ClipboardDocumentListIcon,
-  ChatBubbleLeftRightIcon,
-  DocumentChartBarIcon,
-  CreditCardIcon,
-  ArchiveBoxIcon,
-  DocumentTextIcon,
-  UserGroupIcon,
-  Cog6ToothIcon,
-  DocumentIcon,
-  Bars2Icon
-  
-} from "@heroicons/react/24/outline";
+import { HomeIcon, UserPlusIcon, UsersIcon, CalendarDaysIcon, 
+  ClipboardDocumentListIcon, ChatBubbleLeftRightIcon, DocumentChartBarIcon, 
+  CreditCardIcon, ArchiveBoxIcon, DocumentTextIcon, UserGroupIcon, 
+  Cog6ToothIcon, DocumentIcon, Bars2Icon } from "@heroicons/react/24/outline";
 import { User } from "lucide-react";
-import { useAuth } from "../context/AuthContext.js"; 
+import { useAuth } from "../context/AuthContext.js";
+
+const menuSections = {
+  registros: false,
+  gestion: false,
+  comunicacion: false,
+  reportesPagos: false,
+  almacenDocumentos: false,
+  administracion: false
+};
 
 const Sidebar = () => {
   const { isAuthenticated, logout } = useAuth();
-
-  const [openRegistros, setOpenRegistros] = useState(false);
-  const [openGestion, setOpenGestion] = useState(false);
-  const [openComunicacion, setOpenComunicacion] = useState(false);
-  const [openReportesPagos, setOpenReportesPagos] = useState(false);
-  const [openAlmacenDocumentos, setOpenAlmacenDocumentos] = useState(false);
-  const [openAdministracion, setOpenAdministracion] = useState(false);
-
+  const [openSections, setOpenSections] = useState(menuSections);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  const toggleSection = useCallback((section) => {
+    setOpenSections(prev => ({ ...menuSections, [section]: !prev[section] }));
+  }, []);
+
+  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
+
   return (
-    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black ">
-      <div className="flex flex-row text-white h-16 items-center">
-      
-        <Link href="/" className="mx-4 my-2 hover:bg-gray-700       rounded flex items-center">
-            <HomeIcon className="h-5 w-5 mr-3" />
-              CAF TEST
-            </Link>
-      </div>
-      
-      <div className="">
-        <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-white">
-          
-          <Bars2Icon className="h-5 w-5 mr-3 lg:hidden">Menu</Bars2Icon>
-        </button>
+    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black">
+      <div className="flex text-white h-16 items-center">
+        <Link
+          href="/"
+          className="mx-4 my-2 hover:bg-gray-700 rounded flex items-center p-2 transition-colors"
+          aria-label="Inicio"
+        >
+          <HomeIcon className="h-5 w-5 mr-3" />
+          CAF TEST
+        </Link>
       </div>
 
-      <nav className={`pt-5 fixed w-50 top-8 right-0 z-50 bg-black ${isMenuOpen ? 'block' : 'hidden'} md:block`}>
+      <button
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        className="text-white lg:hidden p-2 hover:bg-gray-700 rounded"
+        aria-label="Menú principal"
+        aria-expanded={isMenuOpen}
+      >
+        <Bars2Icon className="h-5 w-5" />
+      </button>
+
+      <nav 
+        className={`fixed md:relative md:block w-full md:w-auto top-16 md:top-0 right-0 z-50 bg-black ${
+          isMenuOpen ? 'block' : 'hidden'
+        }`}
+      >
         <ul className="flex flex-col md:flex-row">
-    
-          {!isAuthenticated && (
+          {!isAuthenticated ? (
             <li>
-              <Link href="/login" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
+              <Link
+                href="/login"
+                onClick={closeMenu}
+                className="px-4 py-3 hover:bg-gray-700 rounded flex items-center"
+              >
                 <User className="h-5 w-5 mr-3" />
                 Iniciar Sesión
               </Link>
             </li>
-          )}
-
-          {isAuthenticated && (
+          ) : (
             <>
-              <div className="mt-4">
-                <button onClick={() => setOpenRegistros(!openRegistros)} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase">Registros</h3>
-                </button>
-                {openRegistros && (
-                  <ul>
-                    <li>
-                      <Link href="/registropacientes" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <UserPlusIcon className="h-5 w-5 mr-3" />
-                        Registro Clientes
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/registroterapeuta" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <UsersIcon className="h-5 w-5 mr-3" />
-                        Registro Terapeutas
-                      </Link>
-                    </li>
-                  </ul>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <button onClick={() => setOpenGestion(!openGestion)} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase">Gestión</h3>
-                </button>
-                {openGestion && (
-                  <ul>
-                    <li>
-                      <Link href="/citas" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <CalendarDaysIcon className="h-5 w-5 mr-3" />
-                        Citas
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/agendas" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <ClipboardDocumentListIcon className="h-5 w-5 mr-3" />
-                        Agendas
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/terapeuta" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <UsersIcon className="h-5 w-5 mr-3" />
-                        Terapeuta
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/pacientes" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <UsersIcon className="h-5 w-5 mr-3" />
-                        Pacientes
-                      </Link>
-                    </li>
-                  </ul>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <button onClick={() => setOpenComunicacion(!openComunicacion)} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase">Comunicación</h3>
-                </button>
-                {openComunicacion && (
-                  <>
-                    <li>
-                      <Link href="/mensajes" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <ChatBubbleLeftRightIcon className="h-5 w-5 mr-3" />
-                        Mensajes
-                      </Link>
-                    </li>
-                  </>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <button onClick={() => setOpenReportesPagos(!openReportesPagos)} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase">Reportes y Pagos</h3>
-                </button>
-                {openReportesPagos && (
-                  <>
-                    <li>
-                      <Link href="/reporte" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <DocumentChartBarIcon className="h-5 w-5 mr-3" />
-                        Reportes
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/pagos" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <CreditCardIcon className="h-5 w-5 mr-3" />
-                        Pagos
-                      </Link>
-                    </li>
-                  </>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <button onClick={() => setOpenAlmacenDocumentos(!openAlmacenDocumentos)} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase">Almacén y Documentos</h3>
-                </button>
-                {openAlmacenDocumentos && (
-                  <>
-                    <li>
-                      <Link href="/almacen" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <ArchiveBoxIcon className="h-5 w-5 mr-3" />
-                        Almacen
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/documentador" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <DocumentTextIcon className="h-5 w-5 mr-3" />
-                        Documentador
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/docs" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <DocumentIcon className="h-5 w-5 mr-3" />
-                        Documentos
-                      </Link>
-                    </li>
-                  </>
-                )}
-              </div>
-
-              <div className="mt-4">
-                <button onClick={() => setOpenAdministracion(!openAdministracion)} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
-                  <h3 className="text-sm font-semibold text-gray-400 uppercase">Administración</h3>
-                </button>
-                {openAdministracion && (
-                  <>
-                    <li>
-                      <Link href="/usuarios" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <UserGroupIcon className="h-5 w-5 mr-3" />
-                        Usuarios
-                      </Link>
-                    </li>
-                    <li>
-                      <Link href="/ajustes" className="px-4 py-2 hover:bg-gray-700 rounded flex items-center">
-                        <Cog6ToothIcon className="h-5 w-5 mr-3" />
-                        Ajustes
-                      </Link>
-                    </li>
-
-                    <li>
-                <button onClick={logout} className="px-4 py-2 hover:bg-gray-700 rounded flex items-center w-full text-left">
+              {Object.keys(menuSections).map((section) => (
+                <div key={section} className="mt-2 md:mt-0 md:mx-1">
+                  <button
+                    onClick={() => toggleSection(section)}
+                    className="px-4 py-3 hover:bg-gray-700 rounded flex items-center w-full"
+                    aria-expanded={openSections[section]}
+                  >
+                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+                      {section.replace(/([A-Z])/g, ' $1').trim()}
+                    </h3>
+                  </button>
+                  
+                  {openSections[section] && (
+                    <ul className="md:absolute md:bg-black md:rounded-md md:shadow-lg">
+                      {getSectionLinks(section, closeMenu)}
+                    </ul>
+                  )}
+                </div>
+              ))}
+              
+              <li className="mt-2 md:hidden">
+                <button
+                  onClick={logout}
+                  className="px-4 py-3 hover:bg-gray-700 rounded flex items-center w-full"
+                >
                   <User className="h-5 w-5 mr-3" />
                   Cerrar Sesión
                 </button>
               </li>
-
-                  </>
-                )}
-              </div>
-             
             </>
           )}
         </ul>
       </nav>
     </div>
   );
+};
+
+const getSectionLinks = (section, closeMenu) => {
+  const sectionConfig = {
+    registros: [
+      { href: "/registropacientes", text: "Registro Clientes", icon: UserPlusIcon },
+      { href: "/registroterapeuta", text: "Registro Terapeutas", icon: UsersIcon }
+    ],
+    gestion: [
+      { href: "/citas", text: "Citas", icon: CalendarDaysIcon },
+      { href: "/agendas", text: "Agendas", icon: ClipboardDocumentListIcon },
+      { href: "/terapeuta", text: "Terapeuta", icon: UsersIcon },
+      { href: "/pacientes", text: "Pacientes", icon: UsersIcon }
+    ],
+    comunicacion: [
+      { href: "/mensajes", text: "Mensajes", icon: ChatBubbleLeftRightIcon }
+    ],
+    reportesPagos: [
+      { href: "/reporte", text: "Reportes", icon: DocumentChartBarIcon },
+      { href: "/pagos", text: "Pagos", icon: CreditCardIcon }
+    ],
+    almacenDocumentos: [
+      { href: "/almacen", text: "Almacen", icon: ArchiveBoxIcon },
+      { href: "/documentador", text: "Documentador", icon: DocumentTextIcon },
+      { href: "/docs", text: "Documentos", icon: DocumentIcon }
+    ],
+    administracion: [
+      { href: "/usuarios", text: "Usuarios", icon: UserGroupIcon },
+      { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon }
+    ]
+  };
+
+  return sectionConfig[section].map(({ href, text, icon: Icon }) => (
+    <li key={href}>
+      <Link
+        href={href}
+        onClick={closeMenu}
+        className="px-4 py-3 hover:bg-gray-700 rounded flex items-center whitespace-nowrap"
+      >
+        <Icon className="h-5 w-5 mr-3" />
+        {text}
+      </Link>
+    </li>
+  ));
 };
 
 export default Sidebar;
