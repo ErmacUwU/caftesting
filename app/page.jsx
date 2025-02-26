@@ -1,11 +1,18 @@
 import React from 'react';
-import styles from '@/app/globals.css';
 import Link from 'next/link';
 import Sidebar from '@/app/sidebar/sidebar';
 
+const backgroundStyle={
+  backgroundImage: 'url(/images/back_form_1.jpg)',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    height: '100vh',
+    width: '100%',
+};
+
 const Page = () => {
   return (
-    <div className=" flex h-screen">
+    <div style={backgroundStyle} className=" flex h-screen">
       <div className="flex-1 p-6">
         <h3 className='mx-auto bg-slate-500 flex items-center p-4 text-white text-xl'>
           SISTEMA DE PRUEBA DE FUNCIONALIDADES PARA CAF
