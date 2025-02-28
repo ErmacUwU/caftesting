@@ -80,7 +80,7 @@ const ConsultaDocumentos = () => {
   };
 
   return (
-    <div className="p-4 bg-gray-50 rounded shadow-lg">
+    <div className="p-4 bg-black rounded shadow-lg">
       <h1 className="text-2xl font-bold mb-5 text-center">Consulta de Documentos</h1>
 
       <div>
@@ -88,7 +88,7 @@ const ConsultaDocumentos = () => {
         <h2 className="text-lg font-semibold mb-2">Filtrar por Paciente:</h2>
         <div className="mb-4">
         {loadingPatients ? (
-          <p className="text-sm text-gray-500">Cargando pacientes...</p>
+          <p className="text-sm text-white">Cargando pacientes...</p>
         ) : patients.length > 0 ? (
           patients.map((patient, index) => (
           <label key={patient._id || index} className="block">
@@ -148,7 +148,7 @@ const ConsultaDocumentos = () => {
         {documents.length > 0 && (
           <div>
             {documents.map((doc, index) => (
-              <div key={index} className="p-2 mt-2 bg-white shadow rounded">
+              <div key={index} className="p-2 mt-2  shadow rounded">
                 <p>
                   <strong>Nombre:</strong> {doc.name}
                 </p>

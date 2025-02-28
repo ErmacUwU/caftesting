@@ -33,7 +33,7 @@ const MyCalendar = () => {
   // Personalizar el contenido del evento
   const renderEventContent = (eventInfo) => {
     return (
-      <div className="custom-event">
+      <div className="custom-event bg-black">
         <div>
           <strong>{eventInfo.event.title}</strong>
         </div>

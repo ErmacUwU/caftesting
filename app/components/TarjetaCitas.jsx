@@ -55,8 +55,6 @@ const handleExportCSV = () => {
 
 
 
-//
-
 
   useEffect(() => {
     const getDates = async () => {
@@ -128,11 +126,11 @@ const handleExportCSV = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-lg">
-      <h2 className="text-2xl font-bold mb-4">Filtrar Citas</h2>
+    <div className="p-6 rounded-lg shadow-lg">
+      <h2 className="text-2xl font-bold mb-4 text-black">Filtrar Citas</h2>
 
       {/* Filtro de terapeuta */}
-      <div className="mb-4">
+      <div className="mb-4 text-black">
         <label className="block mb-1 font-semibold">Filtrar por terapeuta:</label>
         <select 
           value={selectedTherapist} 
@@ -149,8 +147,8 @@ const handleExportCSV = () => {
       </div>
 
       {/* Filtro de paciente */}
-      <div className="mb-4">
-        <label className="block mb-1 font-semibold">Filtrar por paciente:</label>
+      <div className="mb-4 text-black">
+        <label className="block mb-1  font-semibold">Filtrar por paciente:</label>
         <select 
           value={selectedPatient} 
           onChange={handlePatientChange} 
@@ -166,7 +164,7 @@ const handleExportCSV = () => {
       </div>
 
       {/* Filtro de servicio */}
-      <div className="mb-4">
+      <div className="mb-4 text-black">
         <label className="block mb-1 font-semibold">Filtrar por servicio:</label>
         <select 
           value={selectedService} 
@@ -183,7 +181,7 @@ const handleExportCSV = () => {
       </div>
 
       {/* Filtro de fecha única */}
-      <div className="mb-4">
+      <div className="mb-4 text-black">
         <label className="block mb-1 font-semibold">Fecha Única:</label>
         <input 
           type="date" 
@@ -194,7 +192,7 @@ const handleExportCSV = () => {
       </div>
 
       {/* Filtro de rango de tiempo */}
-      <div className="mb-4">
+      <div className="mb-4 text-black">
         <label className="block mb-1 font-semibold">Rango de tiempo:</label>
         <div className="flex gap-4">
           <input 
@@ -234,11 +232,11 @@ const handleExportCSV = () => {
 
 
             <div>
-              <div className="font-semibold">{d.title}</div>
-              <div>Terapeuta: {d.therapist}</div>
-              <div>Paciente: {d.patient}</div>
-              <div>Fecha: {formattedDate}</div>
-              <div>Hora: {formattedStart} - {formattedEnd}</div>
+              <div className="font-semibold text-black">{d.title}</div>
+              <div className="text-black">Terapeuta: {d.therapist}</div>
+              <div className="text-black">Paciente: {d.patient}</div>
+              <div className="text-black">Fecha: {formattedDate}</div>
+              <div className="text-black">Hora: {formattedStart} - {formattedEnd}</div>
             </div>
             <div className="flex justify-evenly py-2">
               <div>

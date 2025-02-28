@@ -118,7 +118,7 @@ const Reporte = () => {
 
   return (
     <div className="p-4 bg-gray-50 rounded shadow-lg">
-      <h1 className="text-2xl font-bold mb-5 text-center">Creador de Reportes para Citas</h1>
+      <h1 className="text-2xl font-bold mb-5 text-center text-black">Creador de Reportes para Citas</h1>
 
       {/* Selección del Terapeuta */}
       <label htmlFor="therapists" className="block mb-1 font-semibold">
