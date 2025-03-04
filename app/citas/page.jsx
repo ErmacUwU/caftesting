@@ -63,14 +63,6 @@ const Citas = () => {
       }
     }, [isAuthenticated, isLoading, router]);
   
-    if (isLoading) {
-      return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
-    }
-  
-    if (!isAuthenticated) {
-      return null; // ⬅ Evita mostrar contenido mientras se redirige
-    }
-
   // Cargar datos iniciales
   useEffect(() => {
     const fetchData = async () => {
@@ -107,6 +99,14 @@ const Citas = () => {
 
     fetchData();
   }, []);
+
+  if (isLoading) {
+    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+  }
+
+  if (!isAuthenticated) {
+    return null; // ⬅ Evita mostrar contenido mientras se redirige
+  }
 
   const getEventColor = (service) => {
     switch (service) {
