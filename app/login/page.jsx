@@ -2,40 +2,38 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext.js'; // Importa el contexto de autenticación
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation'; // Manejo de redirecciones y parámetros
 
 const Login = () => {
-
-  // Estados locales para manejar los valores del formulario y los mensajes de error.
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth(); // Usa la función login del contexto
-  const router = useRouter(); // Hook para redirigir al usuario después del inicio de sesión.
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/"; // Obtiene la URL a la que debe redirigir tras el login
 
-
-   // Función que se ejecuta al enviar el formulario.
+  // Función que se ejecuta al enviar el formulario
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Evita el comportamiento predeterminado del formulario
+    e.preventDefault();
 
-    // Realiza una solicitud HTTP POST al backend para enviar las credenciales del usuario.
     try {
       const response = await fetch('/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }), // Envia las credenciales al servidor
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Llama al método login del contexto para manejar el estado de autenticación
-        login(); // Actualiza el estado de autenticación en el contexto global.
-        router.push('/'); // Redirige al usuario a la página principal
-        alert('Inicio de Sesion Exitoso, Bienvenido')
+        // Llama a login y actualiza el estado de autenticación
+        login(data.userId); // Se pasa el `userId` del backend si está disponible
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userId", data.userId); 
+
+        alert('Inicio de Sesión Exitoso, Bienvenido');
+        router.replace(redirectTo); // Redirige a la página protegida que intentó visitar
       } else {
         setError(data.message || 'Error al iniciar sesión');
       }
@@ -46,23 +44,20 @@ const Login = () => {
   };
 
   return (
-    <div className="flex justify-center  bg-transparent">
+    <div className="flex justify-center bg-transparent">
       <form
         onSubmit={handleSubmit}
         className="bg-white bg-opacity-50 p-8 rounded-lg shadow-md w-96"
       >
         <h1 className="text-2xl font-bold mb-6 text-center">Bienvenido</h1>
-        {error && (
-          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
-        )}
+        {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
         <input
           type="email"
           placeholder="Correo electrónico"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full p-3 mb-4 border rounded-md 
-          text-black"
+          className="w-full p-3 mb-4 border rounded-md text-black"
         />
         <input
           type="password"
@@ -70,12 +65,7 @@ const Login = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="text-red-500
-          w-full p-3 mb-6
-          border
-          
-
-          "
+          className="w-full p-3 mb-6 border text-black"
         />
         <button
           type="submit"
