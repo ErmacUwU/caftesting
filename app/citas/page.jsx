@@ -57,20 +57,6 @@ const Citas = () => {
     { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
   ];
 
-
-  const getEventColor = (service) => {
-    switch (service) {
-      case "Consulta General":
-        return { backgroundColor: "#3498db", borderColor: "#000" };
-      case "Terapia Física":
-        return { backgroundColor: "#2ecc71", borderColor: "#000" };
-      case "Consulta Especializada":
-        return { backgroundColor: "#e74c3c", borderColor: "#000" };
-      default:
-        return { backgroundColor: "#bdc3c7", borderColor: "#000" };
-    }
-  };
-
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.replace('/login'); // ⬅ Redirige solo si no está autenticado
@@ -122,6 +108,18 @@ const Citas = () => {
     fetchData();
   }, []);
 
+  const getEventColor = (service) => {
+    switch (service) {
+      case "Consulta General":
+        return { backgroundColor: "#3498db", borderColor: "#000" };
+      case "Terapia Física":
+        return { backgroundColor: "#2ecc71", borderColor: "#000" };
+      case "Consulta Especializada":
+        return { backgroundColor: "#e74c3c", borderColor: "#000" };
+      default:
+        return { backgroundColor: "#bdc3c7", borderColor: "#000" };
+    }
+  };
 
   const calculateEndTime = (startTime, duration) => {
     const [hours, minutes] = startTime.split(":").map(Number);
