@@ -1,19 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext.js'; // Importa el contexto de autenticación
-import { useRouter, useSearchParams } from 'next/navigation'; // Manejo de redirecciones y parámetros
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext.js'; 
+import { useRouter } from 'next/navigation'; 
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const { login } = useAuth(); // Usa la función login del contexto
+  const { login } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/"; // Obtiene la URL a la que debe redirigir tras el login
+  const [redirectTo, setRedirectTo] = useState("/");
 
-  // Función que se ejecuta al enviar el formulario
+  // Obtiene la URL de redirección después del login
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      if (redirect) {
+        setRedirectTo(redirect);
+      }
+    }
+  }, []);
+
+  // Función para manejar el login
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -27,13 +37,16 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Llama a login y actualiza el estado de autenticación
-        login(data.userId); // Se pasa el `userId` del backend si está disponible
-        localStorage.setItem("isAuthenticated", "true");
-        localStorage.setItem("userId", data.userId); 
+        login(data.userId);
+        
+        // Guardar en localStorage solo en el cliente
+        if (typeof window !== "undefined") {
+          localStorage.setItem("isAuthenticated", "true");
+          localStorage.setItem("userId", data.userId);
+        }
 
         alert('Inicio de Sesión Exitoso, Bienvenido');
-        router.replace(redirectTo); // Redirige a la página protegida que intentó visitar
+        router.replace(redirectTo);
       } else {
         setError(data.message || 'Error al iniciar sesión');
       }
