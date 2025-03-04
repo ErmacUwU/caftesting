@@ -1,6 +1,8 @@
 "use client";
 // Importaciones de librerías y componentes necesarios
 import React, { useEffect, useState } from "react";
+import { useAuth } from "../context/AuthContext.js"; 
+import { useRouter } from "next/navigation";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -46,7 +48,9 @@ const Citas = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [modalType, setModalType] = useState(null); // "details" o "edit"
-
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+  
   const services = [
     { id: 1, name: "Consulta General", duration: 30, cost: 500 },
     { id: 2, name: "Terapia Física", duration: 60, cost: 1000 },
@@ -66,6 +70,20 @@ const Citas = () => {
         return { backgroundColor: "#bdc3c7", borderColor: "#000" };
     }
   };
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      }
+    }, [isAuthenticated, isLoading, router]);
+  
+    if (isLoading) {
+      return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+    }
+  
+    if (!isAuthenticated) {
+      return null; // ⬅ Evita mostrar contenido mientras se redirige
+    }
 
   // Cargar datos iniciales
   useEffect(() => {
