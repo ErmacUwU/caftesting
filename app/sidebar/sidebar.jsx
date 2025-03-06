@@ -30,7 +30,7 @@ const Sidebar = () => {
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
   return (
-    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black">
+    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black min-w-full">
       <div className="flex text-white h-16 items-center">
         <Link
           href="/"
@@ -84,16 +84,16 @@ const Sidebar = () => {
                   
                   {openSections[section] && (
                     <ul className="md:absolute md:bg-black md:rounded-md md:shadow-lg">
-                      {getSectionLinks(section, closeMenu)}
+                      {getSectionLinks(section, closeMenu, openSections[section])}
                     </ul>
                   )}
                 </div>
               ))}
               
-              <li className="mt-2 md:hidden">
+              <li className="mt-2">
                 <button
                   onClick={logout}
-                  className="px-4 py-3 hover:bg-gray-700 rounded flex items-center w-full"
+                  className="px-4 py-3 hover:bg-gray-700 rounded flex items-start w-full text-gray-400"
                 >
                   <User className="h-5 w-5 mr-3" />
                   Cerrar Sesión
@@ -107,7 +107,7 @@ const Sidebar = () => {
   );
 };
 
-const getSectionLinks = (section, closeMenu) => {
+const getSectionLinks = (section, closeMenu, isOpen) => {
   const sectionConfig = {
     registros: [
       { href: "/registropacientes", text: "Registro Clientes", icon: UserPlusIcon },
@@ -141,8 +141,10 @@ const getSectionLinks = (section, closeMenu) => {
     <li key={href}>
       <Link
         href={href}
-        onClick={closeMenu}
-        className="px-4 py-3 hover:bg-gray-700 rounded flex items-center whitespace-nowrap"
+        onClick={() => {
+          closeMenu();  // Esto cerrará el menú al hacer clic en un enlace
+        }}
+        className={`px-4 py-3 hover:bg-gray-700 rounded flex items-center whitespace-nowrap ${isOpen ? 'text-gray-400' : 'text-gray-400'}`}
       >
         <Icon className="h-5 w-5 mr-3" />
         {text}
