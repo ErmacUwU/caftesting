@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../context/AuthContext.js"; 
+import { useRouter } from "next/navigation";
 import axios from "axios";
 
 const Reporte = () => {
@@ -10,6 +12,14 @@ const Reporte = () => {
   const [images, setImages] = useState([]);
   const pdfRef = useRef();
   const fileInputRef = useRef();
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+      if (!isLoading && !isAuthenticated) {
+        router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+        }
+      }, [isAuthenticated, isLoading, router]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -29,6 +39,14 @@ const Reporte = () => {
 
     fetchData();
   }, []);
+
+  if (isLoading) {
+    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+  }
+
+  if (!isAuthenticated) {
+    return null; // ⬅ Evita mostrar contenido mientras se redirige
+  }
 
   const uniqueTherapists = [...new Set(appointments.map((a) => a.therapist))];
   const uniquePatients = [...new Set(appointments.map((a) => a.patient))];
