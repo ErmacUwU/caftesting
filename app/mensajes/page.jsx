@@ -7,19 +7,21 @@ import { useRouter } from "next/navigation";
 
 const Mensajes = () => {
 
-  const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
-  const router = useRouter(); // Hook para manejar redirecciones.
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
-  // Redirige al login si no está autenticado
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login"); // Redirige a la página de inicio de sesión.
-    }
-  }, [isAuthenticated, router]);
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      }
+    }, [isAuthenticated, isLoading, router]);
 
-  // Evita que se muestre contenido mientras redirige
+  if (isLoading) {
+    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+  }
+
   if (!isAuthenticated) {
-    return null;
+    return null; // ⬅ Evita mostrar contenido mientras se redirige
   }
   
   return (
