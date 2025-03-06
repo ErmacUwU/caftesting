@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext.js"; 
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
 import { Chart, registerables } from "chart.js";
@@ -13,6 +15,14 @@ const Pagos = () => {
   const [totalPayments, setTotalPayments] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      }
+    }, [isAuthenticated, isLoading, router]);
   
   // Fetch pacientes cuando el componente se monte
   useEffect(() => {
@@ -31,6 +41,14 @@ const Pagos = () => {
 
     fetchPatients();
   }, []);
+
+  if (isLoading) {
+    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+  }
+
+  if (!isAuthenticated) {
+    return null; // ⬅ Evita mostrar contenido mientras se redirige
+  }
 
   // Manejar la selección de un paciente
   const handleSelectPatient = async (id) => {
