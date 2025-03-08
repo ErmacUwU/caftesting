@@ -62,6 +62,8 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
+import { useAuth } from "../context/AuthContext.js"; 
+import { useRouter } from "next/navigation";
 
 export default function UploadPage() {
     const [file, setFile] = useState(null);
@@ -70,9 +72,17 @@ export default function UploadPage() {
     const [message, setMessage] = useState("");
     const [uploadedUrl, setUploadedUrl] = useState("");
     const [uploadProgress, setUploadProgress] = useState(0);
+    const { isAuthenticated, isLoading } = useAuth();
+    const router = useRouter();
     
     // Referencia al input de archivo
     const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      }
+    }, [isAuthenticated, isLoading, router]);
 
     // Obtener la lista de archivos al cargar el componente
     useEffect(() => {
@@ -92,6 +102,14 @@ export default function UploadPage() {
             setMessage("Error al listar los archivos.");
         }
     };
+
+    if (isLoading) {
+        return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+      }
+    
+    if (!isAuthenticated) {
+        return null; // ⬅ Evita mostrar contenido mientras se redirige
+        }
 
     // Maneja el cambio de archivo seleccionado
     const handleFileChange = (event) => {
