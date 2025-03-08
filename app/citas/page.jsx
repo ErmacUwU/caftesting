@@ -57,11 +57,10 @@ const Citas = () => {
     { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
   ];
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
-      }
-    }, [isAuthenticated, isLoading, router]);
+ const [workSchedule, setWorkSchedule] = useState({
+    startTime: "08:00:00", // Inicio de jornada
+    endTime: "18:00:00",   // Fin de jornada
+  });
   
   // Cargar datos iniciales
   useEffect(() => {
@@ -100,13 +99,13 @@ const Citas = () => {
     fetchData();
   }, []);
 
-  if (isLoading) {
-    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
-  }
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      }
+    }, [isAuthenticated, isLoading, router]);
 
-  if (!isAuthenticated) {
-    return null; // ⬅ Evita mostrar contenido mientras se redirige
-  }
+
 
   const getEventColor = (service) => {
     switch (service) {
@@ -235,6 +234,8 @@ const Citas = () => {
     setAppointmentDate(info.dateStr);
     setIsFormVisible(true);
   };
+
+
 
   return (
     <div className="flex justify-center">
@@ -374,8 +375,10 @@ const Citas = () => {
             hour: "numeric",
             minute: "2-digit",
             meridiem: "short",
-            hour12: true,
+            hour12: false,
           }}
+          slotMinTime={workSchedule.startTime} // Horario de inicio dinámico
+          slotMaxTime={workSchedule.endTime}   // Horario de fin dinámico
           headerToolbar={{
             left: "prev,next today",
             center: "title",
