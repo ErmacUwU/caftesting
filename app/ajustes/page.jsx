@@ -10,10 +10,10 @@ const Ajustes = () => {
 
     useEffect(() => {
         // Manejo de autenticación
-        if (!isAuthenticated) {
-            router.replace("/login");
-            return;
-        }
+        if (!isLoading && !isAuthenticated) {
+            router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+            }
+          
 
         // Verificar y aplicar el modo guardado en localStorage
         if (typeof window !== "undefined") { // ✅ Evita errores en SSR
@@ -23,10 +23,14 @@ const Ajustes = () => {
                 document.documentElement.classList.add("dark");
             }
         }
-    }, [isAuthenticated, router]); // Se ejecuta cuando cambia la autenticación o el router
+    }, [isAuthenticated, isLoading, router]);// Se ejecuta cuando cambia la autenticación o el router
 
-    if (!isAuthenticated) {
-        return null;
+    if (isLoading) {
+        return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+      }
+    
+      if (!isAuthenticated) {
+        return null; // ⬅ Evita mostrar contenido mientras se redirige
     }
 
     const toggleTheme = () => {
@@ -54,3 +58,5 @@ const Ajustes = () => {
 };
 
 export default Ajustes;
+
+
