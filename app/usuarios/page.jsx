@@ -4,25 +4,22 @@ import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.js"; 
 import { useRouter } from "next/navigation";
 
-
 const Usuarios = () => {
 
   const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
   const router = useRouter(); // Hook para manejar redirecciones.
   
+  // Redirige al login si no está autenticado
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
-      }
-    }, [isAuthenticated, isLoading, router]);
-
-    if (isLoading) {
-      return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
-    }
-  
     if (!isAuthenticated) {
-      return null; // ⬅ Evita mostrar contenido mientras se redirige
+      router.push("/login"); // Redirige a la página de inicio de sesión.
     }
+  }, [isAuthenticated, router]);
+  
+  // Evita que se muestre contenido mientras redirige
+  if (!isAuthenticated) {
+    return null;
+  }
 
   return (
     <div>Usuarios</div>
