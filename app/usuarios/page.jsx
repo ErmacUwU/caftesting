@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.js"; 
 import { useRouter } from "next/navigation";
 
 const Usuarios = () => {
 
-  const { isAuthenticated } = useAuth(); // Obtiene el estado de autenticación
-  const router = useRouter(); // Hook para manejar redirecciones.
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
