@@ -119,24 +119,16 @@ const Citas = () => {
   // Guardar cambios de horario en la base de datos
   const handleSaveSchedule = async () => {
     try {
-      const apiUrl =
-        process.env.NODE_ENV === "production"
-          ? "https://cafens.netlify.app/api/schedule"
-          : "/api/schedule"; // En local se usa la ruta relativa
-  
-      const response = await axios.put(apiUrl, workSchedule, {
+      await axios.put("/api/schedule", workSchedule, {
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json", // Indica que el contenido es JSON
         },
       });
-  
-      console.log("Horario actualizado:", response.data);
       setIsScheduleModalOpen(false);
     } catch (error) {
-      console.error("Error al guardar horario:", error.response?.data || error.message);
+      console.error("Error al guardar horario:", error);
     }
   };
-  
 
   const getEventColor = (service) => {
     switch (service) {
