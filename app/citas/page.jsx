@@ -61,15 +61,18 @@ const Citas = () => {
     startTime: "08:00:00", // Inicio de jornada
     endTime: "18:00:00",   // Fin de jornada
   });
+
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   
   // Cargar datos iniciales
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all([
+        const [patientsRes, therapistsRes, appointmentsRes, scheduleRes] = await Promise.all([
           axios.get("/api/patient"),
           axios.get("/api/therapist"),
           axios.get("/api/date"),
+          axios.get("/api/schedule")
         ]);
 
         setPatients(patientsRes.data.patient || []);
@@ -91,6 +94,14 @@ const Citas = () => {
             };
           })
         );
+
+        // Asignar horario de trabajo desde la base de datos
+      if (scheduleRes.data) {
+        setWorkSchedule({
+          startTime: scheduleRes.data.startTime,
+          endTime: scheduleRes.data.endTime,
+        });
+      }
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -105,7 +116,15 @@ const Citas = () => {
       }
     }, [isAuthenticated, isLoading, router]);
 
-
+  // Guardar cambios de horario en la base de datos
+  const handleSaveSchedule = async () => {
+    try {
+      await axios.put("/api/schedule", workSchedule);
+      setIsScheduleModalOpen(false);
+    } catch (error) {
+      console.error("Error al guardar horario:", error);
+    }
+  };
 
   const getEventColor = (service) => {
     switch (service) {
@@ -350,6 +369,36 @@ const Citas = () => {
       )}
 
       <div className="calendar-container w-2/5 p-4">
+
+      {/* Modal de ajuste de horario */}
+      {isScheduleModalOpen && (
+        <Modal
+          isOpen={isScheduleModalOpen}
+          onRequestClose={() => setIsScheduleModalOpen(false)}
+          style={customStyles}
+          ariaHideApp={false}
+        >
+          <h3>Modificar Horario de Trabajo</h3>
+          <label>Horario de inicio: </label>
+          <input
+            type="time"
+            value={workSchedule.startTime}
+            onChange={(e) => setWorkSchedule({ ...workSchedule, startTime: e.target.value })}
+          />
+          <br />
+          <label>Horario de fin: </label>
+          <input
+            type="time"
+            value={workSchedule.endTime}
+            onChange={(e) => setWorkSchedule({ ...workSchedule, endTime: e.target.value })}
+          />
+          <br /><br />
+          <button onClick={handleSaveSchedule} className="bg-blue-500 text-white px-4 py-2 rounded">
+            Guardar
+          </button>
+        </Modal>
+      )}
+
       <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
@@ -380,7 +429,7 @@ const Citas = () => {
           slotMinTime={workSchedule.startTime} // Horario de inicio dinámico
           slotMaxTime={workSchedule.endTime}   // Horario de fin dinámico
           headerToolbar={{
-            left: "prev,next today",
+            left: "prev,next today,horario",
             center: "title",
             right: "timeGridWeek,timeGridDay",
           }}
@@ -391,6 +440,13 @@ const Citas = () => {
             today: "Hoy",
             week: "Semana",
             day: "Día",
+            horario: "Horario", // Nombre del nuevo botón
+          }}
+          customButtons={{
+            horario: {
+              text: "Horario", 
+              click: () => setIsScheduleModalOpen(true), // Abre el modal
+            },
           }}
         />
       </div>
