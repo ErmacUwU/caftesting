@@ -119,7 +119,11 @@ const Citas = () => {
   // Guardar cambios de horario en la base de datos
   const handleSaveSchedule = async () => {
     try {
-      await axios.put("/api/schedule", workSchedule);
+      await axios.put("/api/schedule", workSchedule, {
+        headers: {
+          "Content-Type": "application/json", // Indica que el contenido es JSON
+        },
+      });
       setIsScheduleModalOpen(false);
     } catch (error) {
       console.error("Error al guardar horario:", error);
