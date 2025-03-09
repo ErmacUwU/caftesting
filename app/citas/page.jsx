@@ -118,11 +118,16 @@ const Citas = () => {
 
   // Guardar cambios de horario en la base de datos
   const handleSaveSchedule = async () => {
-   
-      await axios.put("/api/schedule", workSchedule);
+    
+      const response = await axios.put("/api/schedule", workSchedule, {
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      console.log("Horario actualizado:", response.data);
       setIsScheduleModalOpen(false);
     
   };
+  
 
   const getEventColor = (service) => {
     switch (service) {
