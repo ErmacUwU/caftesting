@@ -1,15 +1,47 @@
+.calendar-container {
+  width: 100vw; /* 100% del ancho de la ventana */
+  height: 100vh; /* 100% del alto de la ventana */
+  margin: 0 auto; /* Centrar el calendario */
+}
+
 .custom-event {
-    padding: 4px; /* Espaciado */
-    font-size: 0.8rem; /* Tamaño de letra reducido */
-    line-height: 1.1; /* Espaciado entre líneas */
-  }
-  
-  .custom-event .event-details {
-    font-size: 0.5rem; /* Tamaño más pequeño para los detalles */
-    color: #fff; /* Color gris para los detalles */
-  }
-  
-  .fc-event {
-    border-radius: 4px;
-  }
-  
+  font-size: 0.8rem; /* Reduce el tamaño de la letra */
+  line-height: 1.2; /* Espaciado entre líneas */
+  padding: 2px; /* Espaciado dentro del evento */
+}
+
+.event-details {
+  font-size: 0.7rem; /* Tamaño aún más pequeño para detalles */
+  color: #555; /* Color gris suave */
+}
+
+.fc-event {
+  border-radius: 5px; /* Bordes redondeados */
+  padding: 4px;
+}
+
+.fc-timegrid-slot-label {
+  font-size: 12px; /* Etiquetas de hora más pequeñas */
+
+}
+
+.fc-timegrid-slot {
+  height: 51px !important; /* Ajusta la altura de las ranuras */
+}
+
+
+.custom-event-content {
+  color: white; /* Color del texto */   
+
+}
+
+.custom-hour{
+  text-align: center;
+  font-size: 8px;
+}
+.custom-title{
+  font-size: 10px;
+}
+
+
+

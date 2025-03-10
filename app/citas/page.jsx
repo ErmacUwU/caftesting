@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.js"; 
 import { useRouter } from "next/navigation";
+import { TimePicker } from "rsuite";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -13,6 +14,8 @@ import Modal from "react-modal";
 import ActualizarCita from "../components/ActualizarCitas";
 import BotonDeleteCitas from "../components/BotonDeleteCitas";
 import "./app.css";
+import "rsuite/dist/rsuite-no-reset.min.css"; // Estilos sin reset global
+
 
 // Estilos para el modal
 const customStyles = {
@@ -41,8 +44,8 @@ const Citas = () => {
   const [selectedPatient, setSelectedPatient] = useState("");
   const [selectedTherapist, setSelectedTherapist] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
-  const [appointmentStartTime, setAppointmentStartTime] = useState("");
-  const [appointmentEndTime, setAppointmentEndTime] = useState("");
+  const [appointmentStartTime, setAppointmentStartTime] = useState(null);
+  const [appointmentEndTime, setAppointmentEndTime] = useState(null);
   const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -143,11 +146,13 @@ const Citas = () => {
   };
 
   const calculateEndTime = (startTime, duration) => {
+    if (!startTime || !duration) return "";
     const [hours, minutes] = startTime.split(":").map(Number);
-    const endTime = new Date();
-    endTime.setHours(hours);
-    endTime.setMinutes(minutes + duration);
-    return endTime.toTimeString().slice(0, 5);
+    const endMinutes = minutes + duration;
+    const endHours = hours + Math.floor(endMinutes / 60);
+    return `${String(endHours).padStart(2, "0")}:${String(
+      endMinutes % 60
+    ).padStart(2, "0")}`;
   };
 
 
@@ -233,10 +238,12 @@ const Citas = () => {
         formattedStart: appointment.start.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
+          hour12: false,
         }),
         formattedEnd: appointment.end.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
+          hour12: false,
         }),
       });
       setModalType("details");
@@ -256,7 +263,6 @@ const Citas = () => {
     setAppointmentDate(info.dateStr);
     setIsFormVisible(true);
   };
-
 
 
   return (
@@ -311,21 +317,23 @@ const Citas = () => {
             </label>
             <label className="block mb-2">
               Hora de Inicio de la Cita:
-              <input
-                type="time"
-                value={appointmentStartTime}
-                onChange={(e) => {
-                  setAppointmentStartTime(e.target.value);
+              <TimePicker
+              format="HH:mm"
+              value={appointmentStartTime ? new Date(`2023-01-01T${appointmentStartTime}`) : null}
+              onChange={(newValue) => {
+                if (newValue) {
+                  const formattedTime = newValue.toTimeString().slice(0, 5);
+                  setAppointmentStartTime(formattedTime);
                   if (selectedService) {
-                    const service = services.find(
-                      (s) => s.id === parseInt(selectedService)
-                    );
-                    setAppointmentEndTime(
-                      calculateEndTime(e.target.value, service?.duration || 0)
-                    );
+                    const service = services.find((s) => s.id.toString() === selectedService);
+                    setAppointmentEndTime(calculateEndTime(formattedTime, service?.duration || 0));
                   }
-                }}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                }
+              }}
+              hideMinutes={(minute) => minute % 5 !== 0} 
+              cleanable={false}
+              placement="bottomStart"
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
               />
             </label>
             <label className="block mb-2">
@@ -345,12 +353,20 @@ const Citas = () => {
             </label>
             <label className="block mb-2">
               Hora de Cierre de la Cita:
-              <input
-                type="time"
-                value={appointmentEndTime}
-                onChange={(e) => setAppointmentEndTime(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
-              />
+              <TimePicker
+              format="HH:mm"
+              value={appointmentEndTime ? new Date(`2023-01-01T${appointmentEndTime}`) : null}
+              onChange={(newValue) => {
+                if (newValue) {
+                  const formattedTime = newValue.toTimeString().slice(0, 5);
+                  setAppointmentEndTime(formattedTime);
+                }
+              }}
+              hideMinutes={(minute) => minute % 5 !== 0} 
+              cleanable={false}
+              
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+            />
             </label>
             <label className="block mb-2">
               Costo de la Cita:
