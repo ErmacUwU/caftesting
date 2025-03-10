@@ -399,18 +399,32 @@ const Citas = () => {
         >
           <h3>Modificar Horario de Trabajo</h3>
           <label>Horario de inicio: </label>
-          <input
-            type="time"
-            value={workSchedule.startTime}
-            onChange={(e) => setWorkSchedule({ ...workSchedule, startTime: e.target.value })}
-          />
+          <TimePicker
+              format="HH:mm"
+              value={workSchedule.startTime ? new Date(`1970-01-01T${workSchedule.startTime}:00`) : null}
+              onChange={(newValue) => {
+                const formattedTime = newValue.toTimeString().slice(0, 5);
+                setWorkSchedule({ ...workSchedule, startTime: formattedTime });
+              }}
+              hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+              cleanable={false}
+              popupClassName="timepicker-zindex"
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+              />
           <br />
           <label>Horario de fin: </label>
-          <input
-            type="time"
-            value={workSchedule.endTime}
-            onChange={(e) => setWorkSchedule({ ...workSchedule, endTime: e.target.value })}
-          />
+          <TimePicker
+              format="HH:mm"
+              value={workSchedule.endTime ? new Date(`1970-01-01T${workSchedule.endTime}:00`) : null}
+              onChange={(newValue) => {
+                const formattedTime = newValue.toTimeString().slice(0, 5);
+                setWorkSchedule({ ...workSchedule, endTime: formattedTime });
+              }}
+              hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+              cleanable={false}
+              popupClassName="timepicker-zindex"
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+              />
           <br /><br />
           <button onClick={handleSaveSchedule} className="bg-blue-500 text-white px-4 py-2 rounded">
             Guardar

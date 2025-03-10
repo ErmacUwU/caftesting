@@ -44,5 +44,9 @@
   }
   
   
+  .rs-picker-popup {
+    z-index: 1100 !important; /* 🔹 Mayor que el modal */
+    
+  }
   
   
