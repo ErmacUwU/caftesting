@@ -274,6 +274,35 @@ const Citas = () => {
     }
   };
 
+  const handleEventDrop = async (eventDropInfo) => {
+    const { event } = eventDropInfo;
+
+    // Extraer la nueva fecha del evento
+    const newDate = event.start.toISOString().split("T")[0]; // Formato YYYY-MM-DD
+
+    console.log("Evento movido:", event.title);
+    console.log("IDD enviado:", event.extendedProps.idd);
+    console.log("Start antes de enviar:", event.start.toISOString());
+    console.log("End antes de enviar:", event.end.toISOString());
+
+    try {
+        const response = await axios.put(`/api/date/${event.extendedProps.idd}`, {
+            newDate, 
+            newStart: event.start.toISOString(),
+            newEnd: event.end.toISOString(),
+        });
+
+        console.log("Evento actualizado en la base de datos:", response.data);
+
+        
+
+    } catch (error) {
+        console.error("Error al actualizar evento:", error);
+    }
+};
+
+  
+
   const closeModal = () => {
     setSelectedAppointment(null);
     setModalType(null);
@@ -483,6 +512,9 @@ const Citas = () => {
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
           events={appointments}
+          editable={true}
+          selectable={true} // 🔹 Permite seleccionar rangos de tiempo
+          eventDrop={handleEventDrop} // 🔹 Detecta cuando se mueve un evento
           dateClick={handleDateClick}
           eventClick={handleEventClick}
           eventContent={(eventInfo) => {
@@ -499,7 +531,6 @@ const Citas = () => {
             </div>
             );
           }}
-          selectable={true}
           slotLabelFormat={{
             hour: "numeric",
             minute: "2-digit",
