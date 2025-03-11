@@ -333,7 +333,7 @@ const Citas = () => {
               }}
               hideMinutes={(minute) => minute % 5 !== 0} 
               cleanable={false}
-              placement="bottomStart"
+              placement="topStart"
               className="block w-full p-2 border border-gray-300 rounded mt-1"
               />
             </label>
@@ -366,7 +366,7 @@ const Citas = () => {
               }}
               hideMinutes={(minute) => minute % 5 !== 0} 
               cleanable={false}
-              
+              placement="topStart"
               className="block w-full p-2 border border-gray-300 rounded mt-1"
             />
             </label>

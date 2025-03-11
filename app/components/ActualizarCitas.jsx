@@ -1,6 +1,8 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { TimePicker } from "rsuite";
+import "rsuite/dist/rsuite-no-reset.min.css"; // Estilos sin reset global
 
 const ActualizarCita = ({
   id,
@@ -198,31 +200,43 @@ const ActualizarCita = ({
         <label htmlFor="startTime" className="block text-sm font-medium text-gray-700">
           Hora de Inicio<span className="text-red-600">*</span>
         </label>
-        <input
-          type="time"
-          id="startTime"
-          value={newStartTime}
-          onChange={(e) => {
-            setNewStartTime(e.target.value);
-            const selectedService = services.find((s) => s.id.toString() === newService);
-            if (selectedService) {
-              setNewEndTime(calculateEndTime(e.target.value, selectedService.duration));
+        <TimePicker
+          format="HH:mm"
+          value={newStartTime ? new Date(`1970-01-01T${newStartTime}:00`) : null}
+          onChange={(newValue) => {
+            if (newValue) {
+              const formattedTime = newValue.toTimeString().slice(0, 5); // Formatea como HH:mm
+              setNewStartTime(formattedTime);
+
+              // Calcular la nueva hora de finalización si hay un servicio seleccionado
+              const selectedService = services.find((s) => s.id.toString() === newService);
+              if (selectedService) {
+                setNewEndTime(calculateEndTime(formattedTime, selectedService.duration));
+              }
             }
           }}
+          hideMinutes={(minute) => minute % 5 !== 0} // 🔹 Minutos en pasos de 5
+          cleanable={false} // 🔹 No permite limpiar
+          placement="topStart"
           className="w-full p-2 mt-1 border border-gray-300 rounded"
-          required
         />
       </div>
-
       <div className="mb-4">
         <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
           Hora de Fin
         </label>
-        <input
-          type="time"
-          id="endTime"
-          value={newEndTime}
-          onChange={(e) => setNewEndTime(e.target.value)}
+        <TimePicker
+          format="HH:mm"
+          value={newEndTime ? new Date(`1970-01-01T${newEndTime}:00`) : null}
+          onChange={(newValue) => {
+            if (newValue) {
+              const formattedTime = newValue.toTimeString().slice(0, 5); // Formatea como HH:mm
+              setNewEndTime(formattedTime);
+            }
+          }}
+          hideMinutes={(minute) => minute % 5 !== 0} // 🔹 Minutos en pasos de 5
+          cleanable={false} // 🔹 No permite limpiar
+          placement="topStart"
           className="w-full p-2 mt-1 border border-gray-300 rounded"
         />
       </div>
