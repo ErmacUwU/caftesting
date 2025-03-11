@@ -184,6 +184,11 @@ const Citas = () => {
     }
   };
 
+  const convertToUTC = (localTime) => {
+    const localDate = new Date(`${appointmentDate}T${localTime}:00`);
+    return new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -203,8 +208,8 @@ const Citas = () => {
     const appointmentData = {
       idDate: uniquid(),
       date: appointmentDate,
-      start: `${appointmentDate}T${appointmentStartTime}:00`,
-      end: `${appointmentDate}T${appointmentEndTime}:00`,
+      start: convertToUTC(appointmentStartTime),
+      end: convertToUTC(appointmentEndTime),
       duration: appointmentDuration,
       therapist: therapist,
       patient: patient,
