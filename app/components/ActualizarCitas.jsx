@@ -12,6 +12,7 @@ const ActualizarCita = ({
   appointmentDate,
   appointmentStartTime,
   appointmentEndTime,
+  appointmentDuration,
   cost,
   onClose,
 }) => {
@@ -20,6 +21,7 @@ const ActualizarCita = ({
   const [newService, setNewService] = useState(selectedService);
   const [newAppointmentDate, setNewAppointmentDate] = useState(appointmentDate);
   const [newStartTime, setNewStartTime] = useState(appointmentStartTime);
+  const [newDuration,setNewDuration] = useState(appointmentDuration);
   const [newEndTime, setNewEndTime] = useState(appointmentEndTime);
   const [newCost, setNewCost] = useState(cost);
   const [patients, setPatients] = useState([]);
@@ -54,8 +56,9 @@ const ActualizarCita = ({
       setNewTherapist(selectedPatient);  // Esto debería asignar el terapeuta seleccionado
       setNewTherapist(selectedTherapist);  // Esto debería asignar el terapeuta seleccionado
       setNewService(selectedService);  // Esto debería asignar el servicio seleccionado
+      setNewDuration(appointmentDuration);
     }
-  }, [selectedPatient, selectedTherapist, selectedService]);
+  }, [selectedPatient, selectedTherapist, selectedService, appointmentDuration]);
   
 
   const calculateEndTime = (startTime, duration) => {
@@ -75,7 +78,20 @@ const ActualizarCita = ({
     );
     if (newStartTime && selectedService) {
       setNewEndTime(calculateEndTime(newStartTime, selectedService.duration));
+      setNewDuration(selectedService.duration); // Asignar duración predefinida
       setNewCost(selectedService.cost);
+    }
+  };
+
+   // Actualizar duración y hora de fin automáticamente
+   const handleDurationChange = (e) => {
+    let newDuration = parseInt(e.target.value, 10);
+    if (newDuration > 120) newDuration = 120; // Máximo 2 horas
+    if (newDuration < 0) newDuration = 0; // No puede ser negativa
+
+    setNewDuration(newDuration);
+    if (appointmentStartTime) {
+      setNewEndTime(calculateEndTime(newStartTime, newDuration));
     }
   };
 
@@ -98,6 +114,7 @@ const ActualizarCita = ({
       newDate: newAppointmentDate, // La fecha de la cita
       newStart: startDateTime.toISOString(), // Formatea la hora de inicio correctamente
       newEnd: endDateTime.toISOString(), // Formatea la hora de fin correctamente
+      newDuration: newDuration,
       newTherapist: therapist,
       newPatient: patient,
       newTitle: service?.name || "",
@@ -222,6 +239,22 @@ const ActualizarCita = ({
         </select>
       </div>
 
+      <label className="block mb-2">Duración de la Cita (minutos):</label>
+            <select
+              value={newDuration}
+              onChange={handleDurationChange}
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+            >
+              {[...Array(25)].map((_, i) => {
+                const minutes = (i + 1) * 5; // Genera valores: 5, 10, 15 ... 120
+                return (
+                  <option key={minutes} value={minutes}>
+                    {minutes} min
+                  </option>
+                );
+              })}
+            </select>
+
       <div className="mb-4">
         <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
           Hora de Fin
@@ -239,6 +272,7 @@ const ActualizarCita = ({
           cleanable={false} // 🔹 No permite limpiar
           placement="topStart"
           className="w-full p-2 mt-1 border border-gray-300 rounded"
+          disabled
         />
       </div>
 
