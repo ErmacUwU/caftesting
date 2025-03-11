@@ -164,25 +164,6 @@ const ActualizarCita = ({
       </div>
 
       <div className="mb-4">
-        <label htmlFor="service" className="block text-sm font-medium text-gray-700">
-          Servicio<span className="text-red-600">*</span>
-        </label>
-        <select
-          id="service"
-          value={newService}
-          onChange={handleServiceChange}
-          className="block w-full p-2 mt-1 border border-gray-300 rounded"
-          required
-        >
-          {services.map((service) => (
-            <option key={service.id} value={service.id}>
-              {service.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="mb-4">
         <label htmlFor="appointmentDate" className="block text-sm font-medium text-gray-700">
           Fecha de la Cita<span className="text-red-600">*</span>
         </label>
@@ -221,6 +202,26 @@ const ActualizarCita = ({
           className="w-full p-2 mt-1 border border-gray-300 rounded"
         />
       </div>
+
+      <div className="mb-4">
+        <label htmlFor="service" className="block text-sm font-medium text-gray-700">
+          Servicio<span className="text-red-600">*</span>
+        </label>
+        <select
+          id="service"
+          value={newService}
+          onChange={handleServiceChange}
+          className="block w-full p-2 mt-1 border border-gray-300 rounded"
+          required
+        >
+          {services.map((service) => (
+            <option key={service.id} value={service.id}>
+              {service.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="mb-4">
         <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
           Hora de Fin
