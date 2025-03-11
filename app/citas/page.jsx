@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.js"; 
 import { useRouter } from "next/navigation";
+import { TimePicker } from "rsuite";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -13,6 +14,8 @@ import Modal from "react-modal";
 import ActualizarCita from "../components/ActualizarCitas";
 import BotonDeleteCitas from "../components/BotonDeleteCitas";
 import "./app.css";
+import "rsuite/dist/rsuite-no-reset.min.css"; // Estilos sin reset global
+
 
 // Estilos para el modal
 const customStyles = {
@@ -41,8 +44,8 @@ const Citas = () => {
   const [selectedPatient, setSelectedPatient] = useState("");
   const [selectedTherapist, setSelectedTherapist] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
-  const [appointmentStartTime, setAppointmentStartTime] = useState("");
-  const [appointmentEndTime, setAppointmentEndTime] = useState("");
+  const [appointmentStartTime, setAppointmentStartTime] = useState(null);
+  const [appointmentEndTime, setAppointmentEndTime] = useState(null);
   const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -57,20 +60,22 @@ const Citas = () => {
     { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
   ];
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
-      }
-    }, [isAuthenticated, isLoading, router]);
+ const [workSchedule, setWorkSchedule] = useState({
+    startTime: "08:00:00", // Inicio de jornada
+    endTime: "18:00:00",   // Fin de jornada
+  });
+
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   
   // Cargar datos iniciales
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [patientsRes, therapistsRes, appointmentsRes] = await Promise.all([
+        const [patientsRes, therapistsRes, appointmentsRes, scheduleRes] = await Promise.all([
           axios.get("/api/patient"),
           axios.get("/api/therapist"),
           axios.get("/api/date"),
+          axios.get("/api/schedule")
         ]);
 
         setPatients(patientsRes.data.patient || []);
@@ -92,6 +97,14 @@ const Citas = () => {
             };
           })
         );
+
+        // Asignar horario de trabajo desde la base de datos
+      if (scheduleRes.data) {
+        setWorkSchedule({
+          startTime: scheduleRes.data.startTime,
+          endTime: scheduleRes.data.endTime,
+        });
+      }
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -100,13 +113,24 @@ const Citas = () => {
     fetchData();
   }, []);
 
-  if (isLoading) {
-    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
-  }
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      }
+    }, [isAuthenticated, isLoading, router]);
 
-  if (!isAuthenticated) {
-    return null; // ⬅ Evita mostrar contenido mientras se redirige
-  }
+  // Guardar cambios de horario en la base de datos
+  const handleSaveSchedule = async () => {
+    
+      const response = await axios.put("/api/schedule", workSchedule, {
+        headers: { "Content-Type": "application/json" },
+      });
+  
+      console.log("Horario actualizado:", response.data);
+      setIsScheduleModalOpen(false);
+    
+  };
+  
 
   const getEventColor = (service) => {
     switch (service) {
@@ -122,11 +146,13 @@ const Citas = () => {
   };
 
   const calculateEndTime = (startTime, duration) => {
+    if (!startTime || !duration) return "";
     const [hours, minutes] = startTime.split(":").map(Number);
-    const endTime = new Date();
-    endTime.setHours(hours);
-    endTime.setMinutes(minutes + duration);
-    return endTime.toTimeString().slice(0, 5);
+    const endMinutes = minutes + duration;
+    const endHours = hours + Math.floor(endMinutes / 60);
+    return `${String(endHours).padStart(2, "0")}:${String(
+      endMinutes % 60
+    ).padStart(2, "0")}`;
   };
 
 
@@ -212,10 +238,12 @@ const Citas = () => {
         formattedStart: appointment.start.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
+          hour12: false,
         }),
         formattedEnd: appointment.end.toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
+          hour12: false,
         }),
       });
       setModalType("details");
@@ -236,10 +264,11 @@ const Citas = () => {
     setIsFormVisible(true);
   };
 
+
   return (
-    <div className="flex justify-between w-full">
+    <div className="flex justify-center">
       {isFormVisible && (
-        <div className="w-full md:w-3/5 p-4 bg-gray-100 relative">
+        <div className="w-3/5 p-4 bg-gray-100 relative">
           <button
             onClick={() => setIsFormVisible(false)}
             className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded"
@@ -288,21 +317,24 @@ const Citas = () => {
             </label>
             <label className="block mb-2">
               Hora de Inicio de la Cita:
-              <input
-                type="time"
-                value={appointmentStartTime}
-                onChange={(e) => {
-                  setAppointmentStartTime(e.target.value);
+              <TimePicker
+              format="HH:mm"
+              placeholder="Selecciona hora"
+              value={appointmentStartTime ? new Date(`2023-01-01T${appointmentStartTime}`) : null}
+              onChange={(newValue) => {
+                if (newValue) {
+                  const formattedTime = newValue.toTimeString().slice(0, 5);
+                  setAppointmentStartTime(formattedTime);
                   if (selectedService) {
-                    const service = services.find(
-                      (s) => s.id === parseInt(selectedService)
-                    );
-                    setAppointmentEndTime(
-                      calculateEndTime(e.target.value, service?.duration || 0)
-                    );
+                    const service = services.find((s) => s.id.toString() === selectedService);
+                    setAppointmentEndTime(calculateEndTime(formattedTime, service?.duration || 0));
                   }
-                }}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                }
+              }}
+              hideMinutes={(minute) => minute % 5 !== 0} 
+              cleanable={false}
+              placement="bottomStart"
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
               />
             </label>
             <label className="block mb-2">
@@ -322,12 +354,21 @@ const Citas = () => {
             </label>
             <label className="block mb-2">
               Hora de Cierre de la Cita:
-              <input
-                type="time"
-                value={appointmentEndTime}
-                onChange={(e) => setAppointmentEndTime(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
-              />
+              <TimePicker
+              format="HH:mm"
+              placeholder="Selecciona hora"
+              value={appointmentEndTime ? new Date(`2023-01-01T${appointmentEndTime}`) : null}
+              onChange={(newValue) => {
+                if (newValue) {
+                  const formattedTime = newValue.toTimeString().slice(0, 5);
+                  setAppointmentEndTime(formattedTime);
+                }
+              }}
+              hideMinutes={(minute) => minute % 5 !== 0} 
+              cleanable={false}
+              
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+            />
             </label>
             <label className="block mb-2">
               Costo de la Cita:
@@ -348,7 +389,53 @@ const Citas = () => {
         </div>
       )}
 
-      <div className="calendar-container w-full md:w-2/5 p-4">
+      <div className="calendar-container w-2/5 p-4">
+
+      {/* Modal de ajuste de horario */}
+      {isScheduleModalOpen && (
+        <Modal
+          isOpen={isScheduleModalOpen}
+          onRequestClose={() => setIsScheduleModalOpen(false)}
+          style={customStyles}
+          ariaHideApp={false}
+        >
+          <h3>Modificar Horario de Trabajo</h3>
+          <label>Horario de inicio: </label>
+          <TimePicker
+              format="HH:mm"
+              placeholder="Selecciona hora"
+              value={workSchedule.startTime ? new Date(`1970-01-01T${workSchedule.startTime}:00`) : null}
+              onChange={(newValue) => {
+                const formattedTime = newValue.toTimeString().slice(0, 5);
+                setWorkSchedule({ ...workSchedule, startTime: formattedTime });
+              }}
+              hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+              cleanable={false}
+              popupClassName="timepicker-zindex"
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+              />
+          <br />
+          <label>Horario de fin: </label>
+          <TimePicker
+              format="HH:mm"
+              value={workSchedule.endTime ? new Date(`1970-01-01T${workSchedule.endTime}:00`) : null}
+              placeholder="Selecciona hora"
+              onChange={(newValue) => {
+                const formattedTime = newValue.toTimeString().slice(0, 5);
+                setWorkSchedule({ ...workSchedule, endTime: formattedTime });
+              }}
+              hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+              cleanable={false}
+              popupClassName="timepicker-zindex"
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+              />
+          <br /><br />
+          <button onClick={handleSaveSchedule} className="bg-blue-500 text-white px-4 py-2 rounded">
+            Guardar
+          </button>
+        </Modal>
+      )}
+
       <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView="timeGridWeek"
@@ -374,10 +461,12 @@ const Citas = () => {
             hour: "numeric",
             minute: "2-digit",
             meridiem: "short",
-            hour12: true,
+            hour12: false,
           }}
+          slotMinTime={workSchedule.startTime} // Horario de inicio dinámico
+          slotMaxTime={workSchedule.endTime}   // Horario de fin dinámico
           headerToolbar={{
-            left: "prev,next today",
+            left: "prev,next today,horario",
             center: "title",
             right: "timeGridWeek,timeGridDay",
           }}
@@ -388,6 +477,13 @@ const Citas = () => {
             today: "Hoy",
             week: "Semana",
             day: "Día",
+            horario: "Horario", // Nombre del nuevo botón
+          }}
+          customButtons={{
+            horario: {
+              text: "Horario", 
+              click: () => setIsScheduleModalOpen(true), // Abre el modal
+            },
           }}
         />
       </div>
