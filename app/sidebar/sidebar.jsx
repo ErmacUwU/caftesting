@@ -44,7 +44,7 @@ const Sidebar = () => {
 
       <button
         onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className="text-white lg:hidden p-2 hover:bg-gray-700 rounded"
+        className=" text-white lg:hidden p-2 hover:bg-gray-700 rounded"
         aria-label="Menú principal"
         aria-expanded={isMenuOpen}
       >
@@ -52,7 +52,7 @@ const Sidebar = () => {
       </button>
 
       <nav 
-        className={`fixed md:relative md:block w-full md:w-auto top-16 md:top-0 right-0 z-50 bg-black ${
+        className={`fixed md:relative md:block w-full md:w-auto  top-16 md:top-0 right-0 z-50 bg-black ${
           isMenuOpen ? 'block' : 'hidden'
         }`}
       >

@@ -13,7 +13,7 @@ const backgroundStyle={
 const Page = () => {
   return (
     <div className=" flex h-screen">
-      <div className="flex-1 p-6">
+      <div className="flex-1 p-6 sidebar">
         <h3 className='mx-auto bg-slate-500 flex items-center p-4 text-white text-xl'>
           SISTEMA DE PRUEBA DE FUNCIONALIDADES PARA CAF
         </h3>
