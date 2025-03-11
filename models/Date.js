@@ -18,6 +18,12 @@ const DateSchema = new mongoose.Schema(
       type: Date, 
       required: true,
     },
+    duration: {
+      type: Number,
+      required: true,
+      min: 0,
+      max: 120,
+    },
     therapist: {
       type: String,
       required: true,

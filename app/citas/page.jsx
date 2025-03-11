@@ -46,6 +46,7 @@ const Citas = () => {
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentStartTime, setAppointmentStartTime] = useState(null);
   const [appointmentEndTime, setAppointmentEndTime] = useState(null);
+  const [appointmentDuration, setAppointmentDuration] = useState(0);
   const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
@@ -89,6 +90,7 @@ const Citas = () => {
               title: appointment.title,
               start: new Date(appointment.start),
               end: new Date(appointment.end),
+              duration: appointment.duration,
               description: appointment.description,
               therapist: appointment.therapist,
               patient: appointment.patient,
@@ -155,18 +157,30 @@ const Citas = () => {
     ).padStart(2, "0")}`;
   };
 
+  // Actualizar duración y hora de fin automáticamente
+  const handleDurationChange = (e) => {
+    let newDuration = parseInt(e.target.value, 10);
+    if (newDuration > 120) newDuration = 120; // Máximo 2 horas
+    if (newDuration < 0) newDuration = 0; // No puede ser negativa
+
+    setAppointmentDuration(newDuration);
+    if (appointmentStartTime) {
+      setAppointmentEndTime(calculateEndTime(appointmentStartTime, newDuration));
+    }
+  };
+
 
   const handleServiceChange = (e) => {
     const selectedServiceId = e.target.value;
     setSelectedService(selectedServiceId);
 
-    if (appointmentStartTime && selectedServiceId) {
-      const selectedService = services.find(
-        (service) => service.id.toString() === selectedServiceId
-      );
-      setAppointmentEndTime(
-        calculateEndTime(appointmentStartTime, selectedService.duration)
-      );
+    const service = services.find((s) => s.id.toString() === selectedServiceId);
+    if (service) {
+      setAppointmentDuration(service.duration); // Asignar duración predefinida
+      setCost(service.cost); // Asignar costo
+      if (appointmentStartTime) {
+        setAppointmentEndTime(calculateEndTime(appointmentStartTime, service.duration));
+      }
     }
   };
 
@@ -191,6 +205,7 @@ const Citas = () => {
       date: appointmentDate,
       start: `${appointmentDate}T${appointmentStartTime}:00`,
       end: `${appointmentDate}T${appointmentEndTime}:00`,
+      duration: appointmentDuration,
       therapist: therapist,
       patient: patient,
       title: service?.name || "",
@@ -200,6 +215,8 @@ const Citas = () => {
 
     try {
       const response = await axios.post("/api/date", appointmentData);
+      console.log("Duración enviada:", appointmentDuration);
+
 
       setAppointments((prevAppointments) => [
         ...prevAppointments,
@@ -209,6 +226,7 @@ const Citas = () => {
           title: response.data.title,
           start: new Date(response.data.start),
           end: new Date(response.data.end),
+          duration: response.data.duration,
           description: response.data.description,
           therapist: response.data.therapist,
           patient: response.data.patient,
@@ -221,6 +239,7 @@ const Citas = () => {
       setAppointmentDate("");
       setAppointmentStartTime("");
       setAppointmentEndTime("");
+      setAppointmentDuration("");
       setSelectedService("");
       setCost("");
       setIsFormVisible(false);
@@ -306,6 +325,7 @@ const Citas = () => {
                 ))}
               </select>
             </label>
+
             <label className="block mb-2">
               Fecha de la Cita:
               <input
@@ -352,6 +372,23 @@ const Citas = () => {
                 ))}
               </select>
             </label>
+
+            <label className="block mb-2">Duración de la Cita (minutos):</label>
+            <select
+              value={appointmentDuration}
+              onChange={handleDurationChange}
+              className="block w-full p-2 border border-gray-300 rounded mt-1"
+            >
+              {[...Array(25)].map((_, i) => {
+                const minutes = (i + 1) * 5; // Genera valores: 5, 10, 15 ... 120
+                return (
+                  <option key={minutes} value={minutes}>
+                    {minutes} min
+                  </option>
+                );
+              })}
+            </select>
+
             <label className="block mb-2">
               Hora de Cierre de la Cita:
               <TimePicker
@@ -368,6 +405,7 @@ const Citas = () => {
               cleanable={false}
               placement="topStart"
               className="block w-full p-2 border border-gray-300 rounded mt-1"
+              disabled
             />
             </label>
             <label className="block mb-2">
@@ -513,6 +551,9 @@ const Citas = () => {
             <p className="text-black">
               Hora: {selectedAppointment.formattedStart} - {selectedAppointment.formattedEnd}
             </p>
+            <p className="text-black">
+              Duracion: {selectedAppointment.duration} mins
+            </p>
             <p className="text-black">Costo: ${selectedAppointment.cost}</p>
             <button
               onClick={openEditModal}
@@ -547,6 +588,7 @@ const Citas = () => {
             appointmentDate={selectedAppointment.start.toISOString().split("T")[0]}
             appointmentStartTime={selectedAppointment.start.toTimeString().slice(0, 5)}
             appointmentEndTime={selectedAppointment.end.toTimeString().slice(0, 5)}
+            appointmentDuration={selectedAppointment.duration}
             cost={selectedAppointment.cost}
             onClose={closeModal}
           />
