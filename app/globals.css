@@ -3,14 +3,14 @@
 @tailwind utilities;
 @custom-variant dark (&:where(.dark, .dark *));
 
-.sidebar{
+.sidebar {
   top:0;
-  overflow-y: auto;
+  overflow-y:visible;
   left: 0;
   position:relative;
-  z-index: 1000;
+  z-index: auto;
+  background-color: black;
 }
-
 
 @layer utilities {
   .text-balance {

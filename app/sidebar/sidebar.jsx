@@ -52,10 +52,9 @@ const Sidebar = () => {
       </button>
 
       <nav 
-        className={`fixed md:relative md:block w-full md:w-auto  top-16 md:top-0 right-0 z-50 bg-black ${
+        className={`fixed md:relative w-full md:w-auto top-16 md:top-0 right-0 z-20 bg-black ${
           isMenuOpen ? 'block' : 'hidden'
-        }`}
-      >
+        } md:block`}>
         <ul className="flex flex-col md:flex-row">
           {!isAuthenticated ? (
             <li>
