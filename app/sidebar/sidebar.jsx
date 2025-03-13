@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { HomeIcon, UserPlusIcon, UsersIcon, CalendarDaysIcon, 
   ClipboardDocumentListIcon, ChatBubbleLeftRightIcon, DocumentChartBarIcon, 
@@ -22,6 +22,37 @@ const Sidebar = () => {
   const { isAuthenticated, logout } = useAuth();
   const [openSections, setOpenSections] = useState(menuSections);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(false); // Para detectar el tamaño de la pantalla
+
+  // Detectar el tamaño de la pantalla
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024); // Cambia según tu breakpoint
+    };
+
+    handleResize(); // Establecer el tamaño inicial
+    window.addEventListener("resize", handleResize); // Escuchar cambios de tamaño
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
+
+  // Cerrar menú al hacer clic fuera
+  const handleClickOutside = useCallback((event) => {
+    if (menuRef.current && !menuRef.current.contains(event.target)) {
+      setIsMenuOpen(false); // Cierra el menú si el clic es fuera del contenedor del menú
+      setOpenSections(menuSections); // Cierra las secciones abiertas en pantalla grande
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener("mousedown", handleClickOutside); // Escucha el evento de clic
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside); // Limpia el evento al desmontar el componente
+    };
+  }, [handleClickOutside]);
 
   const toggleSection = useCallback((section) => {
     setOpenSections(prev => ({ ...menuSections, [section]: !prev[section] }));
@@ -30,7 +61,7 @@ const Sidebar = () => {
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
   return (
-    <div className="sidebar sticky top-0 container mx-auto flex justify-between items-center bg-black min-w-full">
+    <div className="sidebar sticky top-0 container mx-auto flex justify-between items-center bg-black min-w-full" ref={menuRef}>
       <div className="flex text-white h-16 items-center">
         <Link
           href="/"
@@ -42,18 +73,21 @@ const Sidebar = () => {
         </Link>
       </div>
 
-      <button
-        onClick={() => setIsMenuOpen(!isMenuOpen)}
-        className=" text-white lg:hidden p-2 hover:bg-gray-700 rounded"
-        aria-label="Menú principal"
-        aria-expanded={isMenuOpen}
-      >
-        <Bars2Icon className="h-5 w-5" />
-      </button>
+      {/* Solo muestra el botón en pantallas pequeñas */}
+      {isMobile && (
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="text-white lg:hidden p-2 hover:bg-gray-700 rounded"
+          aria-label="Menú principal"
+          aria-expanded={isMenuOpen}
+        >
+          <Bars2Icon className="h-5 w-5" />
+        </button>
+      )}
 
       <nav 
         className={`fixed md:relative w-full md:w-auto top-16 md:top-0 right-0 z-20 bg-black ${
-          isMenuOpen ? 'block' : 'hidden'
+          isMenuOpen || !isMobile ? 'block' : 'hidden'
         } md:block`}>
         <ul className="flex flex-col md:flex-row">
           {!isAuthenticated ? (
