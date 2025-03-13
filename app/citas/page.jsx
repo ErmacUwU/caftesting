@@ -319,9 +319,9 @@ const Citas = () => {
 
 
   return (
-    <div className="flex justify-center">
+    <div className="flex min-h-screen">
       {isFormVisible && (
-        <div className="w-3/5 p-4 bg-gray-100 relative">
+        <div className="w-1/3 min-w-[300px] p-4 bg-gray-100 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto">
           <button
             onClick={() => setIsFormVisible(false)}
             className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded"

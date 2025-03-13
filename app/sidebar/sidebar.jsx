@@ -30,7 +30,7 @@ const Sidebar = () => {
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
   return (
-    <div className="sticky top-0 container mx-auto flex justify-between items-center bg-black min-w-full">
+    <div className="sidebar sticky top-0 container mx-auto flex justify-between items-center bg-black min-w-full">
       <div className="flex text-white h-16 items-center">
         <Link
           href="/"
