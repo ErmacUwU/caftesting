@@ -2,27 +2,24 @@ import dbConnect from "@/lib/dbConnect";
 import Patient from "@/models/Patient";
 import { NextResponse } from "next/server";
 
-// Manejador para actualizar el estado de cuenta con PATCH
 export async function PATCH(request, { params }) {
-  const { id } = params;
-  const { cantidad } = await request.json();
+  const { id } = params; // ✅ Se obtiene el ID del paciente desde la URL
+  const { nuevaCita } = await request.json();
 
   try {
     await dbConnect();
-    const patient = await Patient.findById(id);
 
+    // 📌 Verificar que el paciente existe
+    const patient = await Patient.findById(id);
     if (!patient) {
       return NextResponse.json({ msg: "Paciente no encontrado" }, { status: 404 });
     }
 
-    const nuevoPago = {
-      fecha: new Date(),
-      cantidad,
-    };
-
-    // Asegúrate de sumar o restar la cantidad del total del estado de cuenta
-    patient.estadoDeCuenta.total += cantidad;
-    patient.estadoDeCuenta.pagos.push(nuevoPago);
+    // 📌 Agregar la cita al historial y actualizar la deuda total
+    if (nuevaCita) {
+      patient.estadoDeCuenta.citas.push(nuevaCita);
+      patient.estadoDeCuenta.total += nuevaCita.costo;
+    }
 
     await patient.save();
 
@@ -30,6 +27,7 @@ export async function PATCH(request, { params }) {
       msg: "Estado de cuenta actualizado",
       estadoDeCuenta: patient.estadoDeCuenta,
     }, { status: 200 });
+
   } catch (error) {
     console.error("Error al actualizar el estado de cuenta:", error);
     return NextResponse.json({ msg: "Error al actualizar el estado de cuenta" }, { status: 500 });

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext.js"; 
+import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
@@ -12,8 +12,9 @@ const Pagos = () => {
   const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
-  const [totalPayments, setTotalPayments] = useState(0);
-  const [appointments, setAppointments] = useState([]); // 🔹 Citas del paciente
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("efectivo");
+  const [totalDebt, setTotalDebt] = useState(0);
+  const [appointments, setAppointments] = useState([]);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
@@ -21,10 +22,10 @@ const Pagos = () => {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      router.replace("/login");
     }
   }, [isAuthenticated, isLoading, router]);
-  
+
   useEffect(() => {
     const fetchPatients = async () => {
       setLoading(true);
@@ -49,14 +50,14 @@ const Pagos = () => {
     return null;
   }
 
-  // Manejar la selección de un paciente
+  // 🔹 Manejar la selección de un paciente
   const handleSelectPatient = async (id) => {
     setLoading(true);
     try {
       const response = await axios.get(`/api/patient/${id}`);
       setSelectedPatient(response.data.patient);
-      setTotalPayments(response.data.patient.estadoDeCuenta?.total || 0);
-      
+      setTotalDebt(response.data.patient.estadoDeCuenta?.total || 0);
+
       // 🔹 Obtener citas del paciente
       const appointmentsRes = await axios.get(`/api/date?patientId=${id}`);
       setAppointments(appointmentsRes.data.dates || []);
@@ -70,7 +71,7 @@ const Pagos = () => {
     }
   };
 
-  // Manejar el registro de un pago
+  // 🔹 Manejar el registro de un pago
   const handleAddPayment = async () => {
     if (!selectedPatient || paymentAmount <= 0) {
       setErrorMessage("Debe seleccionar un paciente y la cantidad debe ser mayor a cero.");
@@ -79,24 +80,22 @@ const Pagos = () => {
 
     setLoading(true);
     try {
-      const response = await axios.patch("/api/patient", {
-        pacienteId: selectedPatient._id,
+      const response = await axios.patch(`/api/patient/${selectedPatient._id}/pago`, {
         cantidad: parseFloat(paymentAmount),
+        metodoPago: selectedPaymentMethod,
       });
 
-      if (response.data.success) {
-        const updatedPatient = { ...selectedPatient, estadoDeCuenta: response.data.estadoDeCuenta };
-        setSelectedPatient(updatedPatient);
-        setTotalPayments(response.data.estadoDeCuenta.total);
+      if (response.status === 200) {
+        setSelectedPatient({ ...selectedPatient, estadoDeCuenta: response.data.estadoDeCuenta });
+        setTotalDebt(response.data.estadoDeCuenta.total);
         setErrorMessage("");
+        setPaymentAmount("");
 
         // 🔹 Recargar la lista de citas y pagos después del pago
         handleSelectPatient(selectedPatient._id);
       } else {
         setErrorMessage(response.data.msg || "Error desconocido al registrar el pago");
       }
-
-      setPaymentAmount("");
     } catch (error) {
       console.error("Error adding payment:", error);
       setErrorMessage("Error al registrar el pago. Por favor, intenta de nuevo.");
@@ -105,25 +104,58 @@ const Pagos = () => {
     }
   };
 
-  // Configurar los datos para la gráfica de deuda
-  const totalDebt = selectedPatient?.estadoDeCuenta?.total || 0;
-  
-  const chartData = {
-    labels: selectedPatient?.estadoDeCuenta?.pagos?.map(pago => new Date(pago.fecha).toLocaleDateString()) || [],
-    datasets: [
-      {
-        label: "Deuda Total",
-        data: selectedPatient?.estadoDeCuenta?.pagos?.reduce((acc, pago) => {
-          const lastDebt = acc[acc.length - 1] || totalDebt;
-          acc.push(Math.max(0, lastDebt - pago.cantidad));
-          return acc;
-        }, [totalDebt]) || [totalDebt],
-        borderColor: "rgba(255, 99, 132, 1)",
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
-        fill: true,
-      },
-    ],
-  };
+// Obtener pagos y citas
+const pagos = selectedPatient?.estadoDeCuenta?.pagos || [];
+const citas = selectedPatient?.estadoDeCuenta?.citas || [];
+
+// 📌 Unir citas y pagos en un solo array
+const eventosFinancieros = [
+  ...citas.map((cita) => ({ tipo: "cita", cantidad: cita.costo, fecha: new Date(cita.fecha) })),
+  ...pagos.map((pago) => ({ tipo: "pago", cantidad: -pago.cantidad, fecha: new Date(pago.fecha) })),
+];
+
+// 📌 Ordenar por fecha antes de graficar
+eventosFinancieros.sort((a, b) => a.fecha - b.fecha);
+
+
+// 📌 Inicializar el saldo con la primera cita (si existe)
+let saldoActual = citas.length > 0 ? citas[0].costo : 0;
+const labels = [];
+const data = [];
+
+// 📌 Agregar el primer punto con el saldo inicial
+if (citas.length > 0) {
+  labels.push(new Date(citas[0].fecha).toLocaleDateString());
+  data.push(saldoActual);
+}
+
+// 📌 Recalcular el saldo correctamente
+eventosFinancieros.forEach((evento, index) => {
+  if (index === 0 && evento.tipo === "cita") {
+    return; // Evita sumar dos veces la primera cita
+  }
+
+  saldoActual += evento.cantidad;
+  saldoActual = Math.max(saldoActual, 0); // 🔹 Asegurar que nunca sea negativo
+  labels.push(evento.fecha.toLocaleDateString());
+  data.push(saldoActual);
+});
+
+
+// 📌 Configuración de la gráfica
+const chartData = {
+  labels,
+  datasets: [
+    {
+      label: "Deuda Total",
+      data,
+      borderColor: "rgba(255, 99, 132, 1)",
+      backgroundColor: "rgba(255, 99, 132, 0.2)",
+      fill: true,
+    },
+  ],
+};
+
 
   const options = {
     responsive: true,
@@ -133,17 +165,17 @@ const Pagos = () => {
         beginAtZero: true,
         title: {
           display: true,
-          text: 'Monto en USD',
+          text: "Saldo en USD",
         },
       },
     },
     plugins: {
       legend: {
-        position: 'top',
+        position: "top",
       },
       title: {
         display: true,
-        text: 'Deuda Total',
+        text: "Historial de Deuda Total",
       },
     },
   };
@@ -178,9 +210,8 @@ const Pagos = () => {
           <h2 className="text-xl font-semibold">
             Estado de cuenta de {selectedPatient.firstName} {selectedPatient.lastName}
           </h2>
-          <p className="mt-2">Total: ${totalPayments.toFixed(2)}</p>
+          <p className="mt-2">Total: ${totalDebt.toFixed(2)}</p>
           <h3 className="text-lg mt-4">Registrar Pago</h3>
-          {errorMessage && <p style={{ color: "red" }}>{errorMessage}</p>}
           <input
             type="number"
             value={paymentAmount}
@@ -188,10 +219,7 @@ const Pagos = () => {
             placeholder="Cantidad"
             className="border p-2 rounded w-full mt-2"
           />
-          <button
-            onClick={handleAddPayment}
-            className="bg-green-500 text-white px-4 py-2 mt-2 rounded"
-          >
+          <button onClick={handleAddPayment} className="bg-green-500 text-white px-4 py-2 mt-2 rounded">
             Registrar Pago
           </button>
 
@@ -199,26 +227,6 @@ const Pagos = () => {
           <div style={{ height: "400px" }}>
             <Line data={chartData} options={options} />
           </div>
-
-          {/* 🔹 Movimientos Recientes */}
-          <h3 className="mt-6 text-lg">Movimientos Recientes</h3>
-          <h4 className="text-md mt-2">Citas Registradas</h4>
-          <ul>
-            {appointments.map((app) => (
-              <li key={app._id} className="border-b py-2">
-                {app.title} - ${app.cost}
-              </li>
-            ))}
-          </ul>
-
-          <h4 className="text-md mt-4">Pagos Realizados</h4>
-          <ul>
-            {selectedPatient?.estadoDeCuenta?.pagos?.map((pago, index) => (
-              <li key={index} className="border-b py-2">
-                {new Date(pago.fecha).toLocaleDateString()} - ${pago.cantidad}
-              </li>
-            ))}
-          </ul>
         </div>
       )}
     </div>

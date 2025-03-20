@@ -239,11 +239,22 @@ const Citas = () => {
         },
       ]);
 
-    // Actualizar el estado de cuenta del paciente
-    await axios.patch(`/api/patient/${selectedPatient}`, {
-      pacienteId: selectedPatient,
-      cantidad: parseFloat(cost),
-    });
+
+// 🔹 Construir el objeto `patchData` dinámicamente
+const patchData = {
+  pacienteId: selectedPatient,
+  nuevaCita: {
+    fecha: appointmentDate,
+    costo: parseFloat(cost),
+  },
+};
+
+      console.log("Enviando PATCH a:", `/api/patient/${selectedPatient}`);
+      console.log("Datos enviados:", patchData);
+
+      // 🔹 Actualizar el estado de cuenta del paciente
+      await axios.patch(`/api/patient/${selectedPatient}`, patchData);
+
 
       setSelectedPatient("");
       setSelectedTherapist("");

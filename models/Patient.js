@@ -25,11 +25,18 @@ const ContactSchema = new mongoose.Schema(
 
 const EstadoDeCuentaSchema = new mongoose.Schema(
   {
-    total: { type: Number, default: 0 },
+    total: { type: Number, default: 0 }, // 🔹 Deuda total
+    citas: [
+      {
+        fecha: { type: Date, required: true },
+        costo: { type: Number, required: true },
+      },
+    ],
     pagos: [
       {
         fecha: { type: Date, default: Date.now },
         cantidad: { type: Number, required: true },
+        metodoPago: { type: String, enum: ["efectivo", "tarjeta", "transferencia"], required: true },
       },
     ],
   },
