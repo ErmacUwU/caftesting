@@ -13,6 +13,7 @@ const Pagos = () => {
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [totalPayments, setTotalPayments] = useState(0);
+  const [appointments, setAppointments] = useState([]); // 🔹 Citas del paciente
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const { isAuthenticated, isLoading } = useAuth();
@@ -21,10 +22,9 @@ const Pagos = () => {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       router.replace('/login'); // ⬅ Redirige solo si no está autenticado
-      }
-    }, [isAuthenticated, isLoading, router]);
+    }
+  }, [isAuthenticated, isLoading, router]);
   
-  // Fetch pacientes cuando el componente se monte
   useEffect(() => {
     const fetchPatients = async () => {
       setLoading(true);
@@ -38,16 +38,15 @@ const Pagos = () => {
         setLoading(false);
       }
     };
-
     fetchPatients();
   }, []);
 
   if (isLoading) {
-    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+    return <p>Cargando...</p>;
   }
 
   if (!isAuthenticated) {
-    return null; // ⬅ Evita mostrar contenido mientras se redirige
+    return null;
   }
 
   // Manejar la selección de un paciente
@@ -57,7 +56,12 @@ const Pagos = () => {
       const response = await axios.get(`/api/patient/${id}`);
       setSelectedPatient(response.data.patient);
       setTotalPayments(response.data.patient.estadoDeCuenta?.total || 0);
-      setErrorMessage(""); // Limpiar mensaje de error
+      
+      // 🔹 Obtener citas del paciente
+      const appointmentsRes = await axios.get(`/api/date?patientId=${id}`);
+      setAppointments(appointmentsRes.data.dates || []);
+
+      setErrorMessage("");
     } catch (error) {
       console.error("Error fetching patient:", error);
       setErrorMessage("Error al cargar los datos del paciente.");
@@ -84,7 +88,10 @@ const Pagos = () => {
         const updatedPatient = { ...selectedPatient, estadoDeCuenta: response.data.estadoDeCuenta };
         setSelectedPatient(updatedPatient);
         setTotalPayments(response.data.estadoDeCuenta.total);
-        setErrorMessage(""); // Limpiar mensaje de error
+        setErrorMessage("");
+
+        // 🔹 Recargar la lista de citas y pagos después del pago
+        handleSelectPatient(selectedPatient._id);
       } else {
         setErrorMessage(response.data.msg || "Error desconocido al registrar el pago");
       }
@@ -98,7 +105,7 @@ const Pagos = () => {
     }
   };
 
-  // Configurar los datos para la gráfica (solo deuda total)
+  // Configurar los datos para la gráfica de deuda
   const totalDebt = selectedPatient?.estadoDeCuenta?.total || 0;
   
   const chartData = {
@@ -107,10 +114,10 @@ const Pagos = () => {
       {
         label: "Deuda Total",
         data: selectedPatient?.estadoDeCuenta?.pagos?.reduce((acc, pago) => {
-          const lastDebt = acc[acc.length - 1] || totalDebt; // Si no hay pagos previos, comenzamos con la deuda total
-          acc.push(Math.max(0, lastDebt - pago.cantidad)); // Asegurarse de no valores negativos
+          const lastDebt = acc[acc.length - 1] || totalDebt;
+          acc.push(Math.max(0, lastDebt - pago.cantidad));
           return acc;
-        }, [totalDebt]) || [totalDebt], // Si no hay pagos, iniciar con deuda total en un array
+        }, [totalDebt]) || [totalDebt],
         borderColor: "rgba(255, 99, 132, 1)",
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         fill: true,
@@ -128,8 +135,6 @@ const Pagos = () => {
           display: true,
           text: 'Monto en USD',
         },
-        min: 0, // Comenzar desde 0
-        max: totalDebt // Limitar el máximo al total de la deuda
       },
     },
     plugins: {
@@ -190,11 +195,30 @@ const Pagos = () => {
             Registrar Pago
           </button>
 
-          {/* Gráfica de deuda total */}
           <h3 className="mt-4 text-lg">Gráfica de Deuda Total</h3>
           <div style={{ height: "400px" }}>
             <Line data={chartData} options={options} />
           </div>
+
+          {/* 🔹 Movimientos Recientes */}
+          <h3 className="mt-6 text-lg">Movimientos Recientes</h3>
+          <h4 className="text-md mt-2">Citas Registradas</h4>
+          <ul>
+            {appointments.map((app) => (
+              <li key={app._id} className="border-b py-2">
+                {app.title} - ${app.cost}
+              </li>
+            ))}
+          </ul>
+
+          <h4 className="text-md mt-4">Pagos Realizados</h4>
+          <ul>
+            {selectedPatient?.estadoDeCuenta?.pagos?.map((pago, index) => (
+              <li key={index} className="border-b py-2">
+                {new Date(pago.fecha).toLocaleDateString()} - ${pago.cantidad}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

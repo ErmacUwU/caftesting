@@ -239,6 +239,12 @@ const Citas = () => {
         },
       ]);
 
+    // Actualizar el estado de cuenta del paciente
+    await axios.patch(`/api/patient/${selectedPatient}`, {
+      pacienteId: selectedPatient,
+      cantidad: parseFloat(cost),
+    });
+
       setSelectedPatient("");
       setSelectedTherapist("");
       setAppointmentDate("");
