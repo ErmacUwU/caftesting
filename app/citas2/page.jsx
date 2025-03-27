@@ -9,10 +9,6 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
-import uniquid from "uniquid";
-import Modal from "react-modal";
-import ActualizarCita from "../components/ActualizarCitas";
-import BotonDeleteCitas from "../components/BotonDeleteCitas";
 import "./app.css";
 import "rsuite/dist/rsuite-no-reset.min.css"; // Estilos sin reset global
 
