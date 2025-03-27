@@ -3,5 +3,8 @@
   "files.trimTrailingWhitespaceInRegexAndStrings": false,
   "editor.experimentalWhitespaceRendering": "off",
   "editor.stickyScroll.defaultModel": "indentationModel",
-  "editor.wordWrap": "on"
+  "editor.wordWrap": "on",
+  "cSpell.words": [
+    "Basicos"
+  ]
 }
