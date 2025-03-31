@@ -189,6 +189,7 @@ const RegistroPaciente = () => {
       {/* Paso 1: Datos personales */}
       {step === 1 && (
         <div>
+          <h1 className="text-black font-medium">Datos basicos (paso 1 de 3)</h1>
           <div className="mb-4">
             <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
               Nombre<span className="text-red-600">*</span>
@@ -233,27 +234,26 @@ const RegistroPaciente = () => {
               required
             />
           </div>
-        </div>
-      )}
+          <div className="mb-4">
+        <label
+          htmlFor="gender"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Género<span className="text-red-600">*</span> (M o F)
+        </label>
+        <input
+          type="text"
+          id="gender"
+          name="gender"
+          value={gender}
+          onChange={(e) => setGender(e.target.value)}
+          className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+          placeholder="M o F"
+          required
+        />
+      </div>
 
-      {/* Paso 2: Información adicional */}
-      {step === 2 && (
-        <div>
-          <div className="mb-4">
-            <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
-              Género<span className="text-red-600">*</span> (M o F)
-            </label>
-            <input
-              type="text"
-              id="gender"
-              name="gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
-              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
-              required
-            />
-          </div>
-          <div className="mb-4">
+      <div className="mb-4">
             <label htmlFor="patientStatus" className="block text-sm font-medium text-gray-700">
               Estado del paciente<span className="text-red-600">*</span>
             </label>
@@ -273,13 +273,352 @@ const RegistroPaciente = () => {
             </select>
           </div>
         </div>
+
+      )}
+
+      {/* Paso 2: Información adicional */}
+      {step === 2 && (
+        <div>
+           <h1 className="text-black font-medium">Informacion Adicional (paso 2 de 3)</h1>
+           <div className="mb-4">
+        <label
+          htmlFor="birthCity"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Ciudad de nacimiento
+        </label>
+        <input
+          type="text"
+          id="birthCity"
+          name="birthCity"
+          value={birthCity}
+          onChange={(e) => setBirthCity(e.target.value)}
+          className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+          placeholder="Ingrese la ciudad de nacimiento del paciente"
+        />
+      </div>
+      <div className="mb-4">
+        <label
+          htmlFor="nationality"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Nacionalidad
+        </label>
+        <input
+          type="text"
+          id="nationality"
+          name="nationality"
+          value={nationality}
+          onChange={(e) => setNationality(e.target.value)}
+          className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+          placeholder="Ingrese la nacionalidad del paciente"
+        />
+      </div>
+      <div className="mb-4">
+        <label
+          htmlFor="birthState"
+          className="block text-sm font-medium text-gray-700"
+        >
+          Estado de nacimiento
+        </label>
+        <input
+          type="text"
+          id="birthState"
+          name="birthState"
+          value={birthState}
+          onChange={(e) => setBirthState(e.target.value)}
+          className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+          placeholder="Ingrese el estado de nacimiento del paciente"
+        />
+      </div>
+      <div className="mb-4">
+        <label
+          htmlFor="idType"
+          className="block text-sm font-medium text-gray-700"
+        >
+          CURP
+        </label>
+        <input
+          type="text"
+          id="idType"
+          name="idType"
+          value={idType}
+          onChange={(e) => setIdType(e.target.value)}
+          className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+          placeholder="Ingrese el tipo de identificación del paciente"
+        />
+      </div>
+          
+        </div>
       )}
 
       {/* Paso 3: Datos del contacto */}
       {step === 3 && (
         <div>
-          {/* Aquí iría la sección de contactos */}
           <div className="mb-4">
+          <h1 className="text-black font-medium">Informacion de contacto (paso 3 de 3)</h1>
+          {contacts.map((contact, index) => (
+          <div key={index} className="mb-4 border p-4 rounded-md shadow-sm">
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-firstName-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Nombre(s) *
+              </label>
+              <input
+                type="text"
+                id={`contact-firstName-${index}`}
+                name="firstName"
+                value={contact.firstName}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Nombre(s)"
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-lastName-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Apellido Paterno *
+              </label>
+              <input
+                type="text"
+                id={`contact-lastName-${index}`}
+                name="lastName"
+                value={contact.lastName}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Apellido Paterno"
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-middleName-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Apellido Materno
+              </label>
+              <input
+                type="text"
+                id={`contact-middleName-${index}`}
+                name="middleName"
+                value={contact.middleName}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Apellido Materno"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-phone-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Teléfono *
+              </label>
+              <input
+                type="text"
+                id={`contact-phone-${index}`}
+                name="phone"
+                value={contact.phone}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Teléfono"
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-email-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Email
+              </label>
+              <input
+                type="email"
+                id={`contact-email-${index}`}
+                name="email"
+                value={contact.email}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Email"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-additionalPhone-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Teléfono adicional
+              </label>
+              <input
+                type="text"
+                id={`contact-additionalPhone-${index}`}
+                name="additionalPhone"
+                value={contact.additionalPhone}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Teléfono adicional"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-sendReminders-${index}`}
+                className="flex items-center"
+              >
+                <input
+                  type="checkbox"
+                  id={`contact-sendReminders-${index}`}
+                  name="sendReminders"
+                  checked={contact.sendReminders}
+                  onChange={(e) => handleContactChange(index, e)}
+                  className="form-checkbox h-5 w-5 text-indigo-600 rounded-md focus:ring-indigo-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">
+                  Enviar recordatorios a este teléfono también
+                </span>
+              </label>
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-street-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Calle
+              </label>
+              <input
+                type="text"
+                id={`contact-street-${index}`}
+                name="street"
+                value={contact.street}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Calle"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-number-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Número
+              </label>
+              <input
+                type="text"
+                id={`contact-number-${index}`}
+                name="number"
+                value={contact.number}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Número"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-postalCode-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Código postal
+              </label>
+              <input
+                type="text"
+                id={`contact-postalCode-${index}`}
+                name="postalCode"
+                value={contact.postalCode}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Código postal"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-neighborhood-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Colonia
+              </label>
+              <input
+                type="text"
+                id={`contact-neighborhood-${index}`}
+                name="neighborhood"
+                value={contact.neighborhood}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Colonia"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-city-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Ciudad
+              </label>
+              <input
+                type="text"
+                id={`contact-city-${index}`}
+                name="city"
+                value={contact.city}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Ciudad"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-state-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                Estado
+              </label>
+              <input
+                type="text"
+                id={`contact-state-${index}`}
+                name="state"
+                value={contact.state}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="Estado"
+              />
+            </div>
+            <div className="mb-4">
+              <label
+                htmlFor={`contact-country-${index}`}
+                className="block text-sm font-medium text-gray-700"
+              >
+                País
+              </label>
+              <input
+                type="text"
+                id={`contact-country-${index}`}
+                name="country"
+                value={contact.country}
+                onChange={(e) => handleContactChange(index, e)}
+                className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+                placeholder="País"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => removeContact(index)}
+              className="text-red-600 hover:text-red-800 focus:outline-none"
+            >
+              Eliminar contacto
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addContact}
+          className="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md"
+        >
+          Añadir Contacto
+        </button>
+      </div>
+      <div className="mb-4">
             <label className="flex items-center">
               <input
                 type="checkbox"
