@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import uniquid from "uniquid";
 import { useAuth } from "../context/AuthContext.js"; 
 import { useRouter } from "next/navigation";
@@ -17,22 +16,23 @@ const RegistroTerapeuta = () => {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/login'); // Redirige solo si no está autenticado
+      router.replace('/login');
     }
   }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
-    return <p>Cargando...</p>; // Muestra un loader en lugar de redirigir inmediatamente
+    return <p>Cargando...</p>; 
   }
 
   if (!isAuthenticated) {
-    return null; // Evita mostrar contenido mientras se redirige
+    return null;
   }
 
   const agregarTerapista = async (e) => {
@@ -59,7 +59,9 @@ const RegistroTerapeuta = () => {
 
       const { msg } = await res.json();
       if (res.ok) {
+        setSuccessMessage("Terapeuta Guardado con exito");
         limpiarCampos();
+        setStep(1);
       } else {
         setError(msg); // Si hay un error, lo muestra
       }
@@ -94,6 +96,10 @@ const RegistroTerapeuta = () => {
       onSubmit={agregarTerapista}
     >
       <h1 className="text-black font-extrabold">REGISTRO DE TERAPEUTAS</h1>
+
+      {successMessage && (
+        <p className="text-green-600 mb-4">{successMessage}</p> // Mostrar mensaje de éxito
+      )}
 
       {step === 1 && (
         <>
