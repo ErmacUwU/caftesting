@@ -99,7 +99,7 @@ const RegistroTerapeuta = () => {
 
       {successMessage && (
         <p className="text-green-600 mb-4">{successMessage}</p> // Mostrar mensaje de éxito
-      )}
+      )} 
 
       {step === 1 && (
         <>

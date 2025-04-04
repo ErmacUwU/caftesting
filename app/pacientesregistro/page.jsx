@@ -134,6 +134,8 @@ const RegistroPaciente = () => {
       }),
     });
 
+    
+
     limpiarCampos();
     const { msg } = await res.json();
     setError(msg);

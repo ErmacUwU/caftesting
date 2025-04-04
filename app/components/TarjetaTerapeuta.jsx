@@ -1,8 +1,7 @@
-'use client'
+'use client';
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import BotonDeleteTerapeuta from "./BotonDeleteTerapeuta";
-
 import { PenBoxIcon } from "lucide-react";
 
 const TarjetaTerapeuta = () => {
@@ -18,62 +17,43 @@ const TarjetaTerapeuta = () => {
         }
 
         const data = await res.json();
-        setTherapist(data.therapist || []); // Assuming your API response has an object with 'therapist' array
+        setTherapist(data.therapist || []);
       } catch (error) {
         console.error("Error fetching therapists:", error);
-        setTherapist([]); // Set empty array on error
+        setTherapist([]);
       }
     };
-
-/*     const getPatients = async () => {
-      try {
-        const res = await fetch("http://localhost:3000/api/patient", {
-          cache: "no-store",
-        });
-
-        if (!res.ok) {
-          throw new Error("Failed to fetch patients");
-        }
-
-        const data = await res.json();
-        setPatients(data.patient || []); // Asegúrate de que 'patients' sea la propiedad correcta en la respuesta de la API
-      } catch (error) {
-        console.error("Error fetching patients:", error);
-        setPatients([]); // Set empty array on error
-      }
-    }; */
 
     getTherapists();
   }, []);
 
   return (
-    <div>
-      <h1>Lista de Terapeutas</h1>
+    <div className="p-6 bg-gray-50">
+      <h1 className="text-2xl font-extrabold text-center text-gray-800 mb-6">Nuestros Terapeutas</h1>
       {therapist.map((t) => (
         <div
           key={t._id}
-          className="p-4 border border-slate-300 my-3 flex justify-between gap-5 items-start"
+          className="p-5 bg-white rounded-lg shadow-md border border-gray-200 my-4 flex flex-col md:flex-row gap-6 items-start"
         >
-          <div>
-            <div>ID: {t.idTherapist}</div>
-            <div>
-              Nombre: {t.firstName} {t.lastName}
+          <div className="w-full md:w-2/3">
+            <div className="text-lg font-semibold text-gray-700">
+              {t.firstName} {t.lastName}
             </div>
-            <div>Especialidad: {t.specialization}</div>
-            <div>Celular: {t.phone}</div>
-            <div>Email: {t.email}</div>
-            <div className="flex justify-evenly py-2">
-              <div>
-                <Link href={`/editTerapeuta/${t._id}`}>
-                  <button>
-                    <PenBoxIcon size={24} color="blue" />
-                  </button>
-                </Link>
-              </div>
-              <div>
-                <BotonDeleteTerapeuta id={t._id} />
-              </div>
-            </div>
+            <div className="text-sm text-gray-500">Especialidad: <span className="font-medium text-gray-700">{t.specialization}</span></div>
+            <div className="text-sm text-gray-500">Celular: <span className="font-medium text-gray-700">{t.phone}</span></div>
+            <div className="text-sm text-gray-500">Email: <span className="font-medium text-gray-700">{t.email}</span></div>
+          </div>
+
+          <div className="flex gap-4 mt-4 md:mt-0 justify-center md:justify-start items-center w-full md:w-auto">
+            <Link href={`/editTerapeuta/${t._id}`} passHref>
+              <button
+                className="text-blue-600 hover:text-blue-800 transition duration-200"
+                aria-label={`Editar terapeuta ${t.firstName} ${t.lastName}`}
+              >
+                <PenBoxIcon size={24} />
+              </button>
+            </Link>
+            <BotonDeleteTerapeuta id={t._id} />
           </div>
         </div>
       ))}
