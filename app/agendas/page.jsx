@@ -28,9 +28,9 @@ const Agendas = () => {
 
   return (
     <div className="container mx-auto p-6 bg-gray-100 rounded-lg shadow-md">
-      <h1 className='uppercase text-4xl font-bold text-center mb-6 text-gray-800'>Lista de Citas</h1>
+      <h1 className='text-2xl font-bold text-center mb-4 text-gray-800'>Citas Agendadas</h1>
       
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+      <div className="bg-white p-4 rounded-md shadow-sm mb-6">
         <TarjetaCitas />
       </div>
 
