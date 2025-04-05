@@ -89,7 +89,7 @@ const ActualizarPaciente = ({
       return;
     }
 
-      const res = await fetch(`http://localhost:3000/api/patient/${id}`, {
+      const res = await fetch(`/api/patient/${id}`, {
         method: "PUT",
         headers: {
           "Content-type": "application/json",

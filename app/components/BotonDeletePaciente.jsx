@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React from "react";
 import { DeleteIcon } from "lucide-react";
@@ -10,7 +10,7 @@ const BotonDeletePaciente = ({ id }) => {
     const confirmed = confirm("¿Esta seguro de borrarlo?");
 
     if (confirmed) {
-      const res = await fetch(`http://localhost:3000/api/patient?id=${id}`, {
+      const res = await fetch(`api/patient?id=${id}`, {
         method: "DELETE",
       });
 
