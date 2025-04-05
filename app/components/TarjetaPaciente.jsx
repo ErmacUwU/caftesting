@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import axios from "axios";
 import BotonDeletePaciente from "./BotonDeletePaciente";
 import { PenBoxIcon } from "lucide-react";
 
@@ -11,16 +10,20 @@ const TarjetaPaciente = () => {
   useEffect(() => {
     const getPatients = async () => {
       try {
-        const res = await axios.get("/api/patient",{
-          mode: "no-cors",
-        });
-        setPatients(res.data.patient || []); // Ajusta 'patient' si la API tiene otro formato
+        const res = await fetch("/api/patient", { cache: "no-store" });
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch patient");
+        }
+
+        const data = await res.json();
+        setPatients(data.patient || []);
       } catch (error) {
-        console.error("Error al obtener pacientes:", error.message);
-        setPatients([]); // En caso de error, inicializa con un array vacío
+        console.error("Error fetching therapists:", error);
+        setPatients([]);
       }
     };
-
+      
     getPatients();
   }, []);
 
