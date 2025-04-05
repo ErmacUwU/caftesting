@@ -1,5 +1,4 @@
-'use client'
-
+"use client";
 import React, { useState, useEffect } from "react";
 import TarjetaPaciente from '../components/TarjetaPaciente'
 import { useAuth } from "../context/AuthContext.js"; 

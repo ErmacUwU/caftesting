@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import axios from "axios";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // Expresión regular para validar el CURP
 const curpPattern = /^[a-zA-Z0-9]{18}$/;
@@ -30,6 +30,8 @@ const ActualizarPaciente = ({
   const [newBirthState, setNewBirthState] = useState(birthState);
   const [newIdType, setNewIdType] = useState(idType);
   const [newContacts, setNewContacts] = useState(contacts);
+
+  const router = useRouter();
 
   const handleContactChange = (index, event) => {
     const { name, value, type, checked } = event.target;

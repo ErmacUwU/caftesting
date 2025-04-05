@@ -3,7 +3,7 @@ import ActualizarPaciente from "@/app/components/ActualizarPaciente";
 
 const getPatientById = async (id) => {
   try {
-    const res = await fetch(`http://localhost:3000/api/patient/${id}`, {
+    const res = await fetch(`api/patient/${id}`, {
       cache: "no-store",
     });
 
