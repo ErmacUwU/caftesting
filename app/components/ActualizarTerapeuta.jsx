@@ -27,15 +27,15 @@ const updateTherapist = async (e) => {
         "Content-type": "application/json",
       },
       body: JSON.stringify({
-        firstName: newFirstName,
-        lastName: newLastName,
-        email: newEmail,
-        phone: newPhone,
-        specialization: newSpecialization,
-        address: newAddress,
-        city: newCity,
-        country: newCountry,
-      }),
+        newFirstName,
+        newLastName,
+        newEmail,
+        newPhone,
+        newSpecialization,
+        newAddress,
+        newCity,
+        newCountry,
+      }),      
     });
 
     if (!res.ok) {
@@ -50,7 +50,7 @@ const updateTherapist = async (e) => {
 };
 
   return (
-    <form onSubmit={updateTherapist} className="max-w-md mx-auto p-4 bg-gray-100">
+    <form className="max-w-md mx-auto p-4 bg-gray-100">
       <h1 className="text-black font-extrabold">ACTUALIZACION DE TERAPEUTAS</h1>
       <div className="mb-4">
         <label
@@ -202,13 +202,14 @@ const updateTherapist = async (e) => {
 
       <div className="mt-4">
         
-        <Link href={"/terapeuta"}>
+        
         <button
           type="submit"
+          onClick={updateTherapist}
           className="w-full px-4 py-2 my-2 bg-indigo-600 text-white rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
         >
           Actualizar
-        </button></Link>
+        </button>
         <Link href={"/terapeuta"}>
           <button className="w-full px-4 py-2 my-2 bg-red-600 text-white rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:bg-red-500 focus:ring-offset-2">
             Cancelar
