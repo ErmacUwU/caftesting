@@ -6,9 +6,11 @@ import { PenBoxIcon } from "lucide-react";
 
 const TarjetaPaciente = () => {
   const [patients, setPatients] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const getPatients = async () => {
+      setLoading(true);
       try {
         const res = await fetch("/api/patient", { cache: "no-store" });
 
@@ -19,41 +21,53 @@ const TarjetaPaciente = () => {
         const data = await res.json();
         setPatients(data.patient || []);
       } catch (error) {
-        console.error("Error fetching therapists:", error);
+        console.error("Error fetching patients:", error);
         setPatients([]);
+      } finally {
+        setLoading(false);
       }
     };
-      
+
     getPatients();
   }, []);
 
+  if (loading) {
+    return <div className="text-center py-10">Cargando pacientes...</div>;
+  }
+
   return (
-    <div>
-      <h1>Lista de Pacientes</h1>
+    <div className="p-6 bg-gray-50">
+      <h1 className="text-2xl font-extrabold text-center text-gray-800 mb-6">Nuestros Pacientes</h1>
       {patients.map((p) => (
         <div
           key={p._id}
-          className="p-4 border border-slate-300 my-3 flex justify-between gap-5 items-start"
+          className="p-5 bg-white rounded-lg shadow-lg border border-gray-200 my-4 flex flex-col md:flex-row gap-6 items-start"
         >
-          <div>
-            <div>ID: {p.idPatient}</div>
-            <div>
-              Nombre: {p.firstName} {p.lastName}
+          <div className="w-full md:w-2/3">
+            <div className="text-lg font-semibold text-gray-700">
+              {p.firstName} {p.lastName}
             </div>
-            <div>Estatus del Paciente: {p.patientStatus}</div>
-            <div>Nacionalidad: {p.nationality}</div>
-            <div className="flex justify-evenly py-2">
-              <div>
-                <Link href={`/editPaciente/${p._id}`}>
-                  <button>
-                    <PenBoxIcon size={24} color="blue" />
-                  </button>
-                </Link>
-              </div>
-              <div>
-                <BotonDeletePaciente id={p._id} />
-              </div>
+            <div className="text-sm text-gray-500">
+              ID: <span className="font-medium text-gray-700">{p.idPatient}</span>
             </div>
+            <div className="text-sm text-gray-500">
+              Estatus: <span className="font-medium text-gray-700">{p.patientStatus}</span>
+            </div>
+            <div className="text-sm text-gray-500">
+              Nacionalidad: <span className="font-medium text-gray-700">{p.nationality}</span>
+            </div>
+          </div>
+
+          <div className="flex gap-4 mt-4 md:mt-0 justify-center md:justify-start items-center w-full md:w-auto">
+            <Link href={`/editPaciente/${p._id}`} passHref>
+              <button
+                className="text-blue-600 hover:text-blue-800 transition duration-200"
+                aria-label={`Editar paciente ${p.firstName} ${p.lastName}`}
+              >
+                <PenBoxIcon size={24} />
+              </button>
+            </Link>
+            <BotonDeletePaciente id={p._id} />
           </div>
         </div>
       ))}
