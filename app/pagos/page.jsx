@@ -42,15 +42,6 @@ const Pagos = () => {
     fetchPatients();
   }, []);
 
-  if (isLoading) {
-    return <p>Cargando...</p>;
-  }
-
-  if (!isAuthenticated) {
-    return null;
-  }
-
-  // 🔹 Manejar la selección de un paciente
   const handleSelectPatient = async (id) => {
     setLoading(true);
     try {
@@ -58,10 +49,8 @@ const Pagos = () => {
       setSelectedPatient(response.data.patient);
       setTotalDebt(response.data.patient.estadoDeCuenta?.total || 0);
 
-      // 🔹 Obtener citas del paciente
       const appointmentsRes = await axios.get(`/api/date?patientId=${id}`);
       setAppointments(appointmentsRes.data.dates || []);
-
       setErrorMessage("");
     } catch (error) {
       console.error("Error fetching patient:", error);
@@ -71,7 +60,6 @@ const Pagos = () => {
     }
   };
 
-  // 🔹 Manejar el registro de un pago
   const handleAddPayment = async () => {
     if (!selectedPatient || paymentAmount <= 0) {
       setErrorMessage("Debe seleccionar un paciente y la cantidad debe ser mayor a cero.");
@@ -90,8 +78,6 @@ const Pagos = () => {
         setTotalDebt(response.data.estadoDeCuenta.total);
         setErrorMessage("");
         setPaymentAmount("");
-
-        // 🔹 Recargar la lista de citas y pagos después del pago
         handleSelectPatient(selectedPatient._id);
       } else {
         setErrorMessage(response.data.msg || "Error desconocido al registrar el pago");
@@ -104,58 +90,42 @@ const Pagos = () => {
     }
   };
 
-// Obtener pagos y citas
-const pagos = selectedPatient?.estadoDeCuenta?.pagos || [];
-const citas = selectedPatient?.estadoDeCuenta?.citas || [];
+  const pagos = selectedPatient?.estadoDeCuenta?.pagos || [];
+  const citas = selectedPatient?.estadoDeCuenta?.citas || [];
+  const eventosFinancieros = [
+    ...citas.map((cita) => ({ tipo: "cita", cantidad: cita.costo, fecha: new Date(cita.fecha) })),
+    ...pagos.map((pago) => ({ tipo: "pago", cantidad: -pago.cantidad, fecha: new Date(pago.fecha) })),
+  ].sort((a, b) => a.fecha - b.fecha);
 
-// 📌 Unir citas y pagos en un solo array
-const eventosFinancieros = [
-  ...citas.map((cita) => ({ tipo: "cita", cantidad: cita.costo, fecha: new Date(cita.fecha) })),
-  ...pagos.map((pago) => ({ tipo: "pago", cantidad: -pago.cantidad, fecha: new Date(pago.fecha) })),
-];
+  let saldoActual = citas.length > 0 ? citas[0].costo : 0;
+  const labels = [];
+  const data = [];
 
-// 📌 Ordenar por fecha antes de graficar
-eventosFinancieros.sort((a, b) => a.fecha - b.fecha);
-
-
-// 📌 Inicializar el saldo con la primera cita (si existe)
-let saldoActual = citas.length > 0 ? citas[0].costo : 0;
-const labels = [];
-const data = [];
-
-// 📌 Agregar el primer punto con el saldo inicial
-if (citas.length > 0) {
-  labels.push(new Date(citas[0].fecha).toLocaleDateString());
-  data.push(saldoActual);
-}
-
-// 📌 Recalcular el saldo correctamente
-eventosFinancieros.forEach((evento, index) => {
-  if (index === 0 && evento.tipo === "cita") {
-    return; // Evita sumar dos veces la primera cita
+  if (citas.length > 0) {
+    labels.push(new Date(citas[0].fecha).toLocaleDateString());
+    data.push(saldoActual);
   }
 
-  saldoActual += evento.cantidad;
-  saldoActual = Math.max(saldoActual, 0); // 🔹 Asegurar que nunca sea negativo
-  labels.push(evento.fecha.toLocaleDateString());
-  data.push(saldoActual);
-});
+  eventosFinancieros.forEach((evento, index) => {
+    if (index === 0 && evento.tipo === "cita") return;
+    saldoActual += evento.cantidad;
+    saldoActual = Math.max(saldoActual, 0);
+    labels.push(evento.fecha.toLocaleDateString());
+    data.push(saldoActual);
+  });
 
-
-// 📌 Configuración de la gráfica
-const chartData = {
-  labels,
-  datasets: [
-    {
-      label: "Deuda Total",
-      data,
-      borderColor: "rgba(255, 99, 132, 1)",
-      backgroundColor: "rgba(255, 99, 132, 0.2)",
-      fill: true,
-    },
-  ],
-};
-
+  const chartData = {
+    labels,
+    datasets: [
+      {
+        label: "Deuda Total",
+        data,
+        borderColor: "rgba(255, 99, 132, 1)",
+        backgroundColor: "rgba(255, 99, 132, 0.2)",
+        fill: true,
+      },
+    ],
+  };
 
   const options = {
     responsive: true,
@@ -163,72 +133,80 @@ const chartData = {
     scales: {
       y: {
         beginAtZero: true,
-        title: {
-          display: true,
-          text: "Saldo en USD",
-        },
+        title: { display: true, text: "Saldo en USD" },
       },
     },
     plugins: {
-      legend: {
-        position: "top",
-      },
-      title: {
-        display: true,
-        text: "Historial de Deuda Total",
-      },
+      legend: { position: "top" },
+      title: { display: true, text: "Historial de Deuda Total" },
     },
   };
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold">Pagos y Estado de Cuenta</h1>
-      {loading ? (
-        <p>Cargando...</p>
-      ) : (
+    <div className="p-6 max-w-6xl mx-auto">
+      <h1 className="text-3xl font-bold text-center mb-6">💰 Pagos y Estado de Cuenta</h1>
+
+      {errorMessage && (
+        <div className="bg-red-100 border border-red-400 text-red-700 p-3 rounded mb-4">
+          {errorMessage}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h2 className="text-xl mt-4">Lista de Pacientes</h2>
-          {patients.length ? (
-            patients.map((patient) => (
-              <div key={patient._id} className="mt-2">
+          <h2 className="text-xl font-semibold mb-4">👥 Lista de Pacientes</h2>
+          {loading ? (
+            <p>Cargando pacientes...</p>
+          ) : patients.length ? (
+            <div className="space-y-2">
+              {patients.map((patient) => (
                 <button
+                  key={patient._id}
                   onClick={() => handleSelectPatient(patient._id)}
-                  className="bg-blue-500 text-white px-4 py-2 rounded"
+                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded text-left"
                 >
-                  Ver Estado de Cuenta de {patient.firstName} {patient.lastName}
+                  {patient.firstName} {patient.lastName}
                 </button>
-              </div>
-            ))
+              ))}
+            </div>
           ) : (
             <p>No hay pacientes disponibles.</p>
           )}
         </div>
-      )}
 
-      {selectedPatient && (
-        <div className="mt-4 border p-4 rounded shadow">
-          <h2 className="text-xl font-semibold">
-            Estado de cuenta de {selectedPatient.firstName} {selectedPatient.lastName}
-          </h2>
-          <p className="mt-2">Total: ${totalDebt.toFixed(2)}</p>
-          <h3 className="text-lg mt-4">Registrar Pago</h3>
-          <input
-            type="number"
-            value={paymentAmount}
-            onChange={(e) => setPaymentAmount(e.target.value)}
-            placeholder="Cantidad"
-            className="border p-2 rounded w-full mt-2"
-          />
-          <button onClick={handleAddPayment} className="bg-green-500 text-white px-4 py-2 mt-2 rounded">
-            Registrar Pago
-          </button>
+        {selectedPatient && (
+          <div className="bg-white shadow-lg rounded-lg p-6">
+            <h2 className="text-xl font-bold mb-2">
+              Estado de cuenta de {selectedPatient.firstName} {selectedPatient.lastName}
+            </h2>
+            <p className="text-gray-700 mb-4">💳 Total actual: <strong>${totalDebt.toFixed(2)}</strong></p>
 
-          <h3 className="mt-4 text-lg">Gráfica de Deuda Total</h3>
-          <div style={{ height: "400px" }}>
-            <Line data={chartData} options={options} />
+            <div className="mb-4">
+              <label className="block mb-1 font-semibold">Registrar un pago</label>
+              <input
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                placeholder="Cantidad"
+                className="border w-full p-2 rounded"
+              />
+              <button
+                onClick={handleAddPayment}
+                className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 mt-2 rounded"
+              >
+                Registrar Pago
+              </button>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-2">📊 Gráfica de Deuda Total</h3>
+              <div className="h-64">
+                <Line data={chartData} options={options} />
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
