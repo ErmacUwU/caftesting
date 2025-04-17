@@ -43,6 +43,7 @@ const Pagos = () => {
   }, []);
 
   const handleSelectPatient = async (id) => {
+    if (!id) return;
     setLoading(true);
     try {
       const response = await axios.get(`/api/patient/${id}`);
@@ -158,17 +159,20 @@ const Pagos = () => {
           {loading ? (
             <p>Cargando pacientes...</p>
           ) : patients.length ? (
-            <div className="space-y-2">
+            <select
+              onChange={(e) => handleSelectPatient(e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded px-4 py-2"
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Selecciona un paciente
+              </option>
               {patients.map((patient) => (
-                <button
-                  key={patient._id}
-                  onClick={() => handleSelectPatient(patient._id)}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded text-left"
-                >
+                <option key={patient._id} value={patient._id}>
                   {patient.firstName} {patient.lastName}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
           ) : (
             <p>No hay pacientes disponibles.</p>
           )}
@@ -179,7 +183,9 @@ const Pagos = () => {
             <h2 className="text-xl font-bold mb-2">
               Estado de cuenta de {selectedPatient.firstName} {selectedPatient.lastName}
             </h2>
-            <p className="text-gray-700 mb-4">💳 Total actual: <strong>${totalDebt.toFixed(2)}</strong></p>
+            <p className="text-gray-700 mb-4">
+              💳 Total actual: <strong>${totalDebt.toFixed(2)}</strong>
+            </p>
 
             <div className="mb-4">
               <label className="block mb-1 font-semibold">Registrar un pago</label>
