@@ -96,7 +96,7 @@ const ConsultaDocumentos = () => {
   };
 
   return (
-    <div className="p-4 bg-black rounded shadow-lg">
+    <div className="p-4 bg-white rounded shadow-lg">
       <h1 className="text-2xl font-bold mb-5 text-center">Consulta de Documentos</h1>
 
       <div>
