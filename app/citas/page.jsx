@@ -330,8 +330,27 @@ const patchData = {
   };
 
   const handleDateClick = (info) => {
-    setAppointmentDate(info.dateStr);
+  const clickedDateTime = info.date;
+  const dateStr = clickedDateTime.toISOString().split('T')[0];
+  const timeStr = clickedDateTime.toLocaleTimeString('en-US', { 
+    hour12: false, 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  }).slice(0, 5);
+
+
+    setAppointmentDate(dateStr);
+    setAppointmentStartTime(timeStr);
     setIsFormVisible(true);
+
+    //se calcula la hora seleccionada
+    if (selectedService) {
+      const service = services.find(s => s.id.toString() === selectedService);
+      if (service) {
+        setAppointmentDuration(service.duration);
+        setAppointmentEndTime(calculateEndTime(timeStr, service.duration));
+      }
+    }
   };
 
 
@@ -534,6 +553,7 @@ const patchData = {
           eventDrop={handleEventDrop} // 🔹 Detecta cuando se mueve un evento
           dateClick={handleDateClick}
           eventClick={handleEventClick}
+          hiddenDays={[0]} //se elimina el domingo ⚘
           eventContent={(eventInfo) => {
 
             const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
