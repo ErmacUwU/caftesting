@@ -311,7 +311,6 @@ const patchData = {
 
         console.log("Evento actualizado en la base de datos:", response.data);
 
-        
 
     } catch (error) {
         console.error("Error al actualizar evento:", error);

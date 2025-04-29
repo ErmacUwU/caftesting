@@ -127,19 +127,20 @@ const ActualizarCita = ({
     try {
       const res = await axios.put(`/api/date/${id}`, appointmentData);
       if (res.status === 200) {
-        alert("Cita actualizada exitosamente");
+        console.log("Cita actualizada exitosamente");
         onClose(); // Cierra el formulario después de actualizar
       } else {
-        alert("Error en la actualización");
+        console.error("Error en la actualización");
       }
     } catch (error) {
       console.error("Error al actualizar la cita:", error);
-      alert("Error al actualizar la cita");
+      console.error("Error al actualizar la cita");
     }
   };
  
   return (
-    <form className="max-w-md mx-auto p-4 bg-gray-100">
+    <div className="">
+    <form className="w-full max-w-4xl mx-auto p-6 bg-white shadow-md rounded-md grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[80vh]">
       <h1 className="text-black font-extrabold">ACTUALIZACIÓN DE CITA</h1>
 
       <div className="mb-4">
@@ -309,6 +310,7 @@ const ActualizarCita = ({
         </button>
       </div>
     </form>
+    </div>
   );
 };
 
