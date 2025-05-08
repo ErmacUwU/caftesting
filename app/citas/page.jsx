@@ -37,30 +37,6 @@ const customStyles = {
   },
 };
 
-const customEditStyles = {
-  overlay: {
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1000,
-    display: "flex",
-    justifyContent: "flex-end", 
-    alignItems: "center",
-  },
-  content: {
-    position: "fixed",
-    top: "50%",
-    right: "20px",
-    transform: "translateY(-50%)", // Centra verticalmente
-    width: "400px",
-    maxHeight: "90vh",
-    margin: 0,
-    padding: "20px",
-    borderRadius: "10px",
-    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-    overflowY: "auto", // Scroll interno solo si es necesario
-    zIndex: 1001,
-  },
-};
-
 const Citas = () => {
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
@@ -79,11 +55,8 @@ const Citas = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
   
-  const services = [
-    { id: 1, name: "Consulta General", duration: 30, cost: 500 },
-    { id: 2, name: "Terapia Física", duration: 60, cost: 1000 },
-    { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
-  ];
+  //UseState para servicios obtenidos desde api/services
+  const [services, setServices] = useState([])
 
  const [workSchedule, setWorkSchedule] = useState({
     startTime: "08:00:00", // Inicio de jornada
@@ -96,33 +69,17 @@ const Citas = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [patientsRes, therapistsRes, appointmentsRes, scheduleRes] = await Promise.all([
+        const [patientsRes, therapistsRes, appointmentsRes, scheduleRes, serviceRes] = await Promise.all([
           axios.get("/api/patient"),
           axios.get("/api/therapist"),
           axios.get("/api/date"),
-          axios.get("/api/schedule")
+          axios.get("/api/schedule"),
+          axios.get("/api/service"),
         ]);
 
+        setServices(serviceRes.data.services || [])
         setPatients(patientsRes.data.patient || []);
         setTherapists(therapistsRes.data.therapist || []);
-        setAppointments(
-          (appointmentsRes.data?.date || []).map((appointment) => {
-            const colors = getEventColor(appointment.title);
-            return {
-              idd: appointment._id,
-              id: appointment.idDate,
-              title: appointment.title,
-              start: new Date(appointment.start),
-              end: new Date(appointment.end),
-              duration: appointment.duration,
-              description: appointment.description,
-              therapist: appointment.therapist,
-              patient: appointment.patient,
-              cost: appointment.cost,
-              ...colors,
-            };
-          })
-        );
 
         // Asignar horario de trabajo desde la base de datos
       if (scheduleRes.data) {
@@ -138,6 +95,78 @@ const Citas = () => {
 
     fetchData();
   }, []);
+
+  //Permite obtener la información de service y actualizar la información  dentro de el calendario permitiendo de esta manera que se vizualicen colores o nombres diferentes.
+  useEffect(() => {
+
+    if (services.length === 0 ) return
+
+    const fetchAppointments = async () => {
+      try{
+        const response = await axios.get("/api/date")
+        const appointmentData = response.data?.date || []
+
+        const colorAppointments = appointmentData.map((appointment) => {const service = services.find((s) => s.name === appointment.title)
+          return {
+            idd: appointment._id,
+            id: appointment.idDate,
+            title: appointment.title,
+            start: new Date(appointment.start),
+            end: new Date(appointment.end),
+            duration: appointment.duration,
+            description: appointment.description,
+            therapist: appointment.therapist,
+            patient: appointment.patient,
+            cost: appointment.cost,
+            backgroundColor: service?.color || "#bdc3c7",
+            borderColor: "#000",
+          }
+        })
+        setAppointments(colorAppointments)
+      } catch (error) {
+        console.error("Error cargando citas:", error)
+      }
+    }
+    fetchAppointments()
+  }, [services])
+
+
+  //Sirve para cargar los datos desde la BD y actualizar el calendario 
+  const refetchAppointments = async () => {
+    try{
+      const response = await axios.get("/api/date")
+      const appointmentData = response.data?.date || []
+
+      const colorAppointments = appointmentData.map((appointment) => {
+        //Obtenemos el servicio por su Id
+        let service = services.find((s) => s._id.toString() === appointment.serviceId?.toString())
+
+        if(!service && appointment.title){
+          service = services.find((s) => s.name === appointment.title)
+        }
+
+        return {
+          idd: appointment._id,
+          id: appointment.idDate,
+          title: appointment.title,
+          start: new Date(appointment.start),
+          end: new Date(appointment.end),
+          duration: appointment.duration,
+          description: appointment.description,
+          therapist: appointment.therapist,
+          patient: appointment.patient,
+          cost: appointment.cost,
+          backgroundColor: service?.color || "#bdc3c7",
+          borderColor: "#000",
+          serviceId: appointment.serviceId,
+        }
+      })
+      setAppointments(colorAppointments) //Guardamos la consulta de collorAppoidments dentro de setAppointments para actualizar FullCalendar sin recargar pagina
+    } catch (error) {
+      console.error("Error cargando citas:", error)
+    }
+  }
+
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -158,16 +187,11 @@ const Citas = () => {
   };
   
 
-  const getEventColor = (service) => {
-    switch (service) {
-      case "Consulta General":
-        return { backgroundColor: "#3498db", borderColor: "#000" };
-      case "Terapia Física":
-        return { backgroundColor: "#2ecc71", borderColor: "#000" };
-      case "Consulta Especializada":
-        return { backgroundColor: "#e74c3c", borderColor: "#000" };
-      default:
-        return { backgroundColor: "#bdc3c7", borderColor: "#000" };
+  const getEventColor = (serviceName) => {
+    const service = services.find((s) => s.name === serviceName)
+    return {
+      backgroundColor: service?.color || "#bdc3c7",
+      borderColor: "#000"
     }
   };
 
@@ -198,7 +222,7 @@ const Citas = () => {
     const selectedServiceId = e.target.value;
     setSelectedService(selectedServiceId);
 
-    const service = services.find((s) => s.id.toString() === selectedServiceId);
+    const service = services.find((s) => s._id === selectedServiceId);
     if (service) {
       setAppointmentDuration(service.duration); // Asignar duración predefinida
       setCost(service.cost); // Asignar costo
@@ -208,14 +232,36 @@ const Citas = () => {
     }
   };
 
-  const convertToUTC = (localTime) => {
-    const localDate = new Date(`${appointmentDate}T${localTime}:00`);
-    return new Date(localDate.getTime() - localDate.getTimezoneOffset() * 60000).toISOString();
-  };
 
+  const convertToLocalDate = (dateStr, timeStr) => {
+    const [year, month, day] = dateStr.split("-")
+    const [hours, minutes] = timeStr.split(":")
+
+    if(!year || !month || !day || !hours || ! minutes){
+      return null;
+    }
+
+    return new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes)
+    )
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    //Verificamos si la fecha seleccionada es domingo extrayendo un objeto tipo Date de appointmentDate y obtenemos el dia de selectedDate con getUTCDay()
+    const selectedDate = new Date(appointmentDate)
+    const dayWeek = selectedDate.getUTCDay()
+
+    //Si es domingo, no permite enviar la cita y detiene la función
+    if (dayWeek === 0){
+      alert("No se puede registrar citas en domingo")
+      return;
+    }
 
     const therapist = therapists.find((t) => t._id === selectedTherapist);
     const therapistName = therapist
@@ -227,41 +273,27 @@ const Citas = () => {
       ? `${patient.firstName} ${patient.lastName}`
       : "";
 
-    const service = services.find((s) => s.id.toString() === selectedService);
+    const service = services.find((s) => s._id.toString() === selectedService);
 
     const appointmentData = {
       idDate: uniquid(),
       date: appointmentDate,
-      start: convertToUTC(appointmentStartTime),
-      end: convertToUTC(appointmentEndTime),
+      start: convertToLocalDate(appointmentDate ,appointmentStartTime),
+      end: convertToLocalDate(appointmentDate ,appointmentEndTime),
       duration: appointmentDuration,
       therapist: therapist,
       patient: patient,
       title: service?.name || "",
       description: service?.name || "",
       cost: parseFloat(cost),
+      serviceId: service?._id
     };
 
     try {
       const response = await axios.post("/api/date", appointmentData);
       console.log("Duración enviada:", appointmentDuration);
 
-
-      setAppointments((prevAppointments) => [
-        ...prevAppointments,
-        {
-          idd: response.data._id,
-          id: response.data.idDate,
-          title: response.data.title,
-          start: new Date(response.data.start),
-          end: new Date(response.data.end),
-          duration: response.data.duration,
-          description: response.data.description,
-          therapist: response.data.therapist,
-          patient: response.data.patient,
-          cost: response.data.cost
-        },
-      ]);
+      await refetchAppointments()
 
 
 // 🔹 Construir el objeto `patchData` dinámicamente
@@ -289,6 +321,8 @@ const patchData = {
       setSelectedService("");
       setCost("");
       setIsFormVisible(false);
+
+      //window.location.reload(); //Recargar pagina de forma temporal para observar la cita creada.
     } catch (error) {
       console.error("Error creando cita o actualizando cuenta:", error);
     }
@@ -354,32 +388,41 @@ const patchData = {
   };
 
   const handleDateClick = (info) => {
-  const clickedDateTime = info.date;
-  const dateStr = clickedDateTime.toISOString().split('T')[0];
-  const timeStr = clickedDateTime.toLocaleTimeString('en-US', { 
-    hour12: false, 
-    hour: '2-digit', 
-    minute: '2-digit' 
-  }).slice(0, 5);
 
+    //Aqui obtenemos la fecha clickeada en un objeto date
+    const clickedDate = info.date
+    //Extraemos el dia de la semana usando getDay
+    const dayWeek = clickedDate.getDay()
 
-    setAppointmentDate(dateStr);
-    setAppointmentStartTime(timeStr);
-    setIsFormVisible(true);
-
-    //se calcula la hora seleccionada
-    if (selectedService) {
-      const service = services.find(s => s.id.toString() === selectedService);
-      if (service) {
-        setAppointmentDuration(service.duration);
-        setAppointmentEndTime(calculateEndTime(timeStr, service.duration));
-      }
+    //Validamos si es domingo "0" y detenemos la función
+    if(dayWeek === 0) {
+      alert("No se pueden crear citas los domingos")
+      return;
     }
+
+    //Extraemos solo la fecha convirtiendo el objeto Date en un formato de zona [1] y fecha [0] separados por "T"
+    const fecha = clickedDate.toLocaleDateString("sv-SE")
+
+    //Extraemos solo la hora del formato de zona horaria y tiempo
+    const hora = clickedDate.toTimeString().slice(0,5)
+
+    //Actualizamos los estados del formulario con la fecha selecionada y una hora de inicio para la cita
+    setAppointmentDate(fecha);
+    setAppointmentStartTime(hora);
+
+
+    //Aqui creado un tiempo de duración para nuestra cita segun el tipo de servicio que seleccionemos.
+    const service = services.find(serv => serv._id.toString() === selectedService)
+    if (service) {
+      setAppointmentEndTime(calculateEndTime(hora, service.duration))
+    }
+
+    setIsFormVisible(true);
   };
 
 
   return (
-    <div className="flex min-h-screen relative" style={{ overflowX: "hidden" }}>
+    <div className="flex min-h-screen">
       {isFormVisible && (
         <div className="w-1/3 min-w-[300px] p-4 bg-gray-100 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto">
           <button
@@ -460,7 +503,7 @@ const patchData = {
               >
                 <option value="">Seleccione un servicio</option>
                 {services.map((service) => (
-                  <option key={service.id} value={service.id}>
+                  <option key={service._id} value={service._id}>
                     {service.name}
                   </option>
                 ))}
@@ -577,7 +620,7 @@ const patchData = {
           eventDrop={handleEventDrop} // 🔹 Detecta cuando se mueve un evento
           dateClick={handleDateClick}
           eventClick={handleEventClick}
-          hiddenDays={[0]} //se elimina el domingo ⚘
+          hiddenDays={[0]} // Permite esconder el dia domingo
           eventContent={(eventInfo) => {
 
             const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
@@ -676,30 +719,22 @@ const patchData = {
           onRequestClose={closeModal}
           style={customStyles}
           ariaHideApp={false}
-          shouldCloseOnOverlayClick={true}
-          onAfterOpen={() => document.body.style.overflow = "hidden"}
-          onAfterClose={() => document.body.style.overflow = "auto"}
         >
-          <div className="relative">
-            <button
-              onClick={closeModal}
-              className="absolute top-2 right-2 bg-gray-500 text-white p-1 rounded-full w-6 h-6 flex items-center justify-center"
-      >
-        X
-      </button>
           <ActualizarCita
             id={selectedAppointment.idd}
             selectedPatient={selectedAppointment.patient}
             selectedTherapist={selectedAppointment.therapist}
-            selectedService={selectedAppointment.title}
+            //Permite detectar el servicio con el que se esta abriendo la cita
+            selectedService={selectedAppointment.serviceId}
             appointmentDate={selectedAppointment.start.toISOString().split("T")[0]}
             appointmentStartTime={selectedAppointment.start.toTimeString().slice(0, 5)}
             appointmentEndTime={selectedAppointment.end.toTimeString().slice(0, 5)}
             appointmentDuration={selectedAppointment.duration}
             cost={selectedAppointment.cost}
             onClose={closeModal}
+            //Permite cargar las citas una vez estas son actualizadas
+            onUpdate={refetchAppointments}
           />
-          </div>
         </Modal>
       )}
     </div>

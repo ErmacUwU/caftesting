@@ -150,7 +150,8 @@ const getSectionLinks = (section, closeMenu, isOpen) => {
       { href: "/citas", text: "Citas", icon: CalendarDaysIcon },
       { href: "/agendas", text: "Agendas", icon: ClipboardDocumentListIcon },
       { href: "/terapeuta", text: "Terapeuta", icon: UsersIcon },
-      { href: "/pacientes", text: "Pacientes", icon: UsersIcon }
+      { href: "/pacientes", text: "Pacientes", icon: UsersIcon },
+      { href: "/servicios", text: "Servicios", icon: ClipboardDocumentListIcon }
     ],
     comunicacion: [
       { href: "/mensajes", text: "Mensajes", icon: ChatBubbleLeftRightIcon }
@@ -167,6 +168,7 @@ const getSectionLinks = (section, closeMenu, isOpen) => {
     administracion: [
       { href: "/usuarios", text: "Usuarios", icon: UserGroupIcon },
       { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon }
+
     ]
   };
 

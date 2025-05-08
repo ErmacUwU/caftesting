@@ -93,26 +93,38 @@ const Pagos = () => {
 
   const pagos = selectedPatient?.estadoDeCuenta?.pagos || [];
   const citas = selectedPatient?.estadoDeCuenta?.citas || [];
+
   const eventosFinancieros = [
     ...citas.map((cita) => ({ tipo: "cita", cantidad: cita.costo, fecha: new Date(cita.fecha) })),
-    ...pagos.map((pago) => ({ tipo: "pago", cantidad: -pago.cantidad, fecha: new Date(pago.fecha) })),
+    ...pagos.map((pago) => ({ tipo: "pago", cantidad: -pago.cantidad, fecha: new Date(pago.fecha), raw: pago })),
   ].sort((a, b) => a.fecha - b.fecha);
 
-  let saldoActual = citas.length > 0 ? citas[0].costo : 0;
+  let saldoActual = 0;
   const labels = [];
-  const data = [];
+  const deudaData = []
+  const pagosData = []
 
-  if (citas.length > 0) {
-    labels.push(new Date(citas[0].fecha).toLocaleDateString());
-    data.push(saldoActual);
-  }
+  // if (citas.length > 0) {
+  //   labels.push(new Date(citas[0].fecha).toLocaleDateString());
+  //   data.push(saldoActual);
+  // }
 
-  eventosFinancieros.forEach((evento, index) => {
-    if (index === 0 && evento.tipo === "cita") return;
-    saldoActual += evento.cantidad;
-    saldoActual = Math.max(saldoActual, 0);
-    labels.push(evento.fecha.toLocaleDateString());
-    data.push(saldoActual);
+  eventosFinancieros.forEach((evento) => {
+    const fechaStr = evento.fecha.toLocaleDateString("es-MX")
+
+    saldoActual += evento.cantidad
+    saldoActual = Math.max(saldoActual, 0)
+
+    labels.push(fechaStr)
+    deudaData.push(saldoActual)
+
+    if(evento.tipo === "pago") {
+      pagosData.push({
+        x: fechaStr,
+        y: saldoActual,
+        label: `Pago: $${-evento.cantidad}`,
+      })
+    }
   });
 
   const chartData = {
@@ -120,10 +132,19 @@ const Pagos = () => {
     datasets: [
       {
         label: "Deuda Total",
-        data,
+        data: deudaData,
         borderColor: "rgba(255, 99, 132, 1)",
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         fill: true,
+        tension: 0.3,
+      },
+      {
+        label: "Pagos Realizados",
+        data: pagosData,
+        bordergroundColor: "rgba(54, 162, 235, 0.8)",
+        bordergroundColor: "rgba(54,162, 235, 0.8)",
+        pointStyle: 'triangule',
+        showLine: false,
       },
     ],
   };

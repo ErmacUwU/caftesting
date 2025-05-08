@@ -15,6 +15,7 @@ const ActualizarCita = ({
   appointmentDuration,
   cost,
   onClose,
+  onUpdate
 }) => {
   const [newPatient, setNewPatient] = useState(selectedPatient);
   const [newTherapist, setNewTherapist] = useState(selectedTherapist);
@@ -26,11 +27,22 @@ const ActualizarCita = ({
   const [newCost, setNewCost] = useState(cost);
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
-  const [services] = useState([
-    { id: 1, name: "Consulta General", duration: 30, cost: 500 },
-    { id: 2, name: "Terapia Física", duration: 60, cost: 1000 },
-    { id: 3, name: "Consulta Especializada", duration: 45, cost: 800 },
-  ]);
+
+  const [services, setServices] = useState([])
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await axios.get("/api/service")
+        setServices(res.data.services || [])
+      } catch (error) {
+        console.error("Error al cargar los servicios", error)
+      }
+    }
+
+    fetchServices()
+  }, [])
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,9 +65,9 @@ const ActualizarCita = ({
       console.log(selectedPatient);
       console.log(selectedService);
       console.log(selectedTherapist);
-      setNewTherapist(selectedPatient);  // Esto debería asignar el terapeuta seleccionado
+      setNewPatient(selectedPatient);  // Esto debería asignar el paciente seleccionado
       setNewTherapist(selectedTherapist);  // Esto debería asignar el terapeuta seleccionado
-      setNewService(selectedService);  // Esto debería asignar el servicio seleccionado
+      setNewService(selectedService?.toString() || "");  // Esto debería asignar el servicio seleccionado
       setNewDuration(appointmentDuration);
     }
   }, [selectedPatient, selectedTherapist, selectedService, appointmentDuration]);
@@ -74,7 +86,7 @@ const ActualizarCita = ({
     setNewService(selectedServiceId);
 
     const selectedService = services.find(
-      (service) => service.id.toString() === selectedServiceId
+      (service) => service._id.toString() === selectedServiceId
     );
     if (newStartTime && selectedService) {
       setNewEndTime(calculateEndTime(newStartTime, selectedService.duration));
@@ -108,7 +120,12 @@ const ActualizarCita = ({
     const patient = patients.find((p) => p._id === newPatient);
     const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Paciente no encontrado";
   
-    const service = services.find((s) => s.id.toString() === newService);
+    const service = services.find((s) => {
+      return  (
+        s._id?.toString() === newService?.toString() ||
+        s.name === selectedService
+        );
+      });
   
     const appointmentData = {
       newDate: newAppointmentDate, // La fecha de la cita
@@ -120,6 +137,8 @@ const ActualizarCita = ({
       newTitle: service?.name || "",
       newDescription: service?.name || "",
       newCost: parseFloat(newCost),
+      newColor: service?.color || "#bdc3c7",
+      serviceId: service?._id,
     };
   
     console.log("Datos enviados para actualización:", appointmentData); // Verifica que los datos sean correctos
@@ -127,20 +146,19 @@ const ActualizarCita = ({
     try {
       const res = await axios.put(`/api/date/${id}`, appointmentData);
       if (res.status === 200) {
-        console.log("Cita actualizada exitosamente");
+        if (onUpdate) onUpdate()
         onClose(); // Cierra el formulario después de actualizar
       } else {
-        console.error("Error en la actualización");
+        alert("Error en la actualización");
       }
     } catch (error) {
       console.error("Error al actualizar la cita:", error);
-      console.error("Error al actualizar la cita");
+      alert("Error al actualizar la cita");
     }
   };
  
   return (
-    <div className="">
-    <form className="w-full max-w-4xl mx-auto p-6 bg-white shadow-md rounded-md grid grid-cols-1 md:grid-cols-2 gap-4 overflow-y-auto max-h-[80vh]">
+    <form className="max-w-md mx-auto p-4 bg-gray-100">
       <h1 className="text-black font-extrabold">ACTUALIZACIÓN DE CITA</h1>
 
       <div className="mb-4">
@@ -208,7 +226,7 @@ const ActualizarCita = ({
               setNewStartTime(formattedTime);
 
               // Calcular la nueva hora de finalización si hay un servicio seleccionado
-              const selectedService = services.find((s) => s.id.toString() === newService);
+              const selectedService = services.find((s) => s._id.toString() === newService);
               if (selectedService) {
                 setNewEndTime(calculateEndTime(formattedTime, selectedService.duration));
               }
@@ -233,7 +251,7 @@ const ActualizarCita = ({
           required
         >
           {services.map((service) => (
-            <option key={service.id} value={service.id}>
+            <option key={service._id} value={service._id}>
               {service.name}
             </option>
           ))}
@@ -310,7 +328,6 @@ const ActualizarCita = ({
         </button>
       </div>
     </form>
-    </div>
   );
 };
 

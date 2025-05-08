@@ -34,7 +34,11 @@ const DateSchema = new mongoose.Schema(
     },
     title: String,
     description: String,
-    cost:Number
+    cost:Number,
+    serviceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Service"
+    },
   },
   { timestamps: true }
 );

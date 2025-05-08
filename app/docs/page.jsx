@@ -96,11 +96,10 @@ export default function UploadPage() {
                 method: "GET",
             });
             const data = await response.json();
-            setFiles(data.files || []);
+            setFiles(data.files);
         } catch (error) {
             console.error("Error al listar los archivos:", error);
             setMessage("Error al listar los archivos.");
-            setFiles([]);
         }
     };
 
@@ -159,7 +158,7 @@ export default function UploadPage() {
 
                     // Limpiar el input de archivo
                     setFile(null);
-                    setFileName(file.name);
+                    setFileName("");
                     if (fileInputRef.current) {
                         fileInputRef.current.value = null; // Limpiar visualmente el input
                     }

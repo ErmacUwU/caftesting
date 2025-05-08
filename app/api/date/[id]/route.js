@@ -1,5 +1,6 @@
 import dbConnect from "@/lib/dbConnect";
 import Date from "@/models/Date";
+import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 
 export async function PUT(request, { params }) {
@@ -15,6 +16,7 @@ export async function PUT(request, { params }) {
     newTitle: title,
     newDescription: description,
     newCost: cost,
+    serviceId,
   } = await request.json();
 
   await dbConnect();
@@ -30,6 +32,7 @@ export async function PUT(request, { params }) {
     title,
     description,
     cost,
+    serviceId: new mongoose.Types.ObjectId(serviceId),
   }, { new: true }); 
 
   if (!updatedDate) {
