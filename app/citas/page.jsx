@@ -37,6 +37,30 @@ const customStyles = {
   },
 };
 
+const customEditStyles = {
+  overlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    zIndex: 1000,
+    display: "flex",
+    justifyContent: "flex-end", 
+    alignItems: "center",
+  },
+  content: {
+    position: "fixed",
+    top: "50%",
+    right: "20px",
+    transform: "translateY(-50%)", // Centra verticalmente
+    width: "400px",
+    maxHeight: "90vh",
+    margin: 0,
+    padding: "20px",
+    borderRadius: "10px",
+    boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+    overflowY: "auto", // Scroll interno solo si es necesario
+    zIndex: 1001,
+  },
+};
+
 const Citas = () => {
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
@@ -235,7 +259,7 @@ const Citas = () => {
           description: response.data.description,
           therapist: response.data.therapist,
           patient: response.data.patient,
-          cost: response.data.cost,
+          cost: response.data.cost
         },
       ]);
 
@@ -311,6 +335,7 @@ const patchData = {
 
         console.log("Evento actualizado en la base de datos:", response.data);
 
+        
 
     } catch (error) {
         console.error("Error al actualizar evento:", error);
@@ -354,7 +379,7 @@ const patchData = {
 
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen relative" style={{ overflowX: "hidden" }}>
       {isFormVisible && (
         <div className="w-1/3 min-w-[300px] p-4 bg-gray-100 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto">
           <button
@@ -651,7 +676,17 @@ const patchData = {
           onRequestClose={closeModal}
           style={customStyles}
           ariaHideApp={false}
+          shouldCloseOnOverlayClick={true}
+          onAfterOpen={() => document.body.style.overflow = "hidden"}
+          onAfterClose={() => document.body.style.overflow = "auto"}
         >
+          <div className="relative">
+            <button
+              onClick={closeModal}
+              className="absolute top-2 right-2 bg-gray-500 text-white p-1 rounded-full w-6 h-6 flex items-center justify-center"
+      >
+        X
+      </button>
           <ActualizarCita
             id={selectedAppointment.idd}
             selectedPatient={selectedAppointment.patient}
@@ -664,6 +699,7 @@ const patchData = {
             cost={selectedAppointment.cost}
             onClose={closeModal}
           />
+          </div>
         </Modal>
       )}
     </div>
