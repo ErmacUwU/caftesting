@@ -8,6 +8,8 @@ import { HomeIcon, UserPlusIcon, UsersIcon, CalendarDaysIcon,
   Cog6ToothIcon, DocumentIcon, Bars2Icon } from "@heroicons/react/24/outline";
 import { User } from "lucide-react";
 import { useAuth } from "../context/AuthContext.js";
+import { usePathname } from "next/navigation";
+
 
 const menuSections = {
   registros: false,
@@ -19,11 +21,14 @@ const menuSections = {
 };
 
 const Sidebar = () => {
+  const pathname = usePathname();
   const { isAuthenticated, logout } = useAuth();
   const [openSections, setOpenSections] = useState(menuSections);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false); // Para detectar el tamaño de la pantalla
+
+  if(pathname ==="/login")return null;
 
   // Detectar el tamaño de la pantalla
   useEffect(() => {

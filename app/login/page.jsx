@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.js'; 
 import { useRouter } from 'next/navigation'; 
+import Image from 'next/image';
+import child from '../assets/images/bby.webp';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -62,6 +64,10 @@ const Login = () => {
         onSubmit={handleSubmit}
         className="bg-white bg-opacity-50 p-8 rounded-lg shadow-md w-96"
       >
+        <Image
+        className='flex justify-center'
+        src={child}></Image>
+
         <h1 className="text-2xl font-bold mb-6 text-center">Bienvenido</h1>
         {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
         <input
