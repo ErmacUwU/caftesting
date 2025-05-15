@@ -14,7 +14,6 @@ const Login = () => {
   const router = useRouter();
   const [redirectTo, setRedirectTo] = useState("/");
 
-  // Obtiene la URL de redirección después del login
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -25,7 +24,6 @@ const Login = () => {
     }
   }, []);
 
-  // Función para manejar el login
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -40,8 +38,6 @@ const Login = () => {
 
       if (response.ok) {
         login(data.userId);
-        
-        // Guardar en localStorage solo en el cliente
         if (typeof window !== "undefined") {
           localStorage.setItem("isAuthenticated", "true");
           localStorage.setItem("userId", data.userId);
@@ -59,24 +55,25 @@ const Login = () => {
   };
 
   return (
-    <div className="flex justify-center bg-transparent">
+    <div className="w-full h-screen flex items-center justify-center bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e]">
       <form
         onSubmit={handleSubmit}
-        className="bg-white bg-opacity-50 p-8 rounded-lg shadow-md w-96"
+        className="p-10 rounded-2xl shadow-lg w-full max-w-md text-white bg-[#1a1a2e]"
       >
-        <Image
-        className='flex justify-center'
-        src={child}></Image>
+        <div className="flex justify-center mb-6">
+          <Image src={child} alt="Login Image" width={100} height={100} className="rounded-full" />
+        </div>
 
-        <h1 className="text-2xl font-bold mb-6 text-center">Bienvenido</h1>
-        {error && <p className="text-red-500 text-sm mb-4 text-center">{error}</p>}
+        <h1 className="text-3xl font-semibold mb-6 text-center">Bienvenido</h1>
+        {error && <p className="text-red-400 text-sm mb-4 text-center">{error}</p>}
+
         <input
           type="email"
           placeholder="Correo electrónico"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
-          className="w-full p-3 mb-4 border rounded-md text-black"
+          className="w-full p-3 mb-4 rounded-lg bg-[#2c2c54] placeholder-white text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
         <input
           type="password"
@@ -84,11 +81,11 @@ const Login = () => {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full p-3 mb-6 border text-black"
+          className="w-full p-3 mb-6 rounded-lg bg-[#2c2c54] placeholder-white text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
         />
         <button
           type="submit"
-          className="w-full bg-blue-600 text-white p-3 rounded-md hover:bg-blue-700 transition"
+          className="w-full bg-gradient-to-r from-purple-600 to-blue-700 hover:from-purple-700 hover:to-blue-800 transition duration-300 text-white p-3 rounded-lg font-semibold"
         >
           Entrar
         </button>
