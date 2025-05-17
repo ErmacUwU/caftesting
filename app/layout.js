@@ -13,10 +13,11 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} flex flex-col `}>
+      <body className={`${inter.className} flex flex-col
+      bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] `}>
         {/* Proveedor de contexto de autenticación que envuelve la aplicación para manejar el estado de autenticación. */}
-        <AuthProvider><Sidebar />
-        <div className="flex-1 p-6 bg-black-100 overflow-auto">
+        <AuthProvider><Sidebar/>
+        <div className="overflow-auto">
         {children}
         </div></AuthProvider>
       </body>

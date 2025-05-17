@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { HomeIcon, UserPlusIcon, UsersIcon, CalendarDaysIcon, 
-  ClipboardDocumentListIcon, ChatBubbleLeftRightIcon, DocumentChartBarIcon, 
+  ClipboardDocumentListIcon, ChatBubbleLeftRightIcon, DocumentChartBarIcon,
   CreditCardIcon, ArchiveBoxIcon, DocumentTextIcon, UserGroupIcon, 
   Cog6ToothIcon, DocumentIcon, Bars2Icon } from "@heroicons/react/24/outline";
 import { User } from "lucide-react";
@@ -17,7 +17,7 @@ const menuSections = {
   comunicacion: false,
   reportesPagos: false,
   almacenDocumentos: false,
-  administracion: false
+  administracion: false,
 };
 
 const Sidebar = () => {
@@ -28,7 +28,6 @@ const Sidebar = () => {
   const menuRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false); // Para detectar el tamaño de la pantalla
 
-  if(pathname ==="/login")return null;
 
   // Detectar el tamaño de la pantalla
   useEffect(() => {
@@ -43,6 +42,7 @@ const Sidebar = () => {
       window.removeEventListener("resize", handleResize);
     };
   }, []);
+
 
   // Cerrar menú al hacer clic fuera
   const handleClickOutside = useCallback((event) => {
@@ -65,9 +65,12 @@ const Sidebar = () => {
 
   const closeMenu = useCallback(() => setIsMenuOpen(false), []);
 
+  if(pathname ==="/login")return null;
+
+
   return (
-    <div className="sidebar sticky top-0 container mx-auto flex justify-between items-center bg-black min-w-full" ref={menuRef}>
-      <div className="flex text-white h-16 items-center">
+    <div className="sidebar sticky top-0 flex justify-between items-center w-full" ref={menuRef}>
+      <div className="flex h-16 text-white  items-center">
         <Link
           href="/"
           className="mx-4 my-2 hover:bg-gray-700 rounded flex items-center p-2 transition-colors"
@@ -91,7 +94,7 @@ const Sidebar = () => {
       )}
 
       <nav 
-        className={`fixed md:relative w-full md:w-auto top-16 md:top-0 right-0 z-20 bg-black ${
+        className={`fixed md:relative w-full md:w-auto top-16 md:top-0 right-0 z-20 bg-[#141422] ${
           isMenuOpen || !isMobile ? 'block' : 'hidden'
         } md:block`}>
         <ul className="flex flex-col md:flex-row">
@@ -115,28 +118,18 @@ const Sidebar = () => {
                     className="px-4 py-3 hover:bg-gray-700 rounded flex items-center w-full"
                     aria-expanded={openSections[section]}
                   >
-                    <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">
+                    <h3 className=" font-medium text-xs text-white uppercase tracking-wide">
                       {section.replace(/([A-Z])/g, ' $1').trim()}
                     </h3>
                   </button>
                   
                   {openSections[section] && (
-                    <ul className="md:absolute md:bg-black md:rounded-md md:shadow-lg">
+                    <ul className="md:absolute md:bg-[#1a1a2e] md:rounded-md md:shadow-lg">
                       {getSectionLinks(section, closeMenu, openSections[section])}
                     </ul>
                   )}
                 </div>
               ))}
-              
-              <li className="mt-2">
-                <button
-                  onClick={logout}
-                  className="px-4 py-3 hover:bg-gray-700 rounded flex items-start w-full text-gray-400"
-                >
-                  <User className="h-5 w-5 mr-3" />
-                  Cerrar Sesión
-                </button>
-              </li>
             </>
           )}
         </ul>
@@ -172,9 +165,12 @@ const getSectionLinks = (section, closeMenu, isOpen) => {
     ],
     administracion: [
       { href: "/usuarios", text: "Usuarios", icon: UserGroupIcon },
-      { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon }
+      { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon },
+      {href:"/login",text:"Cerrar Sesion", icon: UserPlusIcon
+      }
 
-    ]
+    ],
+    
   };
 
   return sectionConfig[section].map(({ href, text, icon: Icon }) => (
@@ -184,7 +180,7 @@ const getSectionLinks = (section, closeMenu, isOpen) => {
         onClick={() => {
           closeMenu();  // Esto cerrará el menú al hacer clic en un enlace
         }}
-        className={`px-4 py-3 hover:bg-gray-700 rounded flex items-center whitespace-nowrap ${isOpen ? 'text-gray-400' : 'text-gray-400'}`}
+        className={`px-4 py-3 hover:bg-gray-700 rounded flex items-center whitespace-nowrap ${isOpen ? 'text-gray-200 text-xs' : 'text-gray-200 text-xs'}`}
       >
         <Icon className="h-5 w-5 mr-3" />
         {text}

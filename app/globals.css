@@ -7,9 +7,15 @@
   top:0;
   overflow-y:visible;
   left: 0;
+  margin: 0;
   position:relative;
   z-index: auto;
-  background-color: black;
+  background-color: #141422;
+}
+body{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
 @layer utilities {

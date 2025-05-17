@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.js';
 import { useRouter } from 'next/navigation'; 
 import Image from 'next/image';
 import child from '../assets/images/bby.webp';
+import '../globals.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
