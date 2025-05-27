@@ -74,6 +74,8 @@ const Citas = () => {
   const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
+  
+
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [modalType, setModalType] = useState(null); // "details" o "edit"
   const { isAuthenticated, isLoading } = useAuth();
@@ -463,24 +465,24 @@ const patchData = {
   return (
     <div className="flex min-h-screen relative" style={{ overflowX: "hidden" }}>
       {isFormVisible && (
-        <div className="w-1/3 min-w-[300px] p-4 bg-gray-100 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto">
+        <div className="w-1/3 min-w-[300px] p-4 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto ">
           <button
             onClick={() => setIsFormVisible(false)}
-            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded"
+            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded"
           >
             X
           </button>
-          <form onSubmit={handleSubmit} className="mb-4 text-black">
+          <form onSubmit={handleSubmit} className="mb-4 text-white">
             <label className="block mb-2">
               Paciente:
               <select
                 value={selectedPatient}
                 onChange={(e) => setSelectedPatient(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border rounded mt-1"
               >
                 <option value="">Seleccione un paciente</option>
                 {patients.map((patient) => (
-                  <option key={patient._id} value={patient._id}>
+                  <option  key={patient._id} value={patient._id}>
                     {patient.firstName} {patient.lastName}
                   </option>
                 ))}
@@ -491,7 +493,7 @@ const patchData = {
               <select
                 value={selectedTherapist}
                 onChange={(e) => setSelectedTherapist(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="select-edit block w-full p-2 border border-gray-300 rounded mt-1"
               >
                 <option value="">Seleccione un terapeuta</option>
                 {therapists.map((therapist) => (
@@ -511,7 +513,7 @@ const patchData = {
                 className="block w-full p-2 border border-gray-300 rounded mt-1"
               />
             </label>
-            <label className="block mb-2">
+            <label className="block mb-2 ">
               Hora de Inicio de la Cita:
               <TimePicker
               format="HH:mm"
@@ -530,7 +532,7 @@ const patchData = {
               hideMinutes={(minute) => minute % 5 !== 0} 
               cleanable={false}
               placement="topStart"
-              className="block w-full p-2 border border-gray-300 rounded mt-1"
+              className="block w-full p-2 border border-gray-300  rounded mt-1"
               />
             </label>
             <label className="block mb-2">
@@ -666,7 +668,7 @@ const patchData = {
             const eventTherapist = therapists.find((t) => t._id === eventInfo.event.extendedProps.therapist);
             const colorStyle = getEventColor(eventInfo.event.title);
             return (
-              <div className="custom-event-content">
+              <div className="custom-event-content text-white">
               <div className="custom-hour">{eventInfo.timeText}</div>
               <div className="custom-title">
               {eventPatient ? `${eventPatient.firstName} ${eventPatient.lastName}` : 'No encontrado'}
@@ -686,6 +688,7 @@ const patchData = {
             left: "prev,next today,horario",
             center: "title",
             right: "timeGridWeek,timeGridDay",
+            
           }}
           locale="es"
           height="auto"
@@ -714,7 +717,7 @@ const patchData = {
           ariaHideApp={false}
         >
           <div className="relative">
-            <h2 className="text-black font-bold text-xl mb-4">
+            <h2 className="text-white font-bold text-xl mb-4">
               {selectedAppointment.description}
             </h2>
             <p className="text-black">
