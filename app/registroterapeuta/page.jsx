@@ -1,0 +1,298 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import uniquid from "uniquid";
+import { useAuth } from "../context/AuthContext.js"; 
+import { useRouter } from "next/navigation";
+
+const RegistroTerapeuta = () => {
+  const [step, setStep] = useState(1); // Inicializar el paso
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [error, setError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
+  }, [isAuthenticated, isLoading, router]);
+
+  if (isLoading) {
+    return <p>Cargando...</p>; 
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const agregarTerapista = async (e) => {
+    e.preventDefault();
+
+    try {
+      const res = await fetch("/api/therapist", {
+        method: "POST",
+        headers: {
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify({
+          idTherapist: uniquid(),
+          firstName,
+          lastName,
+          email,
+          phone,
+          specialization,
+          address,
+          city,
+          country
+        }),
+      });
+
+      const { msg } = await res.json();
+      if (res.ok) {
+        setSuccessMessage("Terapeuta Guardado con exito");
+        limpiarCampos();
+        setStep(1);
+      } else {
+        setError(msg); // Si hay un error, lo muestra
+      }
+    } catch (error) {
+      setError("Hubo un error al agregar el terapeuta. Intenta de nuevo.");
+    }
+  }
+
+  const limpiarCampos = () => {
+    setFirstName("");
+    setLastName("");
+    setPhone("");
+    setEmail("");
+    setSpecialization("");
+    setAddress("");
+    setCity("");
+    setCountry("");
+    setError("");
+  };
+
+  const handleNextStep = () => {
+    setStep(step + 1); // Avanzar al siguiente paso
+  };
+
+  const handlePrevStep = () => {
+    setStep(step - 1); // Regresar al paso anterior
+  };
+
+  return (
+    <form
+      className="max-w-md mx-auto p-4 bg-gray-100"
+      onSubmit={agregarTerapista}
+    >
+      <h1 className="text-black font-extrabold">REGISTRO DE TERAPEUTAS</h1>
+
+      {successMessage && (
+        <p className="text-green-600 mb-4">{successMessage}</p> // Mostrar mensaje de éxito
+      )} 
+
+      {step === 1 && (
+        <>
+        <h1 className="text-black font-medium">Paso 1 de 2</h1>
+
+          <div className="mb-4">
+            <label
+              htmlFor="firstName"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Nombre<span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              id="firstName"
+              name="firstName"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe el nombre del terapeuta"
+              required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="lastName"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Apellidos<span className="text-red-600">*</span>
+            </label>
+            <input
+              type="text"
+              id="lastName"
+              name="lastName"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe los apellidos del terapeuta"
+              required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Correo electrónico<span className="text-red-600">*</span>
+            </label>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe el correo electrónico del terapeuta"
+              required
+            />
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="phone"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Teléfono<span className="text-red-600">*</span>
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              name="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe el teléfono del terapeuta"
+              required
+            />
+          </div>
+        </>
+      )}
+      
+      {step === 2 && (
+        <>
+          <div className="mb-4">
+            <label
+              htmlFor="specialization"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Especialización
+            </label>
+            <input
+              type="text"
+              id="specialization"
+              name="specialization"
+              value={specialization}
+              onChange={(e) => setSpecialization(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe la especialización del terapeuta"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="address"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Dirección
+            </label>
+            <input
+              type="text"
+              id="address"
+              name="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe la dirección del terapeuta"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="city"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Ciudad
+            </label>
+            <input
+              type="text"
+              id="city"
+              name="city"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe la ciudad del terapeuta"
+            />
+          </div>
+
+          <div className="mb-4">
+            <label
+              htmlFor="country"
+              className="block text-sm font-medium text-gray-700"
+            >
+              País
+            </label>
+            <input
+              type="text"
+              id="country"
+              name="country"
+              value={country}
+              onChange={(e) => setCountry(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Escribe el país del terapeuta"
+            />
+          </div>
+        </>
+      )}
+
+      {error && <p className="text-red-600">{error}</p>}
+
+      <div className="mt-4 flex justify-between">
+        {step > 1 && (
+          <button
+            type="button"
+            onClick={handlePrevStep}
+            className="px-4 py-2 bg-gray-400 text-white rounded-md"
+          >
+            Anterior
+          </button>
+        )}
+
+        {step < 2 && (
+          <button
+            type="button"
+            onClick={handleNextStep}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md"
+          >
+            Siguiente
+          </button>
+        )}
+
+        {step === 2 && (
+          <button
+            type="submit"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-md"
+          >
+            Guardar
+          </button>
+        )}
+      </div>
+    </form>
+  );
+};
+
+export default RegistroTerapeuta;
