@@ -42,7 +42,7 @@ const Page = () => {
     <li>Implementación del CRUD completo.</li>
     <li>Opción para cambiar colores desde la edición del servicio en el calendario.</li>
     <li>Diseño en dos columnas (texto + imagen).</li>
-    <li>Botón "Agenda tu cita" con estilos mejorados y transición.</li>
+    <li>Botón Agenda tu cita con estilos mejorados y transición.</li>
     <li>Imagen decorativa (<code>child.webp</code>) agregada a la derecha.</li>
     <li>Integración de calendario dual.</li>
     <li>Mejoras en la gráfica de pagos y en el botón de exportar a Excel con formato de datos.</li>
