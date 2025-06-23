@@ -24,7 +24,7 @@ const ActualizarCita = ({
   const [newStartTime, setNewStartTime] = useState(appointmentStartTime);
   const [newDuration,setNewDuration] = useState(appointmentDuration);
   const [newEndTime, setNewEndTime] = useState(appointmentEndTime);
-  const [newCost, setNewCost] = useState(cost);
+  const [newCost, setNewCost] = useState(cost || 0 );
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
 
@@ -62,24 +62,22 @@ const ActualizarCita = ({
 
   useEffect(() => {
     if (selectedTherapist && selectedService) {
-      console.log(selectedPatient);
-      console.log(selectedService);
-      console.log(selectedTherapist);
-      setNewPatient(selectedPatient);  // Esto debería asignar el paciente seleccionado
-      setNewTherapist(selectedTherapist);  // Esto debería asignar el terapeuta seleccionado
-      setNewService(selectedService?.toString() || "");  // Esto debería asignar el servicio seleccionado
+      setNewPatient(selectedPatient);
+      setNewTherapist(selectedTherapist);
+      setNewService(selectedService?.toString() || "");
+      setNewAppointmentDate(appointmentDate);
       setNewDuration(appointmentDuration);
     }
-  }, [selectedPatient, selectedTherapist, selectedService, appointmentDuration]);
+  }, [selectedPatient, selectedTherapist, selectedService, appointmentDuration, appointmentDate]);
   
 
   const calculateEndTime = (startTime, duration) => {
     const [hours, minutes] = startTime.split(":").map(Number);
-    const endTime = new Date();
-    endTime.setHours(hours);
-    endTime.setMinutes(minutes + duration);
-    return endTime.toTimeString().slice(0, 5);
+    const startDate = new Date(1970, 0, 1, hours, minutes);
+    const endDate = new Date(startDate.getTime() + duration * 60000);
+    return endDate.toTimeString().slice(0, 5);
   };
+
 
   const handleServiceChange = (e) => {
     const selectedServiceId = e.target.value;
@@ -250,6 +248,7 @@ const ActualizarCita = ({
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
+          <option value="">-- Selecciona un servicio --</option>
           {services.map((service) => (
             <option key={service._id} value={service._id}>
               {service.name}

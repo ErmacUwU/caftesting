@@ -13,16 +13,16 @@ const Agendas = () => {
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
+      router.replace('/login');
       }
     }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
-    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
+    return <p>Cargando...</p>;
   }
 
   if (!isAuthenticated) {
-    return null; // ⬅ Evita mostrar contenido mientras se redirige
+    return null; 
   }
   
 

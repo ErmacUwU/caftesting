@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
 import { Chart, registerables } from "chart.js";
+import ExcelJS from "exceljs"
+import {saveAS} from "file-saver"
 
 Chart.register(...registerables);
 
@@ -109,22 +111,36 @@ const Pagos = () => {
   //   data.push(saldoActual);
   // }
 
-  eventosFinancieros.forEach((evento) => {
-    const fechaStr = evento.fecha.toLocaleDateString("es-MX")
+  const formatFecha = (fecha) => {
+    return new Date(fecha).toLocaleDateString("es-MX");
+  };
 
+  const pagosPorFecha = {}
+
+
+  eventosFinancieros.forEach((evento) => {
     saldoActual += evento.cantidad
     saldoActual = Math.max(saldoActual, 0)
 
-    labels.push(fechaStr)
-    deudaData.push(saldoActual)
-
     if(evento.tipo === "pago") {
-      pagosData.push({
-        x: fechaStr,
-        y: saldoActual,
-        label: `Pago: $${-evento.cantidad}`,
-      })
+      const fechaStr = formatFecha(evento.fecha)
+
+      if (!pagosPorFecha[fechaStr]) {
+        pagosPorFecha[fechaStr] = 0
+      }
+      pagosPorFecha[fechaStr] += Math.abs(evento.cantidad)
+
+      labels.push(fechaStr) //Fecha de pago
+      deudaData.push(saldoActual) //Saldo restante
+
+      // pagosData.push({
+      //   x: fechaStr,   //Fecha de pago
+      //   y: saldoActual, // Pago realizado ese día
+      //   cantidadPagada: Math.abs(evento.cantidad),
+      // })
+
     }
+
   });
 
   const chartData = {
@@ -136,15 +152,10 @@ const Pagos = () => {
         borderColor: "rgba(255, 99, 132, 1)",
         backgroundColor: "rgba(255, 99, 132, 0.2)",
         fill: true,
-        tension: 0.3,
-      },
-      {
-        label: "Pagos Realizados",
-        data: pagosData,
-        bordergroundColor: "rgba(54, 162, 235, 0.8)",
-        bordergroundColor: "rgba(54,162, 235, 0.8)",
-        pointStyle: 'triangule',
-        showLine: false,
+        tension: 0.4,
+        borderWidth: 2,
+        pointBackgroundColor: "white",
+        pointBorderColor: "rgba(255, 99, 132, 1)",
       },
     ],
   };
@@ -153,6 +164,14 @@ const Pagos = () => {
     responsive: true,
     maintainAspectRatio: false,
     scales: {
+      x:{
+        ticks: {
+          maxRotation: 45,
+          minRotation: 30,
+          autoSkip: true,
+          maxTicksLimits: 10,
+        }
+      },
       y: {
         beginAtZero: true,
         title: { display: true, text: "Saldo en USD" },
@@ -161,8 +180,85 @@ const Pagos = () => {
     plugins: {
       legend: { position: "top" },
       title: { display: true, text: "Historial de Deuda Total" },
+      tooltip:{
+        backgroundColor: "#1e3a8a",
+        titleColor: "#fff",
+        bodyColor: "#e0f2fe",
+        borderColor: "#3b82f6",
+        borderWidth: 1,
+        callbacks: {
+          label: function (context) {
+            const fecha = context.label;
+            const deuda = context.formattedValue;
+            const pagoEnFecha = pagosPorFecha[fecha];
+
+            if (pagoEnFecha) {
+                return [`Deuda: $${deuda}`, `Se pagó: $${pagoEnFecha}`];
+              } else {
+                return `Deuda: $${deuda}`;
+              }
+        
+
+            return `${datasetLabel}: $${context.formattedValue}`
+          },
+        },
+      },
     },
   };
+
+  // Excel
+
+  const exportarExcelPaciente = async () => {
+    if (!selectedPatient) return alert("Selecciona un paciente.");
+
+    // Extrae datos
+    const pagos = selectedPatient.estadoDeCuenta?.pagos || [];
+    const citas = selectedPatient.estadoDeCuenta?.citas || [];
+    const eventosFinancieros = [
+      ...citas.map(cita => ({
+        Fecha: new Date(cita.fecha).toLocaleDateString("es-MX"),
+        Tipo: "Cita",
+        Monto: cita.costo
+      })),
+      ...pagos.map(pago => ({
+        Fecha: new Date(pago.fecha).toLocaleDateString("es-MX"),
+        Tipo: "Pago",
+        Monto: -pago.cantidad
+      }))
+    ].sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
+
+    const canvas = document.querySelector("canvas");
+    const base64Image = canvas.toDataURL("image/png");
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Estado de Cuenta");
+
+    // Cabecera
+    sheet.addRow(["Nombre del paciente", `${selectedPatient.firstName} ${selectedPatient.lastName}`]);
+    sheet.addRow(["Total actual de deuda", `$${totalDebt.toFixed(2)}`]);
+    sheet.addRow([]);
+    sheet.addRow(["Historial financiero"]);
+    sheet.addRow(["Fecha", "Tipo", "Monto"]);
+
+    eventosFinancieros.forEach((evento) => {
+      sheet.addRow([evento.Fecha, evento.Tipo, `$${evento.Monto.toFixed(2)}`]);
+    });
+
+    const imageId = workbook.addImage({
+      base64: base64Image,
+      extension: "png",
+    });
+
+    sheet.addImage(imageId, {
+      tl: { col: 0, row: eventosFinancieros.length + 6 },
+      ext: { width: 600, height: 400 },
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, `${selectedPatient.firstName}_${selectedPatient.lastName}_EstadoCuenta.xlsx`);
+  };
+
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -219,15 +315,24 @@ const Pagos = () => {
               />
               <button
                 onClick={handleAddPayment}
-                className="bg-green-500 hover:bg-green-600 text-white py-2 px-4 mt-2 rounded"
+                className="bg-green-500 w-full hover:bg-green-600 text-white py-2 px-4 mt-2 rounded"
               >
                 Registrar Pago
               </button>
+
+            {/* Boton Excel */}
+              <button
+                className="w-full mt-4 bg-yellow-500 text-white py-2 rounded hover:bg-yellow-600"
+                onClick={exportarExcelPaciente}
+              >
+                Exportar a Excel
+              </button>
+
             </div>
 
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-2">📊 Gráfica de Deuda Total</h3>
-              <div className="h-64">
+              <div className="h-[400px] md:h[500px]">
                 <Line data={chartData} options={options} />
               </div>
             </div>
