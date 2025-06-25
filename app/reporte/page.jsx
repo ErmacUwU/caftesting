@@ -147,8 +147,8 @@ const Reporte = () => {
           >
             <option value="">--Seleccione un terapeuta--</option>
             {uniqueTherapists.map((therapist, index) => (
-              <option key={index} value={therapist}>
-                {therapist}
+              <option className="text-black" key={index} value={therapist}>
+              {therapist} 
               </option>
             ))}
           </select>

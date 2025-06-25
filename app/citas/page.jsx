@@ -212,7 +212,7 @@ const Citas = () => {
     
   };
   
-
+ 
   const getEventColor = (serviceName) => {
     const service = services.find((s) => s.name === serviceName)
     return {
@@ -228,7 +228,7 @@ const Citas = () => {
     const endHours = hours + Math.floor(endMinutes / 60);
     return `${String(endHours).padStart(2, "0")}:${String(
       endMinutes % 60
-    ).padStart(2, "0")}`;
+    ).padStart(2, "0")}`; 
   };
 
   // Actualizar duración y hora de fin automáticamente

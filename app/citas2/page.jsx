@@ -37,6 +37,10 @@ const Citas = () => {
     }).replace(/\./g, '');
   };
 
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+
+
+
   // Obtener nombre del día
   const getDayName = (date, offset) => {
     const days = ["Hoy", "Mañana", "Mié", "Jue", "Vie", "Sáb", "Dom"];
@@ -221,189 +225,365 @@ const handleDateClick = (info) => {
   };
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">DESTACADO</h1>
-      
-      {therapists.map((therapist) => (
-        <div key={therapist._id} className="bg-transparent shadow-lg rounded-lg p-6 mb-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <h2 className="text-xl font-bold text-white">Dr. {therapist.firstName} {therapist.lastName}</h2>
-              <p className="text-white">{therapist.specialization}</p>
-              <div className="flex items-center mt-1">
-                <div className="flex text-yellow-400">
-                  {"★".repeat(5)}
-                </div>
-                <span className="text-white ml-2">Correo: {therapist.email}</span>
-              </div>
-            </div>
-
-          </div>
-
-          <div className="mt-4">
-            <FullCalendar
-                      plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-                      initialView="timeGridWeek"
-                      events={appointments}
-                      editable={true}
-                      selectable={true} // 🔹 Permite seleccionar rangos de tiempo
-                      eventDrop={handleEventDrop} // 🔹 Detecta cuando se mueve un evento
-                      dateClick={handleDateClick}
-                      eventClick={handleEventClick}
-                      hiddenDays={[0]} // Permite esconder el dia domingo
-                      eventContent={(eventInfo) => {
-            
-                        const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
-                        const eventTherapist = therapists.find((t) => t._id === eventInfo.event.extendedProps.therapist);
-                        const colorStyle = getEventColor(eventInfo.event.title);
-                        return (
-                          <div className="custom-event-content text-white">
-                          <div className="custom-hour">{eventInfo.timeText}</div>
-                          <div className="custom-title">
-                          {eventPatient ? `${eventPatient.firstName} ${eventPatient.lastName}` : 'No encontrado'}
-                          </div>
-                        </div>
-                        );
-                      }}
-                      slotLabelFormat={{
-                        hour: "numeric",
-                        minute: "2-digit",
-                        meridiem: "short",
-                        hour12: false,
-                      }}
-                      slotMinTime={workSchedule.startTime} // Horario de inicio dinámico
-                      slotMaxTime={workSchedule.endTime}   // Horario de fin dinámico
-                      headerToolbar={{
-                        left: "prev,next today,horario",
-                        center: "title",
-                        right: "timeGridWeek,timeGridDay",
-                        
-                      }}
-                      locale="es"
-                      height="auto"
-                      slotMinHeight={50}
-                      buttonText={{
-                        today: "Hoy",
-                        week: "Semana",
-                        day: "Día",
-                        horario: "Horario", // Nombre del nuevo botón
-                      }}
-                      customButtons={{
-                        horario: {
-                          text: "Horario", 
-                          click: () => setIsScheduleModalOpen(true), // Abre el modal
-                        },
-                      }}
-                    />
-          </div>
-        </div>
-      ))}
+    //Contenedor principal
+    <div className="flex items-center justify-center h-screen text-center">
 
       {isFormVisible && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Crear Nueva Cita</h2>
-              <button
-                onClick={() => setIsFormVisible(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-              <div>
-                <label className="block mb-1 font-medium">Paciente:</label>
-                <select
-                  value={selectedPatient}
-                  onChange={(e) => setSelectedPatient(e.target.value)}
-                  className="w-full p-2 border rounded"
-                  required
-                >
-                  <option value="">Seleccione un paciente</option>
-                  {patients.map((patient) => (
-                    <option key={patient._id} value={patient._id}>
-                      {patient.firstName} {patient.lastName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block mb-1 font-medium">Servicio:</label>
-                <select
-                  value={selectedService}
-                  onChange={handleServiceChange}
-                  className="w-full p-2 border rounded"
-                  required
-                >
-                  <option value="">Seleccione un servicio</option>
-                  {services.map((service) => (
-                    <option key={service._id} value={service._id}>
-                      {service.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block mb-1 font-medium">Fecha:</label>
-                <input
-                  type="date"
-                  value={appointmentDate}
-                  onChange={(e) => setAppointmentDate(e.target.value)}
-                  className="w-full p-2 border rounded"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block mb-1 font-medium">Hora de inicio:</label>
-                <TimePicker
-                  format="HH:mm"
-                  value={appointmentStartTime ? new Date(`2023-01-01T${appointmentStartTime}`) : null}
-                  onChange={(newValue) => {
-                    if (newValue) {
-                      const formattedTime = newValue.toTimeString().slice(0, 5);
-                      setAppointmentStartTime(formattedTime);
-                    }
-                  }}
-                  className="w-full p-2 border rounded"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block mb-1 font-medium">Costo:</label>
-                <input
-                  type="number"
-                  value={cost}
-                  onChange={(e) => setCost(e.target.value)}
-                  className="w-full p-2 border rounded"
-                  required
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-2">
+              <div className="w-1/3 min-w-[300px] p-4 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto ">
                 <button
-                  type="button"
                   onClick={() => setIsFormVisible(false)}
-                  className="px-4 py-2 border rounded"
+                  className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded"
                 >
-                  Cancelar
+                  X
                 </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-blue-500 text-white rounded"
-                >
-                  Crear Cita
-                </button>
+                <form onSubmit={handleSubmit} className="mb-4 text-white">
+                  <label className="block mb-2">
+                    Paciente:
+                    <select
+                      value={selectedPatient}
+                      onChange={(e) => setSelectedPatient(e.target.value)}
+                      className="block w-full p-2 border rounded mt-1"
+                    >
+                      <option value="">Seleccione un paciente</option>
+                      {patients.map((patient) => (
+                        <option  key={patient._id} value={patient._id}>
+                          {patient.firstName} {patient.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block mb-2">
+                    Terapeuta:
+                    <select
+                      value={selectedTherapist}
+                      onChange={(e) => setSelectedTherapist(e.target.value)}
+                      className="select-edit block w-full p-2 border border-gray-300 rounded mt-1"
+                    >
+                      <option value="">Seleccione un terapeuta</option>
+                      {therapists.map((therapist) => (
+                        <option key={therapist._id} value={therapist._id}>
+                          {therapist.firstName} {therapist.lastName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+      
+                  <label className="block mb-2">
+                    Fecha de la Cita:
+                    <input
+                      type="date"
+                      value={appointmentDate}
+                      onChange={(e) => setAppointmentDate(e.target.value)}
+                      className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    />
+                  </label>
+                  <label className="block mb-2 ">
+                    Hora de Inicio de la Cita:
+                    <TimePicker
+                    format="HH:mm"
+                    placeholder="Selecciona hora"
+                    value={appointmentStartTime ? new Date(`2023-01-01T${appointmentStartTime}`) : null}
+                    onChange={(newValue) => {
+                      if (newValue) {
+                        const formattedTime = newValue.toTimeString().slice(0, 5);
+                        setAppointmentStartTime(formattedTime);
+                        if (selectedService) {
+                          const service = services.find((s) => s.id.toString() === selectedService);
+                          setAppointmentEndTime(calculateEndTime(formattedTime, service?.duration || 0));
+                        }
+                      }
+                    }}
+                    hideMinutes={(minute) => minute % 5 !== 0} 
+                    cleanable={false}
+                    placement="topStart"
+                    className="block w-full p-2 border border-gray-300  rounded mt-1"
+                    />
+                  </label>
+                  <label className="block mb-2">
+                    Servicio:
+                    <select
+                      value={selectedService}
+                      onChange={handleServiceChange}
+                      className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    >
+                      <option value="">Seleccione un servicio</option>
+                      {services.map((service) => (
+                        <option key={service._id} value={service._id}>
+                          {service.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+      
+                  <label className="block mb-2">Duración de la Cita (minutos):</label>
+                  <select
+                    value={appointmentDuration}
+                    onChange={handleDurationChange}
+                    className="block w-full p-2 border border-gray-300 rounded mt-1"
+                  >
+                    {[...Array(25)].map((_, i) => {
+                      const minutes = (i + 1) * 5; // Genera valores: 5, 10, 15 ... 120
+                      return (
+                        <option key={minutes} value={minutes}>
+                          {minutes} min
+                        </option>
+                      );
+                    })}
+                  </select>
+      
+                  <label className="block mb-2">
+                    Hora de Cierre de la Cita:
+                    <TimePicker
+                    format="HH:mm"
+                    placeholder="Selecciona hora"
+                    value={appointmentEndTime ? new Date(`2023-01-01T${appointmentEndTime}`) : null}
+                    onChange={(newValue) => {
+                      if (newValue) {
+                        const formattedTime = newValue.toTimeString().slice(0, 5);
+                        setAppointmentEndTime(formattedTime);
+                      }
+                    }}
+                    hideMinutes={(minute) => minute % 5 !== 0} 
+                    cleanable={false}
+                    placement="topStart"
+                    className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    disabled
+                  />
+                  </label>
+                  <label className="block mb-2">
+                    Costo de la Cita:
+                    <input
+                      type="number"
+                      value={cost}
+                      onChange={(e) => setCost(e.target.value)}
+                      className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    className="block w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-4"
+                  >
+                    Crear Cita
+                  </button>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+            )}
+      
+      {/*Columna 1*/}
+      <div className="w-1/2 ">
+
+      <div className="calendar-container w-2/5 p-4">
+      
+            {/* Modal de ajuste de horario */}
+            {isScheduleModalOpen && (
+              <Modal
+                isOpen={isScheduleModalOpen}
+                onRequestClose={() => setIsScheduleModalOpen(false)}
+                style={customStyles}
+                ariaHideApp={false}
+              >
+                <h3>Modificar Horario de Trabajo</h3>
+                <label>Horario de inicio: </label>
+                <TimePicker
+                    format="HH:mm"
+                    placeholder="Selecciona hora"
+                    value={workSchedule.startTime ? new Date(`1970-01-01T${workSchedule.startTime}:00`) : null}
+                    onChange={(newValue) => {
+                      const formattedTime = newValue.toTimeString().slice(0, 5);
+                      setWorkSchedule({ ...workSchedule, startTime: formattedTime });
+                    }}
+                    hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+                    cleanable={false}
+                    popupClassName="timepicker-zindex"
+                    className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    />
+                <br />
+                <label>Horario de fin: </label>
+                <TimePicker
+                    format="HH:mm"
+                    value={workSchedule.endTime ? new Date(`1970-01-01T${workSchedule.endTime}:00`) : null}
+                    placeholder="Selecciona hora"
+                    onChange={(newValue) => {
+                      const formattedTime = newValue.toTimeString().slice(0, 5);
+                      setWorkSchedule({ ...workSchedule, endTime: formattedTime });
+                    }}
+                    hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+                    cleanable={false}
+                    popupClassName="timepicker-zindex"
+                    className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    />
+                <br /><br />
+                <button onClick={handleSaveSchedule} className="bg-blue-500 text-white px-4 py-2 rounded">
+                  Guardar
+                </button>
+              </Modal>
+            )}
+      
+            <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
+                events={appointments}
+                editable={true}
+                selectable={true} // 🔹 Permite seleccionar rangos de tiempo
+                eventDrop={handleEventDrop} // 🔹 Detecta cuando se mueve un evento
+                dateClick={handleDateClick}
+                eventClick={handleEventClick}
+                hiddenDays={[0]} // Permite esconder el dia domingo
+                eventContent={(eventInfo) => {
+      
+                  const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
+                  const eventTherapist = therapists.find((t) => t._id === eventInfo.event.extendedProps.therapist);
+                  const colorStyle = getEventColor(eventInfo.event.title);
+                  return (
+                    <div className="custom-event-content text-white">
+                    <div className="custom-hour">{eventInfo.timeText}</div>
+                    <div className="custom-title">
+                    {eventPatient ? `${eventPatient.firstName} ${eventPatient.lastName}` : 'No encontrado'}
+                    </div>
+                  </div>
+                  );
+                }}
+                slotLabelFormat={{
+                  hour: "numeric",
+                  minute: "2-digit",
+                  meridiem: "short",
+                  hour12: false,
+                }}
+                slotMinTime={workSchedule.startTime} // Horario de inicio dinámico
+                slotMaxTime={workSchedule.endTime}   // Horario de fin dinámico
+                headerToolbar={{
+                  left: "prev,next today,horario",
+                  center: "title",
+                  right: "timeGridWeek,timeGridDay",
+                  
+                }}
+                locale="es"
+                height="auto"
+                slotMinHeight={50}
+                buttonText={{
+                  today: "Hoy",
+                  week: "Semana",
+                  day: "Día",
+                  horario: "Horario", // Nombre del nuevo botón
+                }}
+                customButtons={{
+                  horario: {
+                    text: "Horario", 
+                    click: () => setIsScheduleModalOpen(true), // Abre el modal
+                  },
+                }}
+              />
+            </div>
+      </div>
+
+
+      {/*Columna 2*/}
+      <div className="w-1/2 ">
+
+      <div className="calendar-container w-2/5 p-4">
+      
+            {/* Modal de ajuste de horario */}
+            {isScheduleModalOpen && (
+              <Modal
+                isOpen={isScheduleModalOpen}
+                onRequestClose={() => setIsScheduleModalOpen(false)}
+                style={customStyles}
+                ariaHideApp={false}
+              >
+                <h3>Modificar Horario de Trabajo</h3>
+                <label>Horario de inicio: </label>
+                <TimePicker
+                    format="HH:mm"
+                    placeholder="Selecciona hora"
+                    value={workSchedule.startTime ? new Date(`1970-01-01T${workSchedule.startTime}:00`) : null}
+                    onChange={(newValue) => {
+                      const formattedTime = newValue.toTimeString().slice(0, 5);
+                      setWorkSchedule({ ...workSchedule, startTime: formattedTime });
+                    }}
+                    hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+                    cleanable={false}
+                    popupClassName="timepicker-zindex"
+                    className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    />
+                <br />
+                <label>Horario de fin: </label>
+                <TimePicker
+                    format="HH:mm"
+                    value={workSchedule.endTime ? new Date(`1970-01-01T${workSchedule.endTime}:00`) : null}
+                    placeholder="Selecciona hora"
+                    onChange={(newValue) => {
+                      const formattedTime = newValue.toTimeString().slice(0, 5);
+                      setWorkSchedule({ ...workSchedule, endTime: formattedTime });
+                    }}
+                    hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+                    cleanable={false}
+                    popupClassName="timepicker-zindex"
+                    className="block w-full p-2 border border-gray-300 rounded mt-1"
+                    />
+                <br /><br />
+                <button onClick={handleSaveSchedule} className="bg-blue-500 text-white px-4 py-2 rounded">
+                  Guardar
+                </button>
+              </Modal>
+            )}
+      
+            <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
+                events={appointments}
+                editable={true}
+                selectable={true} // 🔹 Permite seleccionar rangos de tiempo
+                eventDrop={handleEventDrop} // 🔹 Detecta cuando se mueve un evento
+                dateClick={handleDateClick}
+                eventClick={handleEventClick}
+                hiddenDays={[0]} // Permite esconder el dia domingo
+                eventContent={(eventInfo) => {
+      
+                  const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
+                  const eventTherapist = therapists.find((t) => t._id === eventInfo.event.extendedProps.therapist);
+                  const colorStyle = getEventColor(eventInfo.event.title);
+                  return (
+                    <div className="custom-event-content text-white">
+                    <div className="custom-hour">{eventInfo.timeText}</div>
+                    <div className="custom-title">
+                    {eventPatient ? `${eventPatient.firstName} ${eventPatient.lastName}` : 'No encontrado'}
+                    </div>
+                  </div>
+                  );
+                }}
+                slotLabelFormat={{
+                  hour: "numeric",
+                  minute: "2-digit",
+                  meridiem: "short",
+                  hour12: false,
+                }}
+                slotMinTime={workSchedule.startTime} // Horario de inicio dinámico
+                slotMaxTime={workSchedule.endTime}   // Horario de fin dinámico
+                headerToolbar={{
+                  left: "prev,next today,horario",
+                  center: "title",
+                  right: "timeGridWeek,timeGridDay",
+                  
+                }}
+                locale="es"
+                height="auto"
+                slotMinHeight={50}
+                buttonText={{
+                  today: "Hoy",
+                  week: "Semana",
+                  day: "Día",
+                  horario: "Horario", // Nombre del nuevo botón
+                }}
+                customButtons={{
+                  horario: {
+                    text: "Horario", 
+                    click: () => setIsScheduleModalOpen(true), // Abre el modal
+                  },
+                }}
+              />
+            </div>
+      </div>
+
     </div>
   );
 };
