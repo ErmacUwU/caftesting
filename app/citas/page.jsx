@@ -664,14 +664,14 @@ const patchData = {
           hiddenDays={[0]} // Permite esconder el dia domingo
           eventContent={(eventInfo) => {
 
-            const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
+            const patient = eventInfo.event.extendedProps.patient
             const eventTherapist = therapists.find((t) => t._id === eventInfo.event.extendedProps.therapist);
             const colorStyle = getEventColor(eventInfo.event.title);
             return (
               <div className="custom-event-content text-white">
               <div className="custom-hour">{eventInfo.timeText}</div>
               <div className="custom-title">
-              {eventPatient ? `${eventPatient.firstName} ${eventPatient.lastName}` : 'No encontrado'}
+                {patient ? `${patient.firstName} ${patient.lastName}` : 'No encontrado'}
               </div>
             </div>
             );
@@ -721,13 +721,10 @@ const patchData = {
               {selectedAppointment.description}
             </h2>
             <p className="text-black">
-              Paciente: {patients.find((p) => p._id === selectedAppointment.patient)
-              ? `${patients.find((p) => p._id === selectedAppointment.patient).firstName} ${
-                patients.find((p) => p._id === selectedAppointment.patient).lastName}`: "No encontrado"}
+              Paciente: {selectedAppointment.patient?.firstName} {selectedAppointment.patient?.lastName}
             </p>
-            <p className="text-black">Terapeuta: {therapists.find((t) => t._id === selectedAppointment.therapist)
-            ? `${therapists.find((t) => t._id === selectedAppointment.therapist).firstName} ${
-              therapists.find((t) => t._id === selectedAppointment.therapist).lastName}`: "No encontrado"}
+            <p className="text-black">
+              Terapeuta: {selectedAppointment.therapist?.firstName} {selectedAppointment.therapist?.lastName}
             </p>
             <p className="text-black">Fecha: {selectedAppointment.formattedDate}</p>
             <p className="text-black">

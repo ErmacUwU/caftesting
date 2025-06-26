@@ -2,6 +2,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/app/sidebar/sidebar"; // Asegúrate de que la ruta sea correcta
 import { AuthProvider } from "./context/AuthContext.js"; // Importa el proveedor de contexto de autenticación.
+import TawkClient from "./components/TawkClient";
+import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -19,6 +21,23 @@ export default function RootLayout({ children }) {
         <AuthProvider><Sidebar/>
         <div className="overflow-auto">
         {children}
+        <Script
+          id="tawk-script"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
+              (function(){
+                var s1=document.createElement("script"),s0=document.getElementsByTagName("script")[0];
+                s1.async=true;
+                s1.src='https://embed.tawk.to/6847b7ece50441190fa8bfcc/1itc2ctd5';
+                s1.charset='UTF-8';
+                s1.setAttribute('crossorigin','*');
+                s0.parentNode.insertBefore(s1,s0);
+              })();
+            `,
+          }}
+        />
         </div></AuthProvider>
       </body>
     </html>

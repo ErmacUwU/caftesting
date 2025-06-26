@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Line } from "react-chartjs-2";
 import { Chart, registerables } from "chart.js";
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import {saveAS} from "file-saver"
 
 Chart.register(...registerables);
@@ -208,44 +208,56 @@ const Pagos = () => {
 
   // Excel
 
-  const exportarExcelPaciente = () => {
-  if (!selectedPatient) return alert("Selecciona un paciente.");
+  const exportarExcelPaciente = async () => {
+    if (!selectedPatient) return alert("Selecciona un paciente.");
 
-  const pagos = selectedPatient.estadoDeCuenta?.pagos || [];
-  const citas = selectedPatient.estadoDeCuenta?.citas || [];
+    // Extrae datos
+    const pagos = selectedPatient.estadoDeCuenta?.pagos || [];
+    const citas = selectedPatient.estadoDeCuenta?.citas || [];
+    const eventosFinancieros = [
+      ...citas.map(cita => ({
+        Fecha: new Date(cita.fecha).toLocaleDateString("es-MX"),
+        Tipo: "Cita",
+        Monto: cita.costo
+      })),
+      ...pagos.map(pago => ({
+        Fecha: new Date(pago.fecha).toLocaleDateString("es-MX"),
+        Tipo: "Pago",
+        Monto: -pago.cantidad
+      }))
+    ].sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
 
-  const eventosFinancieros = [
-    ...citas.map(cita => ({
-      Fecha: new Date(cita.fecha).toLocaleDateString("es-MX"),
-      Tipo: "Cita",
-      Monto: cita.costo
-    })),
-    ...pagos.map(pago => ({
-      Fecha: new Date(pago.fecha).toLocaleDateString("es-MX"),
-      Tipo: "Pago",
-      Monto: -pago.cantidad
-    }))
-  ].sort((a, b) => new Date(a.Fecha) - new Date(b.Fecha));
+    const canvas = document.querySelector("canvas");
+    const base64Image = canvas.toDataURL("image/png");
 
-  const resumen = [
-    ["Nombre del paciente", `${selectedPatient.firstName} ${selectedPatient.lastName}`],
-    ["Total actual de deuda", `$${totalDebt.toFixed(2)}`],
-    [],
-    ["Historial financiero"],
-    ["Fecha", "Tipo", "Monto"]
-  ];
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Estado de Cuenta");
 
-  const filas = eventosFinancieros.map(e => [e.Fecha, e.Tipo, `$${e.Monto.toFixed(2)}`]);
+    // Cabecera
+    sheet.addRow(["Nombre del paciente", `${selectedPatient.firstName} ${selectedPatient.lastName}`]);
+    sheet.addRow(["Total actual de deuda", `$${totalDebt.toFixed(2)}`]);
+    sheet.addRow([]);
+    sheet.addRow(["Historial financiero"]);
+    sheet.addRow(["Fecha", "Tipo", "Monto"]);
 
-  const hoja = XLSX.utils.aoa_to_sheet([...resumen, ...filas]);
-  const libro = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(libro, hoja, "Estado de Cuenta");
+    eventosFinancieros.forEach((evento) => {
+      sheet.addRow([evento.Fecha, evento.Tipo, `$${evento.Monto.toFixed(2)}`]);
+    });
 
-  const buffer = XLSX.write(libro, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([buffer], { type: "application/octet-stream" });
+    const imageId = workbook.addImage({
+      base64: base64Image,
+      extension: "png",
+    });
 
-  saveAs(blob, `${selectedPatient.firstName}_${selectedPatient.lastName}_EstadoCuenta.xlsx`);
-};
+    sheet.addImage(imageId, {
+      tl: { col: 0, row: eventosFinancieros.length + 6 },
+      ext: { width: 600, height: 400 },
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    saveAs(blob, `${selectedPatient.firstName}_${selectedPatient.lastName}_EstadoCuenta.xlsx`);
+  };
 
 
   return (

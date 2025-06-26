@@ -1,32 +1,51 @@
-'use client'
+"use client";
+import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
 
-import React, { useState, useEffect } from "react";
-import { useAuth } from "../context/AuthContext.js"; 
-import { useRouter } from "next/navigation";
-
+const socket = io("http://localhost:3001");
 
 const Mensajes = () => {
-
-  const { isAuthenticated, isLoading } = useAuth();
-  const router = useRouter();
+  const [mensajes, setMensajes] = useState([]);
+  const [nuevoMensaje, setNuevoMensaje] = useState("");
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/login'); // ⬅ Redirige solo si no está autenticado
-      }
-    }, [isAuthenticated, isLoading, router]);
+    socket.on("mensaje", (mensaje) => {
+      setMensajes((prev) => [...prev, mensaje]);
+    });
 
-  if (isLoading) {
-    return <p>Cargando...</p>; // ⬅ Muestra un loader en lugar de redirigir inmediatamente
-  }
+    return () => {
+      socket.off("mensaje");
+    };
+  }, []);
 
-  if (!isAuthenticated) {
-    return null; // ⬅ Evita mostrar contenido mientras se redirige
-  }
-  
+  const enviarMensaje = () => {
+    if (nuevoMensaje.trim() !== "") {
+      socket.emit("mensaje", nuevoMensaje);
+      setNuevoMensaje("");
+    }
+  };
+
   return (
-    <div>Mensajes</div>
-  )
-}
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4 text-white">Chat básico</h2>
+      <div className="border p-4 h-46 overflow-y-scroll mb-4 bg-white text-black">
+        {mensajes.map((msg, idx) => (
+          <div key={idx} className="mb-2">{msg}</div>
+        ))}
+      </div>
+      <div className="flex gap-2">
+        <input
+          className="border p-2 flex-1"
+          value={nuevoMensaje}
+          onChange={(e) => setNuevoMensaje(e.target.value)}
+          placeholder="Escribe un mensaje"
+        />
+        <button onClick={enviarMensaje} className="bg-blue-500 text-white px-4 py-2 rounded">
+          Enviar
+        </button>
+      </div>
+    </div>
+  );
+};
 
-export default Mensajes
+export default Mensajes;
