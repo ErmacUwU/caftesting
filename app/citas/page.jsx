@@ -463,7 +463,9 @@ const patchData = {
 
 
   return (
-    <div className="flex min-h-screen relative" style={{ overflowX: "hidden" }}>
+        //Contenedor principal
+    <div className="flex items-center justify-center h-screen text-center">
+
       {isFormVisible && (
         <div className="w-1/3 min-w-[300px] p-4 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto ">
           <button
@@ -605,6 +607,8 @@ const patchData = {
         </div>
       )}
 
+      {/*Columna 1*/}
+      <div className="w-1/2 ">
       <div className="calendar-container w-2/5 p-4">
 
       {/* Modal de ajuste de horario */}
@@ -707,6 +711,115 @@ const patchData = {
           }}
         />
       </div>
+      </div>
+
+      {/*Columna 2*/}
+            <div className="w-1/2 ">
+      
+            <div className="calendar-container w-2/5 p-4">
+            
+                  {/* Modal de ajuste de horario */}
+                  {isScheduleModalOpen && (
+                    <Modal
+                      isOpen={isScheduleModalOpen}
+                      onRequestClose={() => setIsScheduleModalOpen(false)}
+                      style={customStyles}
+                      ariaHideApp={false}
+                    >
+                      <h3>Modificar Horario de Trabajo</h3>
+                      <label>Horario de inicio: </label>
+                      <TimePicker
+                          format="HH:mm"
+                          placeholder="Selecciona hora"
+                          value={workSchedule.startTime ? new Date(`1970-01-01T${workSchedule.startTime}:00`) : null}
+                          onChange={(newValue) => {
+                            const formattedTime = newValue.toTimeString().slice(0, 5);
+                            setWorkSchedule({ ...workSchedule, startTime: formattedTime });
+                          }}
+                          hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+                          cleanable={false}
+                          popupClassName="timepicker-zindex"
+                          className="block w-full p-2 border border-gray-300 rounded mt-1"
+                          />
+                      <br />
+                      <label>Horario de fin: </label>
+                      <TimePicker
+                          format="HH:mm"
+                          value={workSchedule.endTime ? new Date(`1970-01-01T${workSchedule.endTime}:00`) : null}
+                          placeholder="Selecciona hora"
+                          onChange={(newValue) => {
+                            const formattedTime = newValue.toTimeString().slice(0, 5);
+                            setWorkSchedule({ ...workSchedule, endTime: formattedTime });
+                          }}
+                          hideMinutes={(minute) => minute % 30 !== 0} // Solo permite minutos en intervalos de 30
+                          cleanable={false}
+                          popupClassName="timepicker-zindex"
+                          className="block w-full p-2 border border-gray-300 rounded mt-1"
+                          />
+                      <br /><br />
+                      <button onClick={handleSaveSchedule} className="bg-blue-500 text-white px-4 py-2 rounded">
+                        Guardar
+                      </button>
+                    </Modal>
+                  )}
+            
+                  <FullCalendar
+                      plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                      initialView="timeGridWeek"
+                      events={appointments}
+                      editable={true}
+                      selectable={true} // 🔹 Permite seleccionar rangos de tiempo
+                      eventDrop={handleEventDrop} // 🔹 Detecta cuando se mueve un evento
+                      dateClick={handleDateClick}
+                      eventClick={handleEventClick}
+                      hiddenDays={[0]} // Permite esconder el dia domingo
+                      eventContent={(eventInfo) => {
+            
+                        const eventPatient = patients.find((p) => p._id === eventInfo.event.extendedProps.patient);
+                        const eventTherapist = therapists.find((t) => t._id === eventInfo.event.extendedProps.therapist);
+                        const colorStyle = getEventColor(eventInfo.event.title);
+                        return (
+                          <div className="custom-event-content text-white">
+                          <div className="custom-hour">{eventInfo.timeText}</div>
+                          <div className="custom-title">
+                          {eventPatient ? `${eventPatient.firstName} ${eventPatient.lastName}` : 'No encontrado'}
+                          </div>
+                        </div>
+                        );
+                      }}
+                      slotLabelFormat={{
+                        hour: "numeric",
+                        minute: "2-digit",
+                        meridiem: "short",
+                        hour12: false,
+                      }}
+                      slotMinTime={workSchedule.startTime} // Horario de inicio dinámico
+                      slotMaxTime={workSchedule.endTime}   // Horario de fin dinámico
+                      headerToolbar={{
+                        left: "prev,next today,horario",
+                        center: "title",
+                        right: "timeGridWeek,timeGridDay",
+                        
+                      }}
+                      locale="es"
+                      height="auto"
+                      slotMinHeight={50}
+                      buttonText={{
+                        today: "Hoy",
+                        week: "Semana",
+                        day: "Día",
+                        horario: "Horario", // Nombre del nuevo botón
+                      }}
+                      customButtons={{
+                        horario: {
+                          text: "Horario", 
+                          click: () => setIsScheduleModalOpen(true), // Abre el modal
+                        },
+                      }}
+                    />
+                  </div>
+            </div>
+      
 
       {/* Modal de detalles */}
       {modalType === "details" && selectedAppointment && (
