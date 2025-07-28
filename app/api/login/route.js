@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 const ADMIN_CREDENTIALS = {
   email: "admin@caf.com", // Correo del administrador
   password: "Admin1234", // Contraseña del administrador
+  name: "Administrador"
 };
 
 // Maneja la solicitud HTTP POST para el inicio de sesión.
@@ -25,6 +26,7 @@ export async function POST(req) {
       msg: "Inicio de sesión exitoso",
       success: true,
       userId: "admin", // Se asigna un ID fijo para el administrador
+      userName: ADMIN_CREDENTIALS.name,
     });
   } catch (error) {
     console.error(error);

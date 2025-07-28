@@ -9,38 +9,47 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState(null);
   const [isLoading, setIsLoading] = useState(true); // ⬅ Estado para evitar redirección prematura
+  const [userName, setUserName] = useState("")
   const router = useRouter();
 
   useEffect(() => {
     const storedAuth = localStorage.getItem('isAuthenticated');
     const storedUserId = localStorage.getItem('userId');
+    const storedName = localStorage.getItem("userName");
 
     if (storedAuth === 'true' && storedUserId) {
       setIsAuthenticated(true);
       setUserId(storedUserId);
     }
-
-    setIsLoading(false); // ⬅ Se marca como cargado después de leer `localStorage`
+    
+    if (storedName) setUserName(storedName);
+    setIsLoading(false);
   }, []);
 
-  const login = (id) => {
+
+  const login = (id, name) => {
+    console.log("🔐 Login con:", id, name);
     setIsAuthenticated(true);
     setUserId(id);
+    setUserName(name)
     localStorage.setItem('isAuthenticated', 'true');
     localStorage.setItem('userId', id);
+    localStorage.setItem('userName', name);
     router.replace('/'); // ⬅ Evita que el usuario regrese al login después de autenticarse
   };
 
   const logout = () => {
     setIsAuthenticated(false);
     setUserId(null);
+    setUserName("")
     localStorage.removeItem('isAuthenticated');
     localStorage.removeItem('userId');
+    localStorage.removeItem("userName");
     router.replace('/login');
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, userId, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, userId, userName, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -38,10 +38,11 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        login(data.userId);
+        login(data.userId, data.userName);
         if (typeof window !== "undefined") {
           localStorage.setItem("isAuthenticated", "true");
           localStorage.setItem("userId", data.userId);
+          localStorage.setItem("userName", data.userName);
         }
 
         alert('Inicio de Sesión Exitoso, Bienvenido');
