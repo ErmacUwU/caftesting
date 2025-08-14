@@ -38,13 +38,13 @@ const Login = () => {
       const data = await response.json();
 
       if (response.ok) {
-        login(data.userId, data.userName);
+        login(data.userId, data.userName, data.role);
         if (typeof window !== "undefined") {
           localStorage.setItem("isAuthenticated", "true");
           localStorage.setItem("userId", data.userId);
           localStorage.setItem("userName", data.userName);
+          localStorage.setItem("userRole", data.role);
         }
-
         alert('Inicio de Sesión Exitoso, Bienvenido');
         router.replace(redirectTo);
       } else {

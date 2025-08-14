@@ -1,6 +1,8 @@
 import dbConnect from "@/lib/dbConnect";
 import Therapist from "@/models/Therapist";
 import mongoose from "mongoose";
+import User from "@/models/User";
+import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 
 export async function POST(req) {
@@ -14,11 +16,20 @@ export async function POST(req) {
     address,
     city,
     country,
+    password,
   } = await req.json();
 
   try {
     await dbConnect();
-    await Therapist.create({
+
+    const userExists = await User.findOne({ email })
+    if (userExists){
+      return NextResponse.json(
+        { msg: "Este correo ya está registrado", success: false },
+        { status: 400 })
+    }
+
+    const newTherapist = await Therapist.create({
       idTherapist,
       firstName,
       lastName,
@@ -30,8 +41,17 @@ export async function POST(req) {
       country,
     });
 
+    const hashedPassword = await bcrypt.hash(password, 10)
+    await User.create({
+      email,
+      passwordHash: hashedPassword,
+      role: "therapist",
+      refId: newTherapist._id,
+      refType: "Therapist",
+    })
+
     return NextResponse.json({
-      msg: ["Mensaje enviado con exito"],
+      msg: ["Terapeuta y usuario creados con éxito"],
       success: true,
     });
   } catch (error) {
@@ -43,7 +63,7 @@ export async function POST(req) {
 
       return NextResponse.json({ msg: errorList });
     } else {
-      return NextResponse.json({ msg: "No se envio" });
+      return NextResponse.json({ msg: error.message || "Error desconocido" });
     }
   }
 }

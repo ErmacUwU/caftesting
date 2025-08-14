@@ -11,6 +11,8 @@ const curpPattern = /^[a-zA-Z0-9]{18}$/;
 const RegistroPaciente = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [birthdate, setBirthdate] = useState("");
   const [gender, setGender] = useState("");
   const [patientStatus, setPatientStatus] = useState("");
@@ -131,6 +133,8 @@ const RegistroPaciente = () => {
         birthState,
         idType,
         contacts,
+        email,
+        password,
       }),
     });
 
@@ -251,6 +255,38 @@ const RegistroPaciente = () => {
           onChange={(e) => setGender(e.target.value)}
           className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
           placeholder="M o F"
+          required
+        />
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+          Email de inicio de sesión<span className="text-red-600">*</span>
+        </label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+          placeholder="correo@ejemplo.com"
+          required
+        />
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+          Contraseña de inicio de sesión<span className="text-red-600">*</span>
+        </label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+          placeholder="Contraseña"
           required
         />
       </div>

@@ -58,7 +58,7 @@ const PatientSchema = new mongoose.Schema(
       required: true,
     },
     birthdate: {
-      type: String, // Asegúrate de manejar el formato de fecha adecuadamente
+      type: String,
       required: true,
     },
     gender: {
@@ -71,12 +71,21 @@ const PatientSchema = new mongoose.Schema(
       enum: ["activo", "inactivo"],
       required: true,
     },
+    email: { 
+      type: String,
+      required: true, 
+      unique: true
+    },
+    userId: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "User" 
+    },
     birthCity: String,
     nationality: String,
     birthState: String,
     idType: String,
     contacts: [ContactSchema],
-    estadoDeCuenta: EstadoDeCuentaSchema, // Asegúrate de que este campo esté presente en el modelo
+    estadoDeCuenta: EstadoDeCuentaSchema,
   },
   { timestamps: true }
 );

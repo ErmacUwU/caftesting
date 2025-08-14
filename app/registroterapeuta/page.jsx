@@ -15,6 +15,7 @@ const RegistroTerapeuta = () => {
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
+  const [password, setPassword] = useState("")
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -53,7 +54,8 @@ const RegistroTerapeuta = () => {
           specialization,
           address,
           city,
-          country
+          country,
+          password,
         }),
       });
 
@@ -80,6 +82,7 @@ const RegistroTerapeuta = () => {
     setCity("");
     setCountry("");
     setError("");
+    setPassword("")
   };
 
   const handleNextStep = () => {
@@ -254,6 +257,22 @@ const RegistroTerapeuta = () => {
               onChange={(e) => setCountry(e.target.value)}
               className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
               placeholder="Escribe el país del terapeuta"
+            />
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Contraseña de inicio de sesión<span className="text-red-600">*</span>
+            </label>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3 py-2 mt-1 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300 text-black"
+              placeholder="Contraseña para iniciar sesión"
+              required
             />
           </div>
         </>

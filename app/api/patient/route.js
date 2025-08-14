@@ -2,6 +2,8 @@ import dbConnect from "@/lib/dbConnect";
 import Patient from "@/models/Patient";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
+import User from "@/models/User";
+import bcrypt from "bcryptjs"
 
 export async function POST(req) {
   const {
@@ -16,11 +18,22 @@ export async function POST(req) {
     birthState,
     idType,
     contacts,
+    email,
+    password,
   } = await req.json();
 
   try {
     await dbConnect();
-    await Patient.create({
+
+    const userExist = await User.findOne({ email })
+    if (userExist) {
+      return NextResponse.json(
+        {msg: "Este correo ya está registrado", success: false},
+        {status: 400}
+      )
+    }
+
+    const newPatient = await Patient.create({
       idPatient,
       firstName,
       lastName,
@@ -32,11 +45,24 @@ export async function POST(req) {
       birthState,
       idType,
       contacts,
+      email,
       estadoDeCuenta: {
         total: 0,
         pagos: []
       }
     });
+
+    const hashed = await bcrypt.hash(password, 10)
+    const newUser = await User.create({
+      email,
+      passwordHash: hashed,
+      role: "patient",
+      refId: newPatient._id,
+      refType: "Patient",
+    })
+
+    newPatient.userId = newUser._id
+    await newPatient.save()
 
     return NextResponse.json({
       msg: ["Mensaje enviado con exito"],
