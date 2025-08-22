@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import { TimePicker } from "rsuite";
@@ -10,6 +10,7 @@ import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import uniquid from "uniquid";
 import Modal from "react-modal";
+import Draggable from "react-draggable";
 import ActualizarCita from "../components/ActualizarCitas";
 import BotonDeleteCitas from "../components/BotonDeleteCitas";
 import "./app.css";
@@ -54,7 +55,6 @@ const customEditStyles = {
     padding: "20px",
     borderRadius: "10px",
     boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-    overflowY: "auto", // Scroll interno solo si es necesario
     zIndex: 1001,
   },
 };
@@ -73,6 +73,10 @@ const Citas = () => {
     const [selectedService, setSelectedService] = useState("");
     const [cost, setCost] = useState("");
     const [isFormVisible, setIsFormVisible] = useState(false);
+
+    //estados para controlar el formulario minimizado
+    const formRef=useRef(null);
+    const[isMinimized, setMinimized]=useState(false);
     
   
     const [selectedAppointment, setSelectedAppointment] = useState(null);
@@ -83,7 +87,7 @@ const Citas = () => {
     //UseState para servicios obtenidos desde api/services
     const [services, setServices] = useState([])
   
-   const [workSchedule, setWorkSchedule] = useState({
+  const [workSchedule, setWorkSchedule] = useState({
       startTime: "08:00:00", // Inicio de jornada
       endTime: "18:00:00",   // Fin de jornada
     });
@@ -211,7 +215,7 @@ const Citas = () => {
       
     };
     
-   
+
     const getEventColor = (serviceName) => {
       const service = services.find((s) => s.name === serviceName)
       return {
@@ -490,57 +494,81 @@ const Citas = () => {
   const filteredAppointmentsCalendar2 = filterAppointmentsByTherapist(selectedTherapistCalendar2);
 
   return (
-    <div className="flex flex-col h-screen">
-      {isFormVisible && (
-        <div className="w-1/3 min-w-[300px] p-4 shadow-lg z-20 sticky top-0 h-screen overflow-y-auto ">
-          <button
-            onClick={() => setIsFormVisible(false)}
-            className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded"
-                  >
-                    X
-                  </button>
-                  <form onSubmit={handleSubmit} className="mb-4 text-white">
-                    <label className="block mb-2">
-                      Paciente:
-                      <select
-                        value={selectedPatient}
-                        onChange={(e) => setSelectedPatient(e.target.value)}
-                        className="block w-full p-2 border rounded mt-1"
-                      >
-                        <option value="">Seleccione un paciente</option>
-                        {patients.map((patient) => (
-                          <option  key={patient._id} value={patient._id}>
-                            {patient.firstName} {patient.lastName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="block mb-2">
-                      Terapeuta:
-                      <select
-                        value={selectedTherapist}
-                        onChange={(e) => setSelectedTherapist(e.target.value)}
-                        className="select-edit block w-full p-2 border border-gray-300 rounded mt-1"
-                      >
-                        <option value="">Seleccione un terapeuta</option>
-                        {therapists.map((therapist) => (
-                          <option key={therapist._id} value={therapist._id}>
-                            {therapist.firstName} {therapist.lastName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-        
-                    <label className="block mb-2">
-                      Fecha de la Cita:
-                      <input
-                        type="date"
-                        value={appointmentDate}
-                        onChange={(e) => setAppointmentDate(e.target.value)}
-                        className="block w-full p-2 border border-gray-300 rounded mt-1"
-                      />
-                    </label>
-                    <label className="block mb-2 ">
+    <div className="flex flex-col h-screen overflow-y-hidden">
+{isFormVisible && (
+  <Draggable
+    handle=".crear-cita"
+    bounds="parent"
+    nodeRef={formRef}
+  >
+    <div 
+      ref={formRef}
+      className="crear-cita fixed z-50 bg-indigo-950 rounded-lg transition-all duration-300 text-white w-48 max-h-[48vh] overflow-y-hidden"
+      style={{ 
+        top: '30px', 
+        right: '30px',
+        minWidth: '200px',
+        minHeight:'500px'
+      }}
+    >
+      {/* Cabecera para arrastrar */}
+      <div 
+        className=" bg-blue-600 text-white p-2 rounded-t-lg cursor-move flex justify-between items-center"
+      >
+        <span>Crear Nueva Cita</span>
+        <button
+          onClick={() => setIsFormVisible(false)}
+          className="text-white hover:bg-red-500 rounded-full w-6 h-6 flex items-center justify-center"
+        >
+          ×
+        </button>
+      </div>
+
+      <form onSubmit={handleSubmit} className="p-4 text-sm">
+        {/* Contenido del formulario */}
+        <label className="block mb-2">
+          Paciente:
+          <select
+            value={selectedPatient}
+            onChange={(e) => setSelectedPatient(e.target.value)}
+            className="block w-full p-1 border rounded mt-1 text-white"
+          >
+            <option value="">Seleccione un paciente</option>
+                {patients.map((patient) => (
+                  <option  key={patient._id} value={patient._id}>
+                    {patient.firstName} {patient.lastName}
+                  </option>
+                ))}
+          </select>
+        </label>
+
+        <label className="block mb-2">
+          Terapeuta:
+          <select
+            value={selectedTherapist}
+            onChange={(e) => setSelectedTherapist(e.target.value)}
+            className="block w-full p-1 border rounded mt-1 text-white"
+          >
+            <option value="">Seleccione un terapeuta</option>
+                {therapists.map((therapist) => (
+                  <option key={therapist._id} value={therapist._id}>
+                    {therapist.firstName} {therapist.lastName}
+                  </option>
+                ))}
+          </select>
+        </label>
+
+        <label className="block mb-2">
+          Fecha:
+          <input
+            type="date"
+            value={appointmentDate}
+            onChange={(e) => setAppointmentDate(e.target.value)}
+            className="block w-full p-1 border rounded mt-1 text-white"
+          />
+        </label>
+
+        <label className="block mb-2 ">
                       Hora de Inicio de la Cita:
                       <TimePicker
                       format="HH:mm"
@@ -622,17 +650,20 @@ const Citas = () => {
                         className="block w-full p-2 border border-gray-300 rounded mt-1"
                       />
                     </label>
-                    <button
-                      type="submit"
-                      className="block w-full bg-blue-500 text-white font-bold py-2 px-4 rounded mt-4"
-                    >
-                      Crear Cita
-                    </button>
-                  </form>
-                </div>
-      )}
 
-      <div className="flex flex-1 overflow-hidden">
+        <button
+          type="submit"
+          className="block w-full bg-blue-500 text-white py-1 px-2 rounded mt-3 text-sm"
+        >
+          Crear Cita
+        </button>
+      </form>
+    </div>
+  </Draggable>
+)}
+
+
+      <div className="flex flex-1">
         {/* Calendario 1 */}
         <div className="w-1/2 p-4 border-r border-gray-300 overflow-auto">
           <div className="mb-4">
@@ -657,10 +688,12 @@ const Citas = () => {
               Horario
             </button>
           </div>
-          
+
+          <div className="calendar-container">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
+            allDaySlot={false}
             events={filteredAppointmentsCalendar1}
             editable={true}
             selectable={true}
@@ -696,6 +729,7 @@ const Citas = () => {
             locale="es"
             height="auto"
           />
+          </div>
           
           {isScheduleModalOpenCalendar1 && (
             <Modal
@@ -711,7 +745,7 @@ const Citas = () => {
         </div>
 
         {/* Calendario 2 */}
-        <div className="w-1/2 p-4 overflow-auto">
+        <div className="w-1/2 p-4">
           <div className="mb-4">
             <label className="text-white mr-2">Filtrar terapeuta:</label>
             <select
@@ -734,9 +768,11 @@ const Citas = () => {
               Horario
             </button>
           </div>
-          
+
+          <div className="calendar-container">
           <FullCalendar
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            allDaySlot={false}
             initialView="timeGridWeek"
             events={filteredAppointmentsCalendar2}
             editable={true}
@@ -773,6 +809,7 @@ const Citas = () => {
             locale="es"
             height="auto"
           />
+        </div>
           
           {isScheduleModalOpenCalendar2 && (
             <Modal
@@ -785,6 +822,7 @@ const Citas = () => {
               {/* ... (contenido del modal igual que antes) */}
             </Modal>
           )}
+          <div></div>
         </div>
       </div>
 

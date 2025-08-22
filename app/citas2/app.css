@@ -1,12 +1,26 @@
 .calendar-container {
-    width: 45vw; /* 100% del ancho de la ventana */
-    height: 80vh; /* 100% del alto de la ventana */
+    width: 40vw; /* 100% del ancho de la ventana */
+    height: 100vh; /* 100% del alto de la ventana */
     margin: 0 auto; /* Centrar el calendario */
     position: relative;
     z-index: 0;
     transform: translateZ(-1px);
     padding-bottom: 6rem;
-  }
+    overflow: auto ;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+}
+
+.body{
+  display: none; /* Chrome, Safari */
+}
+
+.crear-cita{
+  overflow: auto ;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
 
   .select-edit{
     background: transparent;
@@ -17,15 +31,17 @@
     line-height: 1.2; /* Espaciado entre líneas */
     padding: 2px; /* Espaciado dentro del evento */
   }
-  
-  .event-details {
-    font-size: 0.7rem; /* Tamaño aún más pequeño para detalles */
-    color: #555; /* Color gris suave */
-  }
+
+  .fc .fc-scrollgrid-sync-inner {
+  padding: 2px 4px !important;
+  font-size: 0.75rem !important; /* Texto más compacto */
+}
   
   .fc-event {
     border-radius: 5px; /* Bordes redondeados */
-    padding: 4px;
+    padding: 2px;
+    font-size: x-small;
+    line-height: 1rem;
   }
   .fc-timegrid-axis-frame{
     color: white;
@@ -35,12 +51,12 @@
   .fc-timegrid-slot-label {
     text-align: center;
     color: white;
-    font-size: 12px; /* Etiquetas de hora más pequeñas */
+    font-size: 10px; /* Etiquetas de hora más pequeñas */
 
   }
 
   .fc-timegrid-slot {
-    height: 51px !important; /* Ajusta la altura de las ranuras */
+    height: 5px !important; /* Ajusta la altura de las ranuras */
   }
 
 
@@ -51,12 +67,12 @@
 
   .custom-hour{
     text-align: center;
-    font-size: 8px;
+    font-size: 6px;
     color: white;
     padding: 2rem;
   }
   .custom-title{
-    font-size: 10px;
+    font-size: 8px;
   }
   
   .rs-picker-popup {
@@ -64,12 +80,22 @@
     
   }
 
+  .hide-scrollbar{
+    scrollbar-width: none;
+    -ms-overflow-style:none;
+  }
+
+  .hide-scrollbar::-webkit-scrollbar{
+    display: none;
+  }
+
   .fc-header-toolbar {
   color: white !important;
   padding: 1rem;
-  border-radius: 8px;
+  border-radius: 5px;
   margin: 0.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  font-size: small;
 }
 
 select{

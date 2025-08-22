@@ -281,8 +281,8 @@ const RegistroPaciente = () => {
       {/* Paso 2: Información adicional */}
       {step === 2 && (
         <div>
-           <h1 className="text-black font-medium">Informacion Adicional (paso 2 de 3)</h1>
-           <div className="mb-4">
+          <h1 className="text-black font-medium">Informacion Adicional (paso 2 de 3)</h1>
+          <div className="mb-4">
         <label
           htmlFor="birthCity"
           className="block text-sm font-medium text-gray-700"

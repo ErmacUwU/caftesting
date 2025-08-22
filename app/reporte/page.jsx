@@ -10,67 +10,110 @@ const Reporte = () => {
   const [selectedPatient, setSelectedPatient] = useState("");
   const [notes, setNotes] = useState("");
   const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
   const pdfRef = useRef();
   const fileInputRef = useRef();
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
+  // Redirección si no está autenticado
   useEffect(() => {
-      if (!isLoading && !isAuthenticated) {
-        router.replace('/login'); // Redirige si no está autenticado
-      }
+    if (!isLoading && !isAuthenticated) {
+      router.replace('/login');
+    }
   }, [isAuthenticated, isLoading, router]);
 
+  // Cargar citas desde API
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const appointmentsRes = await axios.get("/api/date");
+        const { data } = await axios.get("/api/date");
         setAppointments(
-          appointmentsRes.data.date.map((appointment) => ({
-            id: appointment.idDate,
-            therapist: appointment.therapist,
-            patient: appointment.patient,
+          data.date?.map((a) => ({
+            id: a.idDate,
+            therapist: a.therapist,
+            patient: a.patient,
           })) || []
         );
       } catch (error) {
         console.error("Error fetching data:", error);
       }
     };
-
     fetchData();
   }, []);
+
+  useEffect(() => {
+  const fetchData = async () => {
+    try {
+      // Traer citas, terapeutas y pacientes en paralelo
+      const [datesRes, therapistsRes, patientsRes] = await Promise.all([
+        axios.get("/api/date"),
+        axios.get("/api/therapists"),
+        axios.get("/api/patients")
+      ]);
+
+      // Crear diccionarios { id: nombre }
+      const therapistsMap = Object.fromEntries(
+        therapistsRes.data.map(t => [t.id, t.name])
+      );
+      const patientsMap = Object.fromEntries(
+        patientsRes.data.map(p => [p.id, p.name])
+      );
+
+      // Mapear IDs a nombres
+      setAppointments(
+        datesRes.data.date?.map(a => ({
+          id: a.idDate,
+          therapist: therapistsMap[a.therapist] || a.therapist,
+          patient: patientsMap[a.patient] || a.patient,
+        })) || []
+      );
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  fetchData();
+}, []);
+
+
+  // Limpiar blobs al desmontar
+  useEffect(() => {
+    return () => {
+      images.forEach((img) => URL.revokeObjectURL(img));
+    };
+  }, [images]);
 
   if (isLoading) {
     return <div className="text-center py-10">Cargando...</div>;
   }
-
-  if (!isAuthenticated) {
-    return null; // Evita mostrar contenido mientras se redirige
-  }
+  if (!isAuthenticated) return null;
 
   const uniqueTherapists = [...new Set(appointments.map((a) => a.therapist))];
   const uniquePatients = [...new Set(appointments.map((a) => a.patient))];
 
-  const handleImageChange = (event) => {
-    const files = Array.from(event.target.files);
+  // Manejar subida de imágenes
+  const handleImageChange = (e) => {
+    const files = Array.from(e.target.files);
     const newImages = files.map((file) => URL.createObjectURL(file));
-    setImages((prevImages) => [...prevImages, ...newImages]);
+    setImages((prev) => [...prev, ...newImages]);
   };
 
+  // Subir PDF a S3 y guardar en BD
   const uploadToS3AndSaveToDB = async (pdfBlob) => {
     try {
-      const response = await axios.post("/api/s3/upload", {
+      const { data } = await axios.post("/api/s3/upload", {
         name: `${selectedPatient}_reporte_citas.pdf`,
         type: "application/pdf",
       });
-
-      const { url } = response.data;
+      const { url } = data;
 
       await axios.put(url, pdfBlob, {
         headers: { "Content-Type": "application/pdf" },
       });
 
-      const saveResponse = await axios.post("/api/s3/files", {
+      await axios.post("/api/s3/files", {
         name: `${selectedPatient}_reporte_citas.pdf`,
         type: "application/pdf",
         size: pdfBlob.size,
@@ -81,179 +124,194 @@ const Reporte = () => {
         images,
       });
 
-      if (saveResponse.status === 201) {
-        alert("Archivo guardado en S3 y en MongoDB con éxito!");
-      }
+      alert("Archivo guardado con éxito!");
     } catch (error) {
-      console.error("Error al subir y guardar el archivo:", error);
-      alert("Hubo un error al guardar los datos del archivo.");
+      console.error("Error al subir y guardar:", error);
+      alert("Hubo un error al guardar el archivo.");
     }
   };
 
+  
+
+  // Limpiar inputs
   const resetInputs = () => {
     setSelectedTherapist("");
     setSelectedPatient("");
     setNotes("");
     setImages([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null;
-    }
+    if (fileInputRef.current) fileInputRef.current.value = null;
   };
 
+
+  // Generar PDF
   const generateAndUploadPDF = async () => {
-    const element = pdfRef.current;
+    if (!selectedTherapist || !selectedPatient) {
+      alert("Debes seleccionar un terapeuta y un paciente antes de continuar.");
+      return;
+    }
 
-    const options = {
-      margin: 1,
-      filename: `${selectedPatient}_reporte_citas.pdf`,
-      image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
-    };
-
+    setLoading(true);
     try {
-      const html2pdfModule = await import("html2pdf.js");
-      const pdfBlob = await html2pdfModule.default().from(element).set(options).outputPdf("blob");
+      const element = pdfRef.current;
+      const options = {
+        margin: 1,
+        filename: `${selectedPatient}_reporte_citas.pdf`,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
+      };
 
-      if (pdfBlob.size === 0) {
-        console.error("El PDF generado está vacío.");
-        alert("Hubo un error al generar el PDF.");
-        return;
+      const html2pdfModule = await import("html2pdf.js");
+      const pdfBlob = await html2pdfModule.default()
+        .from(element)
+        .set(options)
+        .output('blob'); 
+
+      if (!pdfBlob || pdfBlob.size === 0) {
+        throw new Error("El PDF generado está vacío.");
       }
 
       await uploadToS3AndSaveToDB(pdfBlob);
       resetInputs();
     } catch (error) {
-      console.error("Error al generar el PDF:", error);
+      console.error("Error generando PDF:", error);
       alert("Hubo un error al generar el PDF.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="p-6 bg-gray-50 rounded-lg shadow-lg">
-      <h1 className="text-2xl font-extrabold text-center text-gray-800 mb-6">Creador de Reportes para Citas</h1>
+    <div className="p-6 bg-gradient-to-br from-[#0f0c29] via-[#302b63] to-[#24243e] text-white rounded-lg shadow-lg">
+      <h1 className="text-2xl font-extrabold text-center mb-6">Genera Reporte de Citas</h1>
 
       <div className="space-y-6">
-        {/* Selección del Terapeuta */}
+        {/* Select terapeuta */}
         <div>
-          <label htmlFor="therapists" className="block text-sm font-medium text-gray-700 mb-2">
-            Elige el terapeuta:
-          </label>
+          <label className="block text-sm mb-2">Elige el terapeuta:</label>
           <select
-            id="therapists"
             value={selectedTherapist}
             onChange={(e) => setSelectedTherapist(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border rounded-lg text-black"
           >
-            <option value="">--Seleccione un terapeuta--</option>
-            {uniqueTherapists.map((therapist, index) => (
-              <option className="text-black" key={index} value={therapist}>
-              {therapist} 
-              </option>
+            <option value="">--Seleccione--</option>
+            {uniqueTherapists.map((t, i) => (
+              <option key={i} value={t}>{t}</option>
             ))}
           </select>
         </div>
 
-        {/* Selección del Paciente */}
+        {/* Select paciente */}
         <div>
-          <label htmlFor="patients" className="block text-sm font-medium text-gray-700 mb-2">
-            Elige el paciente:
-          </label>
+          <label className="block text-sm mb-2">Elige el paciente:</label>
           <select
-            id="patients"
             value={selectedPatient}
             onChange={(e) => setSelectedPatient(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border rounded-lg text-black"
           >
-            <option value="">--Seleccione un paciente--</option>
-            {uniquePatients.map((patient, index) => (
-              <option key={index} value={patient}>
-                {patient}
-              </option>
+            <option value="">--Seleccione--</option>
+            {uniquePatients.map((p, i) => (
+              <option key={i} value={p}>{p}</option>
             ))}
           </select>
         </div>
 
         {/* Notas */}
-        <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-            Notas:
-          </label>
-          <textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="4"
-            placeholder="Ingresa tus notas aquí..."
-          />
-        </div>
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          rows="4"
+          placeholder="Notas..."
+          className="w-full p-2 border rounded-lg text-black"
+        />
 
-        {/* Subir Imágenes */}
-        <div>
-          <label htmlFor="images" className="block text-sm font-medium text-gray-700 mb-2">
-            Subir Imágenes:
-          </label>
-          <input
-            type="file"
-            id="images"
-            ref={fileInputRef}
-            accept="image/*"
-            onChange={handleImageChange}
-            multiple
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+        {/* Imágenes */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          accept="image/*"
+          onChange={handleImageChange}
+          multiple
+          className="w-full p-2 border rounded-lg text-black"
+        />
 
-        {/* Botón para generar PDF */}
+        {/* Botón PDF */}
         <button
           onClick={generateAndUploadPDF}
-          className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          disabled={loading}
+          className={`w-full p-3 rounded-lg transition ${loading ? 'bg-gray-500' : 'bg-[#000080] hover:bg-[#1a1a8c]'}`}
         >
-          Generar y Guardar PDF
+          {loading ? "Generando..." : "Generar y Guardar PDF"}
         </button>
       </div>
 
-      {/* Contenido del PDF */}
-      <div ref={pdfRef} className="p-6 mt-8 bg-white border rounded-lg shadow-md">
-        <div className="text-center mb-6">
-          <h1 className="text-xl font-bold text-gray-800">Reporte de Citas</h1>
-          <p className="text-gray-600">Generado el {new Date().toLocaleDateString()}</p>
+      {/* Plantilla PDF */}
+      <div ref={pdfRef} className="p-6 mt-8 bg-white text-black border rounded-lg hidden-print">
+        {/* Encabezado */}
+        <div className="bg-[#000080] text-white p-6 rounded-t-lg">
+          <h1 className="text-3xl font-bold text-center mb-2">Centro de Apoyo a la Familia</h1>
+          <p className="text-center text-sm">
+            Diagnóstico y acompañamiento terapéutico en lenguaje, psicología y aprendizaje
+          </p>
+          <p className="text-center text-sm mt-1">
+            para niños con Autismo, Déficit de atención, deficiencia intelectual y más.
+          </p>
         </div>
 
-        {/* Información Principal */}
-        <div className="mb-6">
-          <p><strong>Terapeuta:</strong> {selectedTherapist || "No hay terapeuta seleccionado"}</p>
-          <p><strong>Paciente:</strong> {selectedPatient || "No hay paciente seleccionado"}</p>
+        {/* Información del reporte */}
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-2xl font-bold text-center text-[#8A2BE2] mb-2">Reporte de Citas</h2>
+          <p className="text-center text-gray-600 text-sm">
+            Generado el {new Date().toLocaleDateString('es-ES', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
+          </p>
+        </div>
+
+        {/* Datos principales */}
+        <div className="p-4 grid grid-cols-2 gap-4 border-b border-gray-200">
+          <div>
+            <p className="font-semibold text-[#8A2BE2]">Terapeuta:</p>
+            <p className="text-lg">{selectedTherapist || "No seleccionado"}</p>
+          </div>
+          <div>
+            <p className="font-semibold text-[#8A2BE2]">Paciente:</p>
+            <p className="text-lg">{selectedPatient || "No seleccionado"}</p>
+          </div>
         </div>
 
         {/* Notas */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold">Notas:</h2>
-          <p>{notes || "No hay notas ingresadas"}</p>
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-xl font-semibold text-[#8A2BE2] mb-2">Notas</h3>
+          <p className="whitespace-pre-wrap">{notes || "Sin notas registradas"}</p>
         </div>
 
         {/* Imágenes */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold">Imágenes:</h2>
-          {images.length > 0 ? (
-            images.map((img, index) => (
-              <img
-                key={index}
-                src={img}
-                alt={`uploaded-${index}`}
-                className="w-full max-w-md mb-4 border border-gray-200 rounded-lg"
-              />
-            ))
-          ) : (
-            <p>No hay imágenes subidas.</p>
-          )}
-        </div>
+        {images.length > 0 && (
+          <div className="p-4">
+            <h3 className="text-xl font-semibold text-[#8A2BE2] mb-4">Imágenes Adjuntas</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {images.map((img, i) => (
+                <div key={i} className="border border-gray-300 rounded-lg overflow-hidden">
+                  <img 
+                    src={img} 
+                    alt={`Imagen adjunta ${i + 1}`} 
+                    className="w-full h-48 object-contain"
+                  />
+                  <p className="text-center py-2 text-sm bg-gray-100">Imagen {i + 1}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        {/* Pie de Página */}
-        <div className="text-center mt-6 text-xs text-gray-500">
-          <p>Este reporte fue generado automáticamente por el sistema.</p>
-          <p className="italic">Esta es una vista previa del documento.</p>
+        {/* Pie de página */}
+        <div className="bg-[#8A2BE2] text-white p-4 mt-6 rounded-b-lg text-center">
+          <p className="font-medium">Reporte generado automáticamente por el sistema</p>
+          <p className="text-sm mt-1">Centro de Apoyo a la Familia © {new Date().getFullYear()}</p>
         </div>
       </div>
     </div>
