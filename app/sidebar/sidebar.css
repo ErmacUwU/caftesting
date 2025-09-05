@@ -1,0 +1,32 @@
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+
+li {
+    margin-bottom: 1rem;
+}
+
+button {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  
+
+  a {
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    color: white;
+  }
+  
+  a:hover {
+    background-color: #4a4a4a;
+    border-radius: 8px;
+  }
+  
+  h3 {
+    font-size: 0.875rem;
+  }

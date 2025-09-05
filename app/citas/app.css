@@ -1,0 +1,50 @@
+/* ➜ Ancho de cada calendario (sube de 30vw) */
+.calendar-container {
+  width: 38vw;
+  height: 100vh;
+  margin: 0 auto;
+  position: relative;
+  z-index: 0;
+  transform: translateZ(-1px);
+  padding-bottom: 6rem;
+}
+
+/* ➜ Altura de cada slot y mínimo alto de evento */
+.fc-timegrid-slot {
+  height: 72px !important;
+}
+.fc-timegrid-event,
+.fc-v-event {
+  min-height: 72px;
+}
+
+/* ➜ Contenido del evento: mejor padding/lectura y wrap controlado */
+.custom-event-content {
+  color: white;
+  padding: 6px 8px; 
+}
+.custom-hour{
+  text-align: center;
+  font-size: 10px;
+  color: white;
+  padding: 4px 0;
+}
+.custom-title{
+  font-size: 12px;
+  line-height: 1.25;
+  white-space: normal;  
+  word-break: break-word;  
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Etiquetas de hora blancas centradas se mantienen */
+.fc-timegrid-axis-frame { color: white; text-align:center; }
+.fc-timegrid-slot-label { color: white; text-align:center; font-size: 12px; }
+
+/* Reduce la separación entre las dos columnas */
+@media (min-width: 1280px) {
+  .dual-cal-wrapper { gap: 4rem; }
+}
