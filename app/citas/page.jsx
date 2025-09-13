@@ -73,6 +73,7 @@ const Citas = () => {
   const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [calKey, setCalKey] = useState(0);
 
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [modalType, setModalType] = useState(null); // "details" o "edit"
@@ -235,7 +236,7 @@ const Citas = () => {
     const selectedServiceId = e.target.value;
     setSelectedService(selectedServiceId);
 
-    const service = services.find((s) => s._id === selectedServiceId);
+    const service = services.find((s) => s._id?.toString() === selectedServiceId);
     if (service) {
       setAppointmentDuration(service.duration);
       setCost(service.cost);
@@ -252,79 +253,92 @@ const Citas = () => {
     return new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    // Validar domingo
-    const selectedDate = new Date(appointmentDate);
-    const dayWeek = selectedDate.getUTCDay();
-    if (dayWeek === 0) {
-      alert("No se puede registrar citas en domingo");
-      return;
-    }
+  // Eliminar domingos
+  const selectedDate = new Date(appointmentDate);
+  if (selectedDate.getUTCDay() === 0) {
+    alert("No se puede registrar citas en domingo");
+    return;
+  }
 
-    const therapist = therapists.find((t) => t._id === selectedTherapist);
-    const patient = patients.find((p) => p._id === selectedPatient);
-    const service = services.find((s) => s._id.toString() === selectedService);
+  const therapist = therapists.find((t) => t._id === selectedTherapist);
+  const patient = patients.find((p) => p._id === selectedPatient);
+  const service  = services.find((s) => s._id?.toString() === selectedService);
 
-    const appointmentData = {
-      idDate: uniquid(),
-      date: appointmentDate,
-      start: convertToLocalDate(appointmentDate, appointmentStartTime),
-      end: convertToLocalDate(appointmentDate, appointmentEndTime),
-      duration: appointmentDuration,
-      therapist,
-      patient,
-      title: service?.name || "",
-      description: service?.name || "",
-      cost: parseFloat(cost),
-      serviceId: service?._id,
-    };
+  const appointmentData = {
+    idDate: uniquid(),
+    date: appointmentDate,
+    start: convertToLocalDate(appointmentDate, appointmentStartTime),
+    end:   convertToLocalDate(appointmentDate, appointmentEndTime),
+    duration: appointmentDuration,
+    therapist,
+    patient,
+    title: service?.name || "",
+    description: service?.name || "",
+    cost: Number(cost),
+    serviceId: service?._id,
+  };
+
+  let postOk = false;
+
+  try {
+    const { data: created } = await axios.post("/api/date", appointmentData);
+
+    setAppointments((prev) => ([
+      ...prev,
+      {
+        idd: created._id,
+        id: created.idDate,
+        title: created.title,
+        start: new Date(created.start),
+        end: new Date(created.end),
+        duration: created.duration,
+        description: created.description,
+        therapist: created.therapist,
+        patient: created.patient,
+        cost: created.cost,
+        serviceId: created.serviceId,
+        backgroundColor: service?.color || "#bdc3c7",
+        borderColor: "#000",
+      },
+    ]));
+
+    postOk = true;
 
     try {
-      const response = await axios.post("/api/date", appointmentData);
-
-      setAppointments((prev) => [
-        ...prev,
-        {
-          idd: response.data._id,
-          id: response.data.idDate,
-          title: response.data.title,
-          start: new Date(response.data.start),
-          end: new Date(response.data.end),
-          duration: response.data.duration,
-          description: response.data.description,
-          therapist: response.data.therapist,
-          patient: response.data.patient,
-          cost: response.data.cost,
-          serviceId: response.data.serviceId,
-        },
-      ]);
-
-      // PATCH estado de cuenta del paciente
-      const patchData = {
-        pacienteId: selectedPatient,
+      await axios.patch(`/api/patient/${selectedPatient}`, {
         nuevaCita: {
-          fecha: appointmentDate,
-          costo: parseFloat(cost),
+          fecha: new Date(`${appointmentDate}T00:00:00`).toISOString(),
+          costo: Number(cost),
         },
-      };
-      await axios.patch(`/api/patient/${selectedPatient}`, patchData);
-
-      // reset form
-      setSelectedPatient("");
-      setSelectedTherapist("");
-      setAppointmentDate("");
-      setAppointmentStartTime("");
-      setAppointmentEndTime("");
-      setAppointmentDuration("");
-      setSelectedService("");
-      setCost("");
-      setIsFormVisible(false);
-    } catch (error) {
-      console.error("Error creando cita o actualizando cuenta:", error);
+      });
+    } catch (patchErr) {
+      console.warn("PATCH /api/patient falló (no bloquea la UI):", patchErr);
     }
-  };
+
+  } catch (error) {
+    console.error("Error creando cita:", error);
+    return;
+  } finally {
+    if (postOk) {
+      await refetchAppointments();
+      setCalKey((k) => k + 1);
+    }
+  }
+
+  setSelectedPatient("");
+  setSelectedTherapist("");
+  setAppointmentDate("");
+  setAppointmentStartTime("");
+  setAppointmentEndTime("");
+  setAppointmentDuration("");
+  setSelectedService("");
+  setCost("");
+  setIsFormVisible(false);
+};
+
 
   const handleEventClick = (info) => {
     const appointment = appointments.find((app) => app.id === info.event.id);
@@ -417,13 +431,13 @@ const Citas = () => {
           >
             X
           </button>
-          <form onSubmit={handleSubmit} className="mb-4 text-white">
+          <form onSubmit={handleSubmit} className="mb-4 text-white citas-form">
             <label className="block mb-2">
               Paciente:
               <select
                 value={selectedPatient}
                 onChange={(e) => setSelectedPatient(e.target.value)}
-                className="block w-full p-2 border rounded mt-1"
+                className="block w-full p-2 border rounded mt-1 text-black bg-white"
               >
                 <option value="">Seleccione un paciente</option>
                 {patients.map((patient) => (
@@ -439,7 +453,7 @@ const Citas = () => {
               <select
                 value={selectedTherapist}
                 onChange={(e) => setSelectedTherapist(e.target.value)}
-                className="select-edit block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border rounded mt-1 text-black bg-white"
               >
                 <option value="">Seleccione un terapeuta</option>
                 {therapists.map((therapist) => (
@@ -471,7 +485,7 @@ const Citas = () => {
                     const formattedTime = newValue.toTimeString().slice(0, 5);
                     setAppointmentStartTime(formattedTime);
                     if (selectedService) {
-                      const service = services.find((s) => s.id?.toString() === selectedService);
+                      const service = services.find((s) => s._id?.toString() === selectedService);
                       setAppointmentEndTime(calculateEndTime(formattedTime, service?.duration || 0));
                     }
                   }
@@ -488,7 +502,7 @@ const Citas = () => {
               <select
                 value={selectedService}
                 onChange={handleServiceChange}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border rounded mt-1 text-black bg-white"
               >
                 <option value="">Seleccione un servicio</option>
                 {services.map((service) => (
@@ -503,7 +517,7 @@ const Citas = () => {
             <select
               value={appointmentDuration}
               onChange={handleDurationChange}
-              className="block w-full p-2 border border-gray-300 rounded mt-1"
+              className="block w-full p-2 border rounded mt-1 text-black bg-white"
             >
               {[...Array(25)].map((_, i) => {
                 const minutes = (i + 1) * 5;
@@ -541,7 +555,7 @@ const Citas = () => {
                 type="number"
                 value={cost}
                 onChange={(e) => setCost(e.target.value)}
-                className="block w-full p-2 border border-gray-300 rounded mt-1"
+                className="block w-full p-2 border rounded mt-1 text-black bg-white"
               />
             </label>
 
@@ -605,6 +619,7 @@ const Citas = () => {
           )}
 
           <FullCalendar
+            key={calKey}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
             events={appointments}
@@ -651,6 +666,7 @@ const Citas = () => {
       <div className="w-1/2">
         <div className="calendar-container p-4">
           <FullCalendar
+            key={calKey}
             plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
             initialView="timeGridWeek"
             events={appointments}

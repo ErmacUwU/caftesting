@@ -40,11 +40,45 @@
   overflow: hidden;
 }
 
-/* Etiquetas de hora blancas centradas se mantienen */
+
 .fc-timegrid-axis-frame { color: white; text-align:center; }
 .fc-timegrid-slot-label { color: white; text-align:center; font-size: 12px; }
 
-/* Reduce la separación entre las dos columnas */
+
 @media (min-width: 1280px) {
   .dual-cal-wrapper { gap: 4rem; }
+}
+
+.citas-form select,
+.citas-form input[type="date"],
+.citas-form input[type="number"] {
+  color: #111 !important;            
+  background: #fff !important;         
+  border: 1px solid #d1d5db !important;
+}
+
+.citas-form select option {
+  color: #111 !important;
+  background: #fff !important;
+}
+
+.citas-form .rs-picker-input input {
+  color: #111 !important;
+  background: #fff !important;
+}
+
+.rs-picker-select-menu,
+.rs-calendar-time-dropdown,
+.rs-calendar-time-dropdown-cell-content {
+  color: #111 !important;
+  background: #fff !important;
+}
+
+.citas-form select:focus,
+.citas-form input[type="date"]:focus,
+.citas-form input[type="number"]:focus,
+.citas-form .rs-picker-input input:focus {
+  outline: none;
+  border-color: #60a5fa !important; /* azul */
+  box-shadow: 0 0 0 3px rgba(59,130,246,.25);
 }

@@ -85,7 +85,10 @@ const PatientSchema = new mongoose.Schema(
     birthState: String,
     idType: String,
     contacts: [ContactSchema],
-    estadoDeCuenta: EstadoDeCuentaSchema,
+    estadoDeCuenta: {
+      type: EstadoDeCuentaSchema,
+      default: () => ({ total: 0, citas: [], pagos: [] }),
+    },
   },
   { timestamps: true }
 );

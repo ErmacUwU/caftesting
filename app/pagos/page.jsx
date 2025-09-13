@@ -6,7 +6,7 @@ import axios from "axios";
 import { Line } from "react-chartjs-2";
 import { Chart, registerables } from "chart.js";
 import ExcelJS from "exceljs"
-import {saveAS} from "file-saver"
+import { saveAs } from "file-saver"
 
 Chart.register(...registerables);
 
@@ -53,7 +53,7 @@ const Pagos = () => {
       setTotalDebt(response.data.patient.estadoDeCuenta?.total || 0);
 
       const appointmentsRes = await axios.get(`/api/date?patientId=${id}`);
-      setAppointments(appointmentsRes.data.dates || []);
+      setAppointments(appointmentsRes.data.date || []);
       setErrorMessage("");
     } catch (error) {
       console.error("Error fetching patient:", error);
@@ -64,6 +64,7 @@ const Pagos = () => {
   };
 
   const handleAddPayment = async () => {
+    
     if (!selectedPatient || paymentAmount <= 0) {
       setErrorMessage("Debe seleccionar un paciente y la cantidad debe ser mayor a cero.");
       return;
@@ -169,7 +170,7 @@ const Pagos = () => {
           maxRotation: 45,
           minRotation: 30,
           autoSkip: true,
-          maxTicksLimits: 10,
+          maxTicksLimit: 10,
         }
       },
       y: {
@@ -194,12 +195,8 @@ const Pagos = () => {
 
             if (pagoEnFecha) {
                 return [`Deuda: $${deuda}`, `Se pagó: $${pagoEnFecha}`];
-              } else {
-                return `Deuda: $${deuda}`;
               }
-        
-
-            return `${datasetLabel}: $${context.formattedValue}`
+                return `Deuda: $${deuda}`;
           },
         },
       },
@@ -332,7 +329,7 @@ const Pagos = () => {
 
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-2">📊 Gráfica de Deuda Total</h3>
-              <div className="h-[400px] md:h[500px]">
+              <div className="h-[400px] md:h-[500px]">
                 <Line data={chartData} options={options} />
               </div>
             </div>
