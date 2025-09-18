@@ -1,12 +1,12 @@
 /* ➜ Ancho de cada calendario (sube de 30vw) */
 .calendar-container {
-  width: 38vw;
-  height: 100vh;
-  margin: 0 auto;
+  width: 100%;
+  height: 100vh; 
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  padding: 0;
   position: relative;
-  z-index: 0;
-  transform: translateZ(-1px);
-  padding-bottom: 6rem;
 }
 
 /* ➜ Altura de cada slot y mínimo alto de evento */
@@ -25,12 +25,12 @@
 }
 .custom-hour{
   text-align: center;
-  font-size: 10px;
+  font-size: 14px;
   color: white;
   padding: 4px 0;
 }
 .custom-title{
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.25;
   white-space: normal;  
   word-break: break-word;  

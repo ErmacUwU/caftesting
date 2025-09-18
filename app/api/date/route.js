@@ -1,9 +1,16 @@
 import dbConnect from "@/lib/dbConnect";
 import DateModel from "@/models/Date";
+
+import "@/models/Therapist";
+import "@/models/Patient";
+import "@/models/Service";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const config = { runtime: "nodejs" };
+
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
-
-export const dynamic = "force-dynamic";
 
 function errorResponse(error, status = 500) {
 

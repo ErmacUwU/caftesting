@@ -663,7 +663,7 @@ const handleSubmit = async (e) => {
       </div>
 
       {/* Columna 2 */}
-      <div className="w-1/2">
+      {/*<div className="w-1/2">
         <div className="calendar-container p-4">
           <FullCalendar
             key={calKey}
@@ -707,7 +707,7 @@ const handleSubmit = async (e) => {
             }}
           />
         </div>
-      </div>
+      </div> */}
     </div>
 
       {/* Modal de detalles */}
