@@ -1,9 +1,32 @@
 import dbConnect from "@/lib/dbConnect";
-import Date from "@/models/Date";
+import DateModel from "@/models/Date";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
+function errorResponse(error, status = 500) {
+
+  console.error("[/api/date] error:", error);
+  const message = error?.message || "Error interno del servidor";
+  return NextResponse.json({ success: false, msg: message }, { status });
+}
+
+const noStore = {
+  headers: { "Cache-Control": "no-store" },
+};
+
 export async function POST(req) {
+  let payload;
+  try {
+    payload = await req.json();
+  } catch (e) {
+    return NextResponse.json(
+      { success: false, msg: "JSON inválido" },
+      { status: 400 }
+    );
+  }
+
   const {
     idDate,
     date,
@@ -15,12 +38,20 @@ export async function POST(req) {
     title,
     description,
     cost,
-    serviceId
-  } = await req.json();
+    serviceId,
+  } = payload;
+
+  if (!start || !end || !title) {
+    return NextResponse.json(
+      { success: false, msg: "Faltan campos obligatorios (start, end, title)" },
+      { status: 400 }
+    );
+  }
 
   try {
     await dbConnect();
-    await Date.create({
+
+    await DateModel.create({
       idDate,
       date,
       start,
@@ -34,35 +65,57 @@ export async function POST(req) {
       serviceId,
     });
 
-    return NextResponse.json({
-      msg: ["Mensaje enviado con exito"],
-      success: true,
-    });
+    return NextResponse.json(
+      { success: true, msg: "Cita creada con éxito" },
+      { status: 201, ...noStore }
+    );
   } catch (error) {
     if (error instanceof mongoose.Error.ValidationError) {
-      let errorList = [];
-      for (let e in error.errors) {
-        errorList.push(e.message);
-      }
-
-      return NextResponse.json({ msg: errorList });
-    } else {
-      return NextResponse.json({ msg: "No se envio" });
+      const errorList = Object.values(error.errors).map((e) => e.message);
+      return NextResponse.json(
+        { success: false, msg: errorList },
+        { status: 400 }
+      );
     }
+    return errorResponse(error, 500);
   }
 }
 
 export async function GET() {
-  await dbConnect();
-  const date = await Date.find()
-    .populate("therapist", "firstName lastName")
-    .populate("patient", "firstName lastName")
-  return NextResponse.json({ date });
+  try {
+    await dbConnect();
+    const date = await DateModel.find()
+      .populate("therapist", "firstName lastName")
+      .populate("patient", "firstName lastName");
+
+    return NextResponse.json({ success: true, date }, { status: 200, ...noStore });
+  } catch (error) {
+    return errorResponse(error, 500);
+  }
 }
 
 export async function DELETE(req) {
-  const id = req.nextUrl.searchParams.get("id");
-  await dbConnect();
-  await Date.findByIdAndDelete(id);
-  return NextResponse.json({ msg: "Cita Eliminada" });
+  try {
+    const id = req.nextUrl.searchParams.get("id");
+    if (!id) {
+      return NextResponse.json(
+        { success: false, msg: "Falta el parámetro id" },
+        { status: 400 }
+      );
+    }
+    await dbConnect();
+    const deleted = await DateModel.findByIdAndDelete(id);
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, msg: "Cita no encontrada" },
+        { status: 404 }
+      );
+    }
+    return NextResponse.json(
+      { success: true, msg: "Cita eliminada" },
+      { status: 200, ...noStore }
+    );
+  } catch (error) {
+    return errorResponse(error, 500);
+  }
 }
