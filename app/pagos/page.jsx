@@ -97,52 +97,49 @@ const Pagos = () => {
   const pagos = selectedPatient?.estadoDeCuenta?.pagos || [];
   const citas = selectedPatient?.estadoDeCuenta?.citas || [];
 
-  const eventosFinancieros = [
-    ...citas.map((cita) => ({ tipo: "cita", cantidad: cita.costo, fecha: new Date(cita.fecha) })),
-    ...pagos.map((pago) => ({ tipo: "pago", cantidad: -pago.cantidad, fecha: new Date(pago.fecha), raw: pago })),
-  ].sort((a, b) => a.fecha - b.fecha);
-
-  let saldoActual = 0;
-  const labels = [];
-  const deudaData = []
-  const pagosData = []
-
-  // if (citas.length > 0) {
-  //   labels.push(new Date(citas[0].fecha).toLocaleDateString());
-  //   data.push(saldoActual);
-  // }
-
-  const formatFecha = (fecha) => {
-    return new Date(fecha).toLocaleDateString("es-MX");
+  const normKey = (d) => {
+    const dt = new Date(d);
+    return dt.toISOString().split("T")[0];
   };
 
-  const pagosPorFecha = {}
+  const fmtEs = (key) => {
+    const [y, m, dd] = key.split("-");
+    return new Date(Number(y), Number(m) - 1, Number(dd)).toLocaleDateString("es-MX");
+  };
 
 
-  eventosFinancieros.forEach((evento) => {
-    saldoActual += evento.cantidad
-    saldoActual = Math.max(saldoActual, 0)
+  const todos = [
+    ...citas.map((c) => ({ tipo: "cita", fechaKey: normKey(c.fecha), monto: Number(c.costo) || 0 })),
+    ...pagos.map((p) => ({ tipo: "pago", fechaKey: normKey(p.fecha), monto: Number(p.cantidad) || 0 })),
+  ];
 
-    if(evento.tipo === "pago") {
-      const fechaStr = formatFecha(evento.fecha)
 
-      if (!pagosPorFecha[fechaStr]) {
-        pagosPorFecha[fechaStr] = 0
-      }
-      pagosPorFecha[fechaStr] += Math.abs(evento.cantidad)
+  const porDia = new Map(); 
+  for (const ev of todos) {
+    if (!porDia.has(ev.fechaKey)) porDia.set(ev.fechaKey, { citas: 0, pagos: 0 });
+    const acc = porDia.get(ev.fechaKey);
+    if (ev.tipo === "cita") acc.citas += ev.monto;
+    else acc.pagos += ev.monto;
+  }
 
-      labels.push(fechaStr) //Fecha de pago
-      deudaData.push(saldoActual) //Saldo restante
 
-      // pagosData.push({
-      //   x: fechaStr,   //Fecha de pago
-      //   y: saldoActual, // Pago realizado ese día
-      //   cantidadPagada: Math.abs(evento.cantidad),
-      // })
+  const diasOrdenados = Array.from(porDia.keys()).sort(); 
+  let saldoActual = 0;
+  const labels = [];
+  const deudaData = [];
+  const pagosPorFecha = {};
 
-    }
+  for (const dayKey of diasOrdenados) {
+    const { citas, pagos } = porDia.get(dayKey);
+    saldoActual += citas;
+    saldoActual -= pagos;
+    saldoActual = Math.max(saldoActual, 0);
 
-  });
+    const etiqueta = fmtEs(dayKey);
+    labels.push(etiqueta);
+    deudaData.push(saldoActual);
+    pagosPorFecha[etiqueta] = pagos;
+  }
 
   const chartData = {
     labels,
@@ -165,13 +162,13 @@ const Pagos = () => {
     responsive: true,
     maintainAspectRatio: false,
     scales: {
-      x:{
+      x: {
         ticks: {
           maxRotation: 45,
           minRotation: 30,
           autoSkip: true,
-          maxTicksLimit: 10,
-        }
+          maxTicksLimit: 10, 
+        },
       },
       y: {
         beginAtZero: true,
@@ -181,7 +178,7 @@ const Pagos = () => {
     plugins: {
       legend: { position: "top" },
       title: { display: true, text: "Historial de Deuda Total" },
-      tooltip:{
+      tooltip: {
         backgroundColor: "#1e3a8a",
         titleColor: "#fff",
         bodyColor: "#e0f2fe",
@@ -193,10 +190,9 @@ const Pagos = () => {
             const deuda = context.formattedValue;
             const pagoEnFecha = pagosPorFecha[fecha];
 
-            if (pagoEnFecha) {
-                return [`Deuda: $${deuda}`, `Se pagó: $${pagoEnFecha}`];
-              }
-                return `Deuda: $${deuda}`;
+            return pagoEnFecha
+              ? [`Deuda: $${deuda}`, `Se pagó: $${pagoEnFecha}`]
+              : `Deuda: $${deuda}`;
           },
         },
       },
