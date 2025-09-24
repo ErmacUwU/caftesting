@@ -107,58 +107,109 @@ const Mensajes = () => {
     ? `${usuarioSeleccionado.firstName} ${usuarioSeleccionado.lastName}`
     : "usuario seleccionado";
 
+  const formatTime = (iso) =>
+    iso ? new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "";
+
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4 text-white">Chat - {userName}</h2>
+    <div className="min-h-[80vh] bg-white">
+      <div className="max-w-3xl mx-auto p-4 md:p-6">
+        {/* Encabezado suave */}
+        <div className="mb-4 text-center">
+          <h2 className="text-2xl font-bold text-zinc-800">
+            Mensajes
+          </h2>
+          <p className="text-xs text-zinc-500 mt-1">Sesión: {userName}</p>
+        </div>
 
-      {receptor && (
-        <p className="text-sm text-white mb-2">
-          Conversando con: {nombreReceptor}
-        </p>
-      )}
+        {/* Selector receptor (simple) */}
+        <div className="mb-4">
+          <label className="block text-sm text-zinc-600 mb-1">{labelTexto}</label>
+          <select
+            value={receptor}
+            onChange={(e) => setReceptor(e.target.value)}
+            className="w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-zinc-800 outline-none focus:ring-2 focus:ring-sky-300"
+          >
+            <option value="">— Selecciona —</option>
+            {usuarios.map((usuario) => (
+              <option key={usuario._id} value={usuario._id}>
+                {usuario.firstName} {usuario.lastName}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      <div className="mb-4">
-        <label className="block text-white mb-1">{labelTexto}</label>
-        <select
-          value={receptor}
-          onChange={(e) => setReceptor(e.target.value)}
-          className="w-full p-2 border rounded text-black"
-        >
-          <option value="">-- Selecciona --</option>
-          {usuarios.map((usuario) => (
-            <option key={usuario._id} value={usuario._id}>
-              {usuario.firstName} {usuario.lastName}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="border p-4 h-64 overflow-y-scroll mb-4 bg-white text-black">
-        {mensajes.map((msg, idx) => (
-          <div key={idx} className="mb-2">
-            <strong>
-              {msg.from === userId ? `${userName} (Tú)` : msg.fromName || "Otro"}:
-            </strong>{" "}
-            {msg.content}
+        {/* Caja de chat estilo amable */}
+        <div className="rounded-2xl bg-white border border-zinc-200 shadow-[0_6px_18px_rgba(0,0,0,0.06)]">
+          {/* Header chat con avatar inicial */}
+          <div className="px-4 py-3 border-b border-zinc-200 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-sky-300/70 text-white grid place-items-center">
+              {(usuarioSeleccionado?.firstName?.[0] || "U").toUpperCase()}
+            </div>
+            <div>
+              <div className="font-medium text-zinc-800">
+                {receptor ? nombreReceptor : "Sin conversación"}
+              </div>
+              <div className="text-xs text-zinc-500">Chat 1 a 1</div>
+            </div>
           </div>
-        ))}
-        <div ref={scrollRef} />
-      </div>
 
-      <div className="flex gap-2">
-        <input
-          className="border p-2 flex-1"
-          value={nuevoMensaje}
-          onChange={(e) => setNuevoMensaje(e.target.value)}
-          placeholder="Escribe un mensaje"
-        />
-        <button
-          onClick={enviarMensaje}
-          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
-          disabled={!receptor || !nuevoMensaje.trim()}
-        >
-          Enviar
-        </button>
+          {/* Lista de mensajes con burbujas pastel */}
+          <div className="px-3 md:px-4 py-4 h-[420px] overflow-y-auto">
+            {!receptor ? (
+              <div className="h-full grid place-items-center text-sm text-zinc-500">
+                Elige a un usuario para iniciar conversación
+              </div>
+            ) : mensajes.length === 0 ? (
+              <div className="h-full grid place-items-center text-sm text-zinc-500">
+                No hay mensajes todavía.
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {mensajes.map((msg, idx) => {
+                  const isMine = msg.from === userId;
+                  return (
+                    <li key={idx} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                      <div
+                        className={`max-w-[75%] px-3 py-2 rounded-2xl text-[15px] leading-snug
+                          shadow-[0_3px_10px_rgba(0,0,0,0.06)]
+                          ${isMine
+                            ? "bg-sky-200 text-zinc-800 rounded-br-sm"
+                            : "bg-pink-100 text-zinc-800 rounded-bl-sm"}`}
+                      >
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="text-[11px] text-zinc-600">
+                            {isMine ? `${userName} (tú)` : msg.fromName || "Usuario"}
+                          </span>
+                          <span className="text-[10px] text-zinc-400">{formatTime(msg.timestamp)}</span>
+                        </div>
+                        <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+                <div ref={scrollRef} />
+              </ul>
+            )}
+          </div>
+          <div className="px-3 md:px-4 py-3 border-t border-zinc-200">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-sky-300 placeholder:text-zinc-400"
+                value={nuevoMensaje}
+                onChange={(e) => setNuevoMensaje(e.target.value)}
+                placeholder={receptor ? "Aa" : "Selecciona un usuario"}
+                disabled={!receptor}
+              />
+              <button
+                onClick={enviarMensaje}
+                className="px-4 py-2 rounded-xl bg-sky-400 hover:bg-sky-500 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!receptor || !nuevoMensaje.trim()}
+              >
+                Enviar
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
