@@ -63,7 +63,7 @@ const Reporte = () => {
   const uploadToS3AndSaveToDB = async (pdfBlob, filename) => {
     try {
       // 1) Pides presigned URL
-      const presign = await axios.post("/api/upload", {
+      const presign = await axios.post("/api/s3/upload", {
         name: filename,
         type: "application/pdf",
       });
@@ -76,7 +76,7 @@ const Reporte = () => {
       });
 
       // 3) Guardar registro en tu BD (ajusta la ruta si usas otra)
-      const saveResponse = await axios.post("/app/api/upload", {
+      const saveResponse = await axios.post("/api/reports", {
         name: filename,
         type: "application/pdf",
         size: pdfBlob.size,
@@ -252,13 +252,13 @@ const Reporte = () => {
 
         {/* Botones */}
         <div className="grid sm:grid-cols-2 gap-3">
-          {/* <button
+          <button
             onClick={generateAndUploadPDF}
             disabled={generating}
             className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
           >
             {generating ? "Generando…" : "Generar y Guardar en S3"}
-          </button> */}
+          </button>
 
           <button
             onClick={generateAndDownloadPDF}

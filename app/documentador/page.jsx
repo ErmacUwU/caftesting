@@ -78,7 +78,7 @@ const ConsultaDocumentos = () => {
     setDocuments([]);
 
     try {
-      const response = await axios.post("/app/api/s3/documents", {
+      const response = await axios.post("/api/s3/documents", {
         patients: selectedPatients,
         therapists: selectedTherapists,
       });
