@@ -1,4 +1,4 @@
-const File = require("../../../models/File.js"); // Ajusta esta ruta según la ubicación de tu modelo
+const File = require("@/models/File"); // Ajusta esta ruta según la ubicación de tu modelo
 const mongoose = require("mongoose");
 
 // Conectar a MongoDB si aún no está conectado

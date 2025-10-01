@@ -1,24 +1,16 @@
 import mongoose from "mongoose";
 
-const FileSchema = new mongoose.Schema(
-  {
-    name: { type: String, required: true },
-    type: { type: String, required: true },
-    size: { type: Number, required: true },
-    key: { type: String },     
-    url: { type: String },
-    notes: { type: String },
-    images: { type: [String], default: [] },
+const fileSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  type: { type: String, required: true },
+  size: { type: Number, required: true },
+  key: { type: String, required: true },
+  therapist: { type: String, required: true },
+  patient: { type: String, required: true },
+  notes: { type: String },
+  images: { type: [String] },
+  url: { type: String },
+  createdAt: { type: Date, default: Date.now },
+});
 
-    patientId: { type: mongoose.Schema.Types.ObjectId, ref: "Patient" },
-    therapistId: { type: mongoose.Schema.Types.ObjectId, ref: "Therapist" },
-    patientName: { type: String },
-    therapistName: { type: String },
-
-    patient: { type: String },
-    therapist: { type: String },
-  },
-  { timestamps: true }
-);
-
-export default mongoose.models.File || mongoose.model("File", FileSchema);
+export default mongoose.models.File || mongoose.model("File", fileSchema);
