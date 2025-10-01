@@ -1,39 +1,58 @@
-const File = require("@/models/File.js");
-const mongoose = require("mongoose");
+import { NextResponse } from "next/server";
+import mongoose from "mongoose";
+import File from "@/models/File.js";
 
-// Conectar a MongoDB si aún no está conectado
-const connectToDatabase = async () => {
-    if (mongoose.connection.readyState === 0) {
-        await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-        });
-    }
-};
+async function connectToDatabase() {
+  if (mongoose.connection.readyState !== 1) {
+    const uri = process.env.MONGO_URI;
+    if (!uri) throw new Error("Falta MONGO_URI en variables de entorno");
+    await mongoose.connect(uri);
+  }
+}
 
-export default async function handler(req, res) {
+function extractS3Key(url = "") {
+  try {
+    const u = new URL(url);
+    return u.pathname.replace(/^\/+/, "");
+  } catch {
+    return "";
+  }
+}
+
+export async function POST(req) {
+  try {
     await connectToDatabase();
 
-    if (req.method === "POST") {
-        const { name, type, size, url, therapist, patient, notes, images } = req.body;
+    const body = await req.json();
+    const { name, type, size, url, therapist, patient, notes = "", images = [] } = body;
 
-        // Validar datos
-        if (!name || !type || !size || !url || !therapist || !patient) {
-            return res.status(400).json({ error: "Todos los campos obligatorios deben ser proporcionados." });
-        }
-
-        try {
-            // Crear un registro en MongoDB
-            const file = new File({ name, type, size, key: url, url, therapist, patient, notes, images });
-            await file.save();
-
-            return res.status(201).json({ message: "Archivo registrado con éxito", file });
-        } catch (error) {
-            console.error("Error al guardar el archivo:", error);
-            return res.status(500).json({ error: "Error interno del servidor." });
-        }
-    } else {
-        res.setHeader("Allow", ["POST"]);
-        return res.status(405).json({ error: `Método ${req.method} no permitido.` });
+    if (!name || !type || !size || !url || !therapist || !patient) {
+      return NextResponse.json(
+        { error: "Faltan campos obligatorios: name, type, size, url, therapist, patient" },
+        { status: 400 }
+      );
     }
+
+    const key = extractS3Key(url) || name;
+
+    const file = await File.create({
+      name,
+      type,
+      size,
+      url,
+      key,
+      therapist,
+      patient,
+      notes,
+      images,
+    });
+
+    return NextResponse.json(
+      { message: "Archivo registrado con éxito", file },
+      { status: 201 }
+    );
+  } catch (err) {
+    console.error("[POST /api/s3/files] error:", err);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
+  }
 }
