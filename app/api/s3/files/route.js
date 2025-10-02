@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import File from "@/models/File.js";
+import File from "@/models/File";
+
+export const runtime = "nodejs";
 
 async function connectToDatabase() {
   if (mongoose.connection.readyState !== 1) {
@@ -19,14 +21,25 @@ function extractS3Key(url = "") {
   }
 }
 
+function toStr(v) {
+  return typeof v === "string" ? v.trim() : "";
+}
+
 export async function POST(req) {
   try {
     await connectToDatabase();
 
     const body = await req.json();
-    const { name, type, size, url, therapist, patient, notes = "", images = [] } = body;
+    const name = toStr(body.name);
+    const type = toStr(body.type);
+    const url  = toStr(body.url);
+    const therapist = toStr(body.therapist);
+    const patient   = toStr(body.patient);
+    const size = Number(body.size || 0);
+    const notes = toStr(body.notes);
+    const images = Array.isArray(body.images) ? body.images.filter(s => typeof s === "string") : [];
 
-    if (!name || !type || !size || !url || !therapist || !patient) {
+    if (!name || !type || !url || !therapist || !patient || !size) {
       return NextResponse.json(
         { error: "Faltan campos obligatorios: name, type, size, url, therapist, patient" },
         { status: 400 }
@@ -42,9 +55,9 @@ export async function POST(req) {
       url,
       key,
       therapist,
-      patient,
+      patient, 
       notes,
-      images,
+      images,  
     });
 
     return NextResponse.json(
