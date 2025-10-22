@@ -3,7 +3,7 @@ import Patient from "@/models/Patient";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
 import User from "@/models/User";
-import bcrypt from "bcryptjs"
+import bcrypt from "bcryptjs";
 
 export async function POST(req) {
   const {
@@ -25,12 +25,12 @@ export async function POST(req) {
   try {
     await dbConnect();
 
-    const userExist = await User.findOne({ email })
+    const userExist = await User.findOne({ email });
     if (userExist) {
       return NextResponse.json(
-        {msg: "Este correo ya está registrado", success: false},
-        {status: 400}
-      )
+        { msg: "Este correo ya está registrado", success: false },
+        { status: 400 }
+      );
     }
 
     const newPatient = await Patient.create({
@@ -48,25 +48,25 @@ export async function POST(req) {
       email,
       estadoDeCuenta: {
         total: 0,
-        pagos: []
-      }
+        pagos: [],
+      },
     });
 
-    const hashed = await bcrypt.hash(password, 10)
+    const hashed = await bcrypt.hash(password, 10);
     const newUser = await User.create({
       email,
       passwordHash: hashed,
       role: "patient",
       refId: newPatient._id,
       refType: "Patient",
-    })
+    });
 
-    newPatient.userId = newUser._id
-    await newPatient.save()
+    newPatient.userId = newUser._id;
+    await newPatient.save();
 
     return NextResponse.json({
-      msg: ["Mensaje enviado con exito"],
-      success: true
+      msg: ["Mensaje enviado con éxito"],
+      success: true,
     });
   } catch (error) {
     if (error instanceof mongoose.Error.ValidationError) {
@@ -77,7 +77,7 @@ export async function POST(req) {
 
       return NextResponse.json({ msg: errorList });
     } else {
-      return NextResponse.json({ msg: "No se envio" });
+      return NextResponse.json({ msg: "No se envió" });
     }
   }
 }
@@ -114,7 +114,6 @@ export async function PATCH(req) {
       cantidad,
     };
 
-    // Resta la cantidad del total para reflejar el costo de la cita
     paciente.estadoDeCuenta.total -= cantidad;
     paciente.estadoDeCuenta.pagos.push(nuevoPago);
 

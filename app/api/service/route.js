@@ -5,7 +5,11 @@ import { NextResponse } from "next/server";
 export async function GET() {
     try{
         await dbConnect()
-        const services = await Service.find({})
+        const services = await Service
+            .find({})
+            .collation({ locale: "en", strength: 1 })
+            .sort({ name: 1 })
+            .lean();
         return NextResponse.json({ services })
     } catch (error) {
         console.error("Error obteniendo servicios:", error)

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
-import { TimePicker } from "rsuite";
+import { TimePicker, SelectPicker } from "rsuite";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -90,11 +90,12 @@ const Citas = () => {
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [patientsRes, therapistsRes, appointmentsRes, scheduleRes, serviceRes] = await Promise.all([
+// Cargar datos iniciales
+useEffect(() => {
+  const fetchData = async () => {
+    try {
+      const [patientsRes, therapistsRes, appointmentsRes, scheduleRes, serviceRes] =
+        await Promise.all([
           axios.get("/api/patient"),
           axios.get("/api/therapist"),
           axios.get("/api/date"),
@@ -102,23 +103,39 @@ const Citas = () => {
           axios.get("/api/service"),
         ]);
 
-        setServices(serviceRes.data.services || []);
-        setPatients(patientsRes.data.patient || []);
-        setTherapists(therapistsRes.data.therapist || []);
+      const norm = (s) => (s || "").toString().trim();
+      const fullName = (p) => `${norm(p.firstName)} ${norm(p.lastName)}`.trim();
 
-        if (scheduleRes.data) {
-          setWorkSchedule({
-            startTime: scheduleRes.data.startTime,
-            endTime: scheduleRes.data.endTime,
-          });
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
+      const patientsSorted = [...(patientsRes.data.patient || [])].sort((a, b) =>
+        fullName(a).localeCompare(fullName(b), "es", { sensitivity: "base" })
+      );
+
+      const therapistsSorted = [...(therapistsRes.data.therapist || [])].sort((a, b) =>
+        fullName(a).localeCompare(fullName(b), "es", { sensitivity: "base" })
+      );
+
+      const servicesSorted = [...(serviceRes.data.services || [])].sort((a, b) =>
+        norm(a.name).localeCompare(norm(b.name), "es", { sensitivity: "base" })
+      );
+
+      setServices(servicesSorted);
+      setPatients(patientsSorted);
+      setTherapists(therapistsSorted);
+
+      if (scheduleRes.data) {
+        setWorkSchedule({
+          startTime: scheduleRes.data.startTime,
+          endTime: scheduleRes.data.endTime,
+        });
       }
-    };
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
 
-    fetchData();
-  }, []);
+  fetchData();
+}, []);
+
 
   // Cargar citas coloreadas por servicio cuando ya hay services
   useEffect(() => {
@@ -418,6 +435,28 @@ const handleSubmit = async (e) => {
     );
   };
 
+  const patientsData = (patients || [])
+    .map(p => ({
+      label: `${p.firstName} ${p.lastName || ""}`.trim(),
+      value: p._id
+    }))
+    .sort((a,b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+
+  const therapistsData = (therapists || [])
+    .map(t => ({
+      label: `${t.firstName} ${t.lastName || ""}`.trim(),
+      value: t._id
+    }))
+    .sort((a,b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+
+  const servicesData = (services || [])
+    .map(s => ({
+      label: s.name,
+      value: s._id
+    }))
+    .sort((a,b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+
+
   return (
     // contenedor centrado mas dos columnas
     <div className="flex items-center justify-center h-screen text-center">
@@ -434,34 +473,34 @@ const handleSubmit = async (e) => {
           <form onSubmit={handleSubmit} className="mb-4 text-white citas-form">
             <label className="block mb-2">
               Paciente:
-              <select
+              <SelectPicker
+                data={patientsData}
                 value={selectedPatient}
-                onChange={(e) => setSelectedPatient(e.target.value)}
-                className="block w-full p-2 border rounded mt-1 text-black bg-white"
-              >
-                <option value="">Seleccione un paciente</option>
-                {patients.map((patient) => (
-                  <option key={patient._id} value={patient._id}>
-                    {patient.firstName} {patient.lastName}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedPatient}
+                placeholder="Seleccione un paciente"
+                className="block w-full mt-1"
+                style={{ width: "100%" }}
+                searchable
+                cleanable={false}
+                placement="autoVerticalStart"
+                menuClassName="z-50"
+              />
             </label>
 
             <label className="block mb-2">
               Terapeuta:
-              <select
+              <SelectPicker
+                data={therapistsData}
                 value={selectedTherapist}
-                onChange={(e) => setSelectedTherapist(e.target.value)}
-                className="block w-full p-2 border rounded mt-1 text-black bg-white"
-              >
-                <option value="">Seleccione un terapeuta</option>
-                {therapists.map((therapist) => (
-                  <option key={therapist._id} value={therapist._id}>
-                    {therapist.firstName} {therapist.lastName}
-                  </option>
-                ))}
-              </select>
+                onChange={setSelectedTherapist}
+                placeholder="Seleccione un terapeuta"
+                className="block w-full mt-1"
+                style={{ width: "100%" }}
+                searchable
+                cleanable={false}
+                placement="autoVerticalStart"
+                menuClassName="z-50"
+              />
             </label>
 
             <label className="block mb-2">
@@ -499,18 +538,33 @@ const handleSubmit = async (e) => {
 
             <label className="block mb-2">
               Servicio:
-              <select
+              <SelectPicker
+                data={servicesData}
                 value={selectedService}
-                onChange={handleServiceChange}
-                className="block w-full p-2 border rounded mt-1 text-black bg-white"
-              >
-                <option value="">Seleccione un servicio</option>
-                {services.map((service) => (
-                  <option key={service._id} value={service._id}>
-                    {service.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => {
+                  setSelectedService(val);
+                  const svc = services.find(s => s._id?.toString() === String(val));
+                  if (svc) {
+                    setAppointmentDuration(svc.duration);
+                    setCost(svc.cost);
+                    if (appointmentStartTime) {
+                      const [hh, mm] = appointmentStartTime.split(":").map(Number);
+                      const end = new Date();
+                      end.setHours(hh);
+                      end.setMinutes(mm + (svc.duration || 0));
+                      const endStr = end.toTimeString().slice(0, 5);
+                      setAppointmentEndTime(endStr);
+                    }
+                  }
+                }}
+                placeholder="Seleccione un servicio"
+                className="block w-full mt-1"
+                style={{ width: "100%" }}
+                searchable
+                cleanable={false}
+                placement="autoVerticalStart"
+                menuClassName="z-50"
+              />
             </label>
 
             <label className="block mb-2">Duración de la Cita (minutos):</label>
@@ -663,7 +717,7 @@ const handleSubmit = async (e) => {
       </div>
 
       {/* Columna 2 */}
-      {/*<div className="w-1/2">
+      <div className="w-1/2">
         <div className="calendar-container p-4">
           <FullCalendar
             key={calKey}
@@ -707,7 +761,7 @@ const handleSubmit = async (e) => {
             }}
           />
         </div>
-      </div> */}
+      </div>
     </div>
 
       {/* Modal de detalles */}

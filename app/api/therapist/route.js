@@ -68,12 +68,12 @@ export async function POST(req) {
   }
 }
 
-export async function GET(){
-
-    await dbConnect();
-    const therapist = await Therapist.find()
-    return NextResponse.json({ therapist })
+export async function GET() {
+  await dbConnect();
+  const therapist = await Therapist.find().lean();
+  return NextResponse.json({ therapist });
 }
+
 
 export async function DELETE(req){
   const id = req.nextUrl.searchParams.get("id");

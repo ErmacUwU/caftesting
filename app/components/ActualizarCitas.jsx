@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { TimePicker } from "rsuite";
-import "rsuite/dist/rsuite-no-reset.min.css"; // Estilos sin reset global
+import "rsuite/dist/rsuite-no-reset.min.css";
 
 const ActualizarCita = ({
   id,
@@ -15,35 +15,39 @@ const ActualizarCita = ({
   appointmentDuration,
   cost,
   onClose,
-  onUpdate
+  onUpdate,
 }) => {
   const [newPatient, setNewPatient] = useState(selectedPatient);
   const [newTherapist, setNewTherapist] = useState(selectedTherapist);
-  const [newService, setNewService] = useState(selectedService);
+  const [newService, setNewService] = useState(
+    selectedService?.toString?.() || selectedService || ""
+  );
   const [newAppointmentDate, setNewAppointmentDate] = useState(appointmentDate);
   const [newStartTime, setNewStartTime] = useState(appointmentStartTime);
-  const [newDuration,setNewDuration] = useState(appointmentDuration);
+  const [newDuration, setNewDuration] = useState(appointmentDuration);
   const [newEndTime, setNewEndTime] = useState(appointmentEndTime);
   const [newCost, setNewCost] = useState(cost);
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
+  const [services, setServices] = useState([]);
 
-  const [services, setServices] = useState([])
-
+  // 🔹 Cargar y ordenar servicios alfabéticamente
   useEffect(() => {
     const fetchServices = async () => {
       try {
-        const res = await axios.get("/api/service")
-        setServices(res.data.services || [])
+        const res = await axios.get("/api/service");
+        const sorted = [...(res.data.services || [])].sort((a, b) =>
+          a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+        );
+        setServices(sorted);
       } catch (error) {
-        console.error("Error al cargar los servicios", error)
+        console.error("Error al cargar los servicios", error);
       }
-    }
+    };
+    fetchServices();
+  }, []);
 
-    fetchServices()
-  }, [])
-
-
+  // 🔹 Cargar pacientes y terapeutas ordenados alfabéticamente
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -51,8 +55,25 @@ const ActualizarCita = ({
           axios.get("/api/patient"),
           axios.get("/api/therapist"),
         ]);
-        setPatients(patientsRes.data.patient || []);
-        setTherapists(therapistsRes.data.therapist || []);
+
+        const sortedPatients = [...(patientsRes.data.patient || [])].sort((a, b) =>
+          `${a.firstName} ${a.lastName}`.localeCompare(
+            `${b.firstName} ${b.lastName}`,
+            "es",
+            { sensitivity: "base" }
+          )
+        );
+
+        const sortedTherapists = [...(therapistsRes.data.therapist || [])].sort((a, b) =>
+          `${a.firstName} ${a.lastName}`.localeCompare(
+            `${b.firstName} ${b.lastName}`,
+            "es",
+            { sensitivity: "base" }
+          )
+        );
+
+        setPatients(sortedPatients);
+        setTherapists(sortedTherapists);
       } catch (error) {
         console.error("Error fetching data:", error);
       }
@@ -62,92 +83,76 @@ const ActualizarCita = ({
 
   useEffect(() => {
     if (selectedTherapist && selectedService) {
-      console.log(selectedPatient);
-      console.log(selectedService);
-      console.log(selectedTherapist);
-      setNewPatient(selectedPatient);  // Esto debería asignar el paciente seleccionado
-      setNewTherapist(selectedTherapist);  // Esto debería asignar el terapeuta seleccionado
-      setNewService(selectedService?.toString() || "");  // En el setNewService forzamos agregar valor inicial y convertimos a string en caso que _id venga como ObjectId
+      setNewPatient(selectedPatient);
+      setNewTherapist(selectedTherapist);
+      setNewService(selectedService?.toString?.() || "");
       setNewDuration(appointmentDuration);
     }
   }, [selectedPatient, selectedTherapist, selectedService, appointmentDuration]);
-  
 
   const calculateEndTime = (startTime, duration) => {
+    if (!startTime) return "";
     const [hours, minutes] = startTime.split(":").map(Number);
-    const endTime = new Date();
-    endTime.setHours(hours);
-    endTime.setMinutes(minutes + duration);
-    return endTime.toTimeString().slice(0, 5);
+    const end = new Date();
+    end.setHours(hours);
+    end.setMinutes((minutes || 0) + (duration || 0));
+    return end.toTimeString().slice(0, 5);
   };
 
   const handleServiceChange = (e) => {
     const selectedServiceId = e.target.value;
     setNewService(selectedServiceId);
-
-    const selectedService = services.find(
-      (service) => service._id.toString() === selectedServiceId
-    );
-    if (newStartTime && selectedService) {
-      setNewEndTime(calculateEndTime(newStartTime, selectedService.duration));
-      setNewDuration(selectedService.duration); // Asignar duración predefinida
-      setNewCost(selectedService.cost);
+    const svc = services.find((s) => s._id.toString() === selectedServiceId);
+    if (newStartTime && svc) {
+      setNewEndTime(calculateEndTime(newStartTime, svc.duration));
+      setNewDuration(svc.duration);
+      setNewCost(svc.cost);
     }
   };
 
-   // Actualizar duración y hora de fin automáticamente
-   const handleDurationChange = (e) => {
-    let newDuration = parseInt(e.target.value, 10);
-    if (newDuration > 120) newDuration = 120; // Máximo 2 horas
-    if (newDuration < 0) newDuration = 0; // No puede ser negativa
-
-    setNewDuration(newDuration);
-    if (appointmentStartTime) {
-      setNewEndTime(calculateEndTime(newStartTime, newDuration));
+  const handleDurationChange = (e) => {
+    let dur = parseInt(e.target.value, 10);
+    if (dur > 120) dur = 120;
+    if (dur < 0) dur = 0;
+    setNewDuration(dur);
+    if (newStartTime) {
+      setNewEndTime(calculateEndTime(newStartTime, dur));
     }
   };
 
   const updateAppointment = async (e) => {
     e.preventDefault();
-  
-    // Asegúrate de que la hora esté correctamente combinada con la fecha
+
     const startDateTime = new Date(`${newAppointmentDate}T${newStartTime}:00`);
     const endDateTime = new Date(`${newAppointmentDate}T${newEndTime}:00`);
-  
+
     const therapist = therapists.find((t) => t._id === newTherapist);
-    const therapistName = therapist ? `${therapist.firstName} ${therapist.lastName}` : "Terapeuta no encontrado";
-  
     const patient = patients.find((p) => p._id === newPatient);
-    const patientName = patient ? `${patient.firstName} ${patient.lastName}` : "Paciente no encontrado";
-  
-    const service = services.find((s) => {
-      return  (
+    const svc = services.find(
+      (s) =>
         s._id?.toString() === newService?.toString() ||
         s.name === selectedService
-        );
-      });
-  
+    );
+
     const appointmentData = {
-      newDate: newAppointmentDate, // La fecha de la cita
-      newStart: startDateTime.toISOString(), // Formatea la hora de inicio correctamente
-      newEnd: endDateTime.toISOString(), // Formatea la hora de fin correctamente
-      newDuration: newDuration,
+      newDate: newAppointmentDate,
+      newStart: startDateTime.toISOString(),
+      newEnd: endDateTime.toISOString(),
+      newDuration,
       newTherapist: therapist,
       newPatient: patient,
-      newTitle: service?.name || "",
-      newDescription: service?.name || "",
+      newTitle: svc?.name || "",
+      newDescription: svc?.name || "",
       newCost: parseFloat(newCost),
-      newColor: service?.color || "#bdc3c7",
-      serviceId: service?._id,
+      newColor: svc?.color || "#bdc3c7",
+      serviceId: svc?._id,
     };
-  
-    console.log("Datos enviados para actualización:", appointmentData); // Verifica que los datos sean correctos
-  
+
     try {
       const res = await axios.put(`/api/date/${id}`, appointmentData);
       if (res.status === 200) {
-        if (onUpdate) onUpdate()
-        onClose(); // Cierra el formulario después de actualizar
+        onUpdate && onUpdate();
+        onClose();
       } else {
         alert("Error en la actualización");
       }
@@ -156,11 +161,12 @@ const ActualizarCita = ({
       alert("Error al actualizar la cita");
     }
   };
- 
+
   return (
     <form className="max-w-md mx-auto p-4 bg-gray-100">
       <h1 className="text-black font-extrabold">ACTUALIZACIÓN DE CITA</h1>
 
+      {/* 🔹 Pacientes */}
       <div className="mb-4">
         <label htmlFor="patient" className="block text-sm font-medium text-gray-700">
           Paciente<span className="text-red-600">*</span>
@@ -172,14 +178,15 @@ const ActualizarCita = ({
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
-          {patients.map((patient) => (
-            <option key={patient._id} value={patient._id}>
-              {patient.firstName} {patient.lastName}
+          {patients.map((p) => (
+            <option key={p._id} value={p._id}>
+              {p.firstName} {p.lastName}
             </option>
           ))}
         </select>
       </div>
 
+      {/* 🔹 Terapeutas */}
       <div className="mb-4">
         <label htmlFor="therapist" className="block text-sm font-medium text-gray-700">
           Terapeuta<span className="text-red-600">*</span>
@@ -191,14 +198,15 @@ const ActualizarCita = ({
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
-          {therapists.map((therapist) => (
-            <option key={therapist._id} value={therapist._id}>
-              {therapist.firstName} {therapist.lastName}
+          {therapists.map((t) => (
+            <option key={t._id} value={t._id}>
+              {t.firstName} {t.lastName}
             </option>
           ))}
         </select>
       </div>
 
+      {/* 🔹 Fecha */}
       <div className="mb-4">
         <label htmlFor="appointmentDate" className="block text-sm font-medium text-gray-700">
           Fecha de la Cita<span className="text-red-600">*</span>
@@ -213,6 +221,7 @@ const ActualizarCita = ({
         />
       </div>
 
+      {/* 🔹 Hora inicio */}
       <div className="mb-4">
         <label htmlFor="startTime" className="block text-sm font-medium text-gray-700">
           Hora de Inicio<span className="text-red-600">*</span>
@@ -222,23 +231,20 @@ const ActualizarCita = ({
           value={newStartTime ? new Date(`1970-01-01T${newStartTime}:00`) : null}
           onChange={(newValue) => {
             if (newValue) {
-              const formattedTime = newValue.toTimeString().slice(0, 5); // Formatea como HH:mm
+              const formattedTime = newValue.toTimeString().slice(0, 5);
               setNewStartTime(formattedTime);
-
-              // Calcular la nueva hora de finalización si hay un servicio seleccionado
-              const selectedService = services.find((s) => s._id.toString() === newService);
-              if (selectedService) {
-                setNewEndTime(calculateEndTime(formattedTime, selectedService.duration));
-              }
+              const svc = services.find((s) => s._id.toString() === newService);
+              if (svc) setNewEndTime(calculateEndTime(formattedTime, svc.duration));
             }
           }}
-          hideMinutes={(minute) => minute % 5 !== 0} // 🔹 Minutos en pasos de 5
-          cleanable={false} // 🔹 No permite limpiar
+          hideMinutes={(m) => m % 5 !== 0}
+          cleanable={false}
           placement="topStart"
           className="w-full p-2 mt-1 border border-gray-300 rounded"
         />
       </div>
 
+      {/* 🔹 Servicio */}
       <div className="mb-4">
         <label htmlFor="service" className="block text-sm font-medium text-gray-700">
           Servicio<span className="text-red-600">*</span>
@@ -250,30 +256,32 @@ const ActualizarCita = ({
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
-          {services.map((service) => (
-            <option key={service._id} value={service._id}>
-              {service.name}
+          {services.map((s) => (
+            <option key={s._id} value={s._id}>
+              {s.name}
             </option>
           ))}
         </select>
       </div>
 
+      {/* 🔹 Duración */}
       <label className="block mb-2">Duración de la Cita (minutos):</label>
-            <select
-              value={newDuration}
-              onChange={handleDurationChange}
-              className="block w-full p-2 border border-gray-300 rounded mt-1"
-            >
-              {[...Array(25)].map((_, i) => {
-                const minutes = (i + 1) * 5; // Genera valores: 5, 10, 15 ... 120
-                return (
-                  <option key={minutes} value={minutes}>
-                    {minutes} min
-                  </option>
-                );
-              })}
-            </select>
+      <select
+        value={newDuration}
+        onChange={handleDurationChange}
+        className="block w-full p-2 border border-gray-300 rounded mt-1"
+      >
+        {[...Array(25)].map((_, i) => {
+          const minutes = (i + 1) * 5;
+          return (
+            <option key={minutes} value={minutes}>
+              {minutes} min
+            </option>
+          );
+        })}
+      </select>
 
+      {/* 🔹 Hora fin */}
       <div className="mb-4">
         <label htmlFor="endTime" className="block text-sm font-medium text-gray-700">
           Hora de Fin
@@ -283,18 +291,19 @@ const ActualizarCita = ({
           value={newEndTime ? new Date(`1970-01-01T${newEndTime}:00`) : null}
           onChange={(newValue) => {
             if (newValue) {
-              const formattedTime = newValue.toTimeString().slice(0, 5); // Formatea como HH:mm
+              const formattedTime = newValue.toTimeString().slice(0, 5);
               setNewEndTime(formattedTime);
             }
           }}
-          hideMinutes={(minute) => minute % 5 !== 0} // 🔹 Minutos en pasos de 5
-          cleanable={false} // 🔹 No permite limpiar
+          hideMinutes={(m) => m % 5 !== 0}
+          cleanable={false}
           placement="topStart"
           className="w-full p-2 mt-1 border border-gray-300 rounded"
           disabled
         />
       </div>
 
+      {/* 🔹 Costo */}
       <div className="mb-4">
         <label htmlFor="cost" className="block text-sm font-medium text-gray-700">
           Costo<span className="text-red-600">*</span>
@@ -309,8 +318,7 @@ const ActualizarCita = ({
         />
       </div>
 
-      
-
+      {/* 🔹 Botones */}
       <div className="mt-4 flex justify-between">
         <button
           type="button"
