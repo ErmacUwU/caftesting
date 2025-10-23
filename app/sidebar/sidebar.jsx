@@ -63,7 +63,10 @@ const Sidebar = () => {
     setOpenSections(prev => ({ ...menuSections, [section]: !prev[section] }));
   }, []);
 
-  const closeMenu = useCallback(() => setIsMenuOpen(false), []);
+ const closeMenu = useCallback(() => {
+    setIsMenuOpen(false); // Cierra el menú móvil
+    setOpenSections(menuSections); // Cierra todos los submenús
+}, []);
 
   if(pathname ==="/login")return null;
 

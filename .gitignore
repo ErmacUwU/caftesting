@@ -1,0 +1,8 @@
+# Archivos de configuración de entorno
+.env
+
+# Carpetas generadas automáticamente por Next.js
+.next/
+
+# Carpeta de dependencias generada por npm
+node_modules/
