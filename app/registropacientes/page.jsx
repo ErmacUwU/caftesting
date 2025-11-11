@@ -105,45 +105,61 @@ const RegistroPaciente = () => {
   const agregarPaciente = async (e) => {
     e.preventDefault();
 
+    setError("");
+
     if (contacts.length === 0) {
       alert("Debe haber al menos un contacto de emergencia.");
       return;
     }
 
-    // Validar el CURP
     if (!validateCURP(idType)) {
       alert("El CURP debe tener 18 caracteres, solo letras y números.");
       return;
     }
 
-    const res = await fetch("/api/patient", {
-      method: "POST",
-      headers: {
-        "Content-type": "application/json",
-      },
-      body: JSON.stringify({
-        idPatient: uniquid(),
-        firstName,
-        lastName,
-        birthdate,
-        gender,
-        patientStatus,
-        birthCity,
-        nationality,
-        birthState,
-        idType,
-        contacts,
-        email,
-        password,
-      }),
-    });
+    try {
+      const res = await fetch("/api/patient", {
+        method: "POST",
+        headers: {
+          "Content-type": "application/json",
+        },
+        body: JSON.stringify({
+          idPatient: uniquid(),
+          firstName,
+          lastName,
+          birthdate,
+          gender,
+          patientStatus,
+          birthCity,
+          nationality,
+          birthState,
+          idType,
+          contacts,
+          email,
+          password,
+        }),
+      });
 
-    
+      const { msg } = await res.json();
 
-    limpiarCampos();
-    const { msg } = await res.json();
-    setError(msg);
+      if (!res.ok) {
+        setError(msg || "Ocurrió un error al registrar el paciente.");
+        return;
+      }
+
+      limpiarCampos();
+      setStep(1);
+      setError("Paciente registrado correctamente.");
+
+      if (typeof window !== "undefined") {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Ocurrió un error al registrar el paciente.");
+    }
   };
+
 
   const limpiarCampos = () => {
     setFirstName("");
@@ -174,7 +190,6 @@ const RegistroPaciente = () => {
       },
     ]);
     setConsent(false);
-    setError("");
   };
 
   const handleNextStep = () => {
@@ -191,6 +206,20 @@ const RegistroPaciente = () => {
       onSubmit={agregarPaciente}
     >
       <h1 className="text-black font-extrabold">REGISTRO DE PACIENTES</h1>
+
+
+      {/* Mensaje de éxito / error */}
+      {error && (
+        <div
+          className={`mt-2 mb-4 text-sm px-4 py-2 rounded ${
+            error === "Paciente registrado correctamente."
+              ? "bg-green-100 text-green-800 border border-green-300"
+              : "bg-red-100 text-red-800 border border-red-300"
+          }`}
+        >
+          {error}
+        </div>
+      )}
 
       {/* Paso 1: Datos personales */}
       {step === 1 && (
