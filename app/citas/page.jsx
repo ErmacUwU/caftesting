@@ -802,30 +802,185 @@ const handleSubmit = async (e) => {
       </Modal>
     )}
 
-    {/* Modal de detalles */}
+    {/* Modal de detalles — versión limpia y clara */}
     {modalType === "details" && selectedAppointment && (
       <Modal
-        isOpen={modalType === "details"}
+        isOpen={true}
         onRequestClose={closeModal}
-        style={customStyles}
         ariaHideApp={false}
+        style={{
+          overlay: {
+            backgroundColor: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)",
+            zIndex: 2000,
+          },
+          content: {
+            top: "50%",
+            left: "50%",
+            right: "auto",
+            bottom: "auto",
+            transform: "translate(-50%, -50%)",
+            padding: "24px",
+            width: "420px",
+            maxWidth: "90%",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+            background: "#ffffff",
+            color: "#1f2937",
+            boxShadow: "0 15px 35px rgba(0,0,0,0.20)",
+          },
+        }}
       >
+
+        {/* Botón cerrar */}
+        <button
+          onClick={closeModal}
+          style={{
+            position: "absolute",
+            top: "12px",
+            right: "12px",
+            background: "#e5e7eb",
+            width: "30px",
+            height: "30px",
+            borderRadius: "50%",
+            border: "none",
+            fontWeight: "bold",
+            cursor: "pointer",
+          }}
+        >
+          ✕
+        </button>
+
+        {/* Título */}
+        <h2 className="text-xl font-bold mb-4 text-slate-800">
+          {selectedAppointment?.title || "Detalle de la cita"}
+        </h2>
+
+        {/* Información */}
+        <div className="space-y-2 text-slate-700">
+          <p>
+            <strong>Paciente:</strong>{" "}
+            {(() => {
+              const p = selectedAppointment.patient;
+              if (typeof p === "object" && p.firstName) {
+                return `${p.firstName} ${p.lastName}`;
+              }
+              const found = patients.find((x) => x._id === p);
+              return found ? `${found.firstName} ${found.lastName}` : "No encontrado";
+            })()}
+          </p>
+
+          <p>
+            <strong>Terapeuta:</strong>{" "}
+            {(() => {
+              const t = selectedAppointment.therapist;
+              if (typeof t === "object" && t.firstName) {
+                return `${t.firstName} ${t.lastName}`;
+              }
+              const found = therapists.find((x) => x._id === t);
+              return found ? `${found.firstName} ${found.lastName}` : "No encontrado";
+            })()}
+          </p>
+
+          <p><strong>Fecha:</strong> {selectedAppointment.formattedDate}</p>
+
+          <p>
+            <strong>Hora:</strong>{" "}
+            {selectedAppointment.formattedStart} – {selectedAppointment.formattedEnd}
+          </p>
+
+          <p><strong>Duración:</strong> {selectedAppointment.duration} minutos</p>
+          <p><strong>Costo:</strong> ${selectedAppointment.cost}</p>
+        </div>
+
+        {/* Botones */}
+        <div className="flex justify-end mt-5 gap-3">
+          <button
+            onClick={openEditModal}
+            className="bg-blue-600 text-white px-4 py-2 rounded-md"
+          >
+            Editar
+          </button>
+
+          <BotonDeleteCitas id={selectedAppointment.idd} />
+        </div>
+
       </Modal>
     )}
 
-    {/* Modal de edición */}
+    {/* Modal de edición — mismo estilo claro que detalles */}
     {modalType === "edit" && selectedAppointment && (
       <Modal
-        isOpen={modalType === "edit"}
+        isOpen={true}
         onRequestClose={closeModal}
-        style={customStyles}
         ariaHideApp={false}
         shouldCloseOnOverlayClick={true}
         onAfterOpen={() => (document.body.style.overflow = "hidden")}
         onAfterClose={() => (document.body.style.overflow = "auto")}
+        style={{
+          overlay: {
+            backgroundColor: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(6px)",
+            zIndex: 2100,
+          },
+          content: {
+            top: "50%",
+            left: "50%",
+            right: "auto",
+            bottom: "auto",
+            transform: "translate(-50%, -50%)",
+            padding: "24px",
+            width: "480px",
+            maxWidth: "95%",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            borderRadius: "16px",
+            border: "1px solid #e5e7eb",
+            background: "#ffffff",
+            color: "#1f2937",
+            boxShadow: "0 15px 35px rgba(0,0,0,0.20)",
+          },
+        }}
       >
+        <div className="relative text-slate-800">
+          {/* Botón cerrar */}
+          <button
+            onClick={closeModal}
+            className="absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-800 p-1 rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold"
+          >
+            ✕
+          </button>
+
+          <h2 className="text-lg font-bold mb-3">
+            Editar cita
+          </h2>
+
+          {/* Aquí va tu formulario de edición */}
+          <ActualizarCita
+            id={selectedAppointment.idd}
+            selectedPatient={
+              typeof selectedAppointment.patient === "object"
+                ? selectedAppointment.patient
+                : patients.find((p) => p._id === selectedAppointment.patient)
+            }
+            selectedTherapist={
+              typeof selectedAppointment.therapist === "object"
+                ? selectedAppointment.therapist
+                : therapists.find((t) => t._id === selectedAppointment.therapist)
+            }
+            selectedService={selectedAppointment.serviceId}
+            appointmentDate={selectedAppointment.start.toISOString().split("T")[0]}
+            appointmentStartTime={selectedAppointment.start.toTimeString().slice(0, 5)}
+            appointmentEndTime={selectedAppointment.end.toTimeString().slice(0, 5)}
+            appointmentDuration={selectedAppointment.duration}
+            cost={selectedAppointment.cost}
+            onClose={closeModal}
+            onUpdate={refetchAppointments}
+          />
+        </div>
       </Modal>
     )}
+
   </div>
   );
 };

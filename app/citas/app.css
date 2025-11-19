@@ -214,13 +214,14 @@ body::before{
   -webkit-backdrop-filter: blur(6px);
 }
 
+/* === Tema claro para React-Modal === */
 .ReactModal__Content {
-  border-radius: 16px !important;
-  border: 1px solid #e5e7eb !important;
   background: #ffffff !important;
-  color: #0f172a;
-  box-shadow: 0 24px 60px rgba(15,23,42,.25) !important;
+  color: #1f2937 !important;                /* texto gris oscuro */
+  border: 1px solid #d1d5db !important;
+  border-radius: 16px !important;
 }
+
 
 /* Botones genéricos dentro de modales/calendario */
 button, .fc .fc-button {
