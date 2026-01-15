@@ -5,6 +5,7 @@ const messageSchema = new mongoose.Schema({
   fromName: { type: String },
   to: { type: String, required: true },
   content: { type: String, required: true },
+  type: { type: String, default: "text" }, // "text" o "image"
   timestamp: { type: Date, default: Date.now },
 });
 

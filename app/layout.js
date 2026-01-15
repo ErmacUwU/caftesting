@@ -21,7 +21,9 @@ export default function RootLayout({ children }) {
         <AuthProvider><Sidebar/>
         <div className="overflow-auto">
         {children}
-          <Script
+        </div></AuthProvider>
+
+        <Script
             id="tawk-script"
             strategy="afterInteractive"
             dangerouslySetInnerHTML={{
@@ -38,7 +40,7 @@ export default function RootLayout({ children }) {
               `,
             }}
           />
-        </div></AuthProvider>
+
       </body>
     </html>
   );
