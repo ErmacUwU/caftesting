@@ -28,6 +28,7 @@ export async function POST(req) {
       });
     }
 
+
     // 2) Usuarios creados (Therapist/Patient) -> validar contra `User`
     const user = await User.findOne({ email });
     if (!user) {
@@ -38,6 +39,18 @@ export async function POST(req) {
     if (!ok) {
       return NextResponse.json({ msg: "Credenciales inválidas (password incorrecto)" }, { status: 401 });
     }
+
+    // 🔹 ADMIN / OPERADOR (no usan refType)
+    if (user.role === "admin" || user.role === "operador") {
+      return NextResponse.json({
+        msg: "Inicio de sesión exitoso",
+        success: true,
+        userId: user._id.toString(),
+        userName: user.email, // o el nombre que quieras mostrar
+        role: user.role,
+      });
+    }
+
 
     // 3) Obtener nombre visible según refType/refId
     let userName = "";

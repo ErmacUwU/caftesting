@@ -51,6 +51,12 @@ export async function POST(req) {
       role: roleNormalized,
     });
 
+    await User.create({
+          email,
+          passwordHash: passwordHash,
+          role: roleNormalized,
+        })
+
 
 
     return NextResponse.json({
@@ -123,9 +129,9 @@ export async function DELETE(req) {
     }
 
     // Eliminar usuario de autenticación relacionado
-    await User.findOneAndDelete({
-      refId: id,
-      refType: "UserSystem",
+      await User.findOneAndDelete({
+      email: userSystem.email,
+      role: { $in: ["admin", "operador"] },
     });
 
     return NextResponse.json({
