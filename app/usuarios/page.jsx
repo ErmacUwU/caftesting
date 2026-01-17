@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import uniquid from "uniquid";
 
 const Usuarios = () => {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, userRole } = useAuth();
   const router = useRouter();
 
   const [openModal, setOpenModal] = useState(false);
@@ -16,10 +16,20 @@ const Usuarios = () => {
   const [errorLoadingUsers, setErrorLoadingUsers] = useState("");
 
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      router.replace('/login');
-    }
-  }, [isAuthenticated, isLoading, router]);
+  if (isLoading) return;
+
+  if (!isAuthenticated) {
+    router.replace("/login");
+    return;
+  }
+
+  // 🔒 Solo ADMIN puede entrar
+  if (userRole !== "admin") {
+    router.replace("/403"); // o "/"
+  }
+}, [isAuthenticated, isLoading, userRole, router]);
+
+
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {

@@ -145,3 +145,65 @@ export async function DELETE(req) {
     );
   }
 }
+
+export async function PUT(req) {
+  try {
+    await dbConnect();
+
+    const id = req.nextUrl.searchParams.get("id");
+    if (!id) {
+      return NextResponse.json(
+        { msg: ["ID requerido"], success: false },
+        { status: 400 }
+      );
+    }
+
+    const { name, email, role, password } = await req.json();
+
+    // 1️⃣ Buscar usuario sistema
+    const userSystem = await UserSystem.findById(id);
+    if (!userSystem) {
+      return NextResponse.json(
+        { msg: ["Usuario no encontrado"], success: false },
+        { status: 404 }
+      );
+    }
+
+    // 2️⃣ Actualizar UserSystem
+    userSystem.name = name;
+    userSystem.email = email;
+    userSystem.role = role;
+
+    if (password) {
+      userSystem.passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    await userSystem.save();
+
+    // 3️⃣ Actualizar User (login)
+    const userAuth = await User.findOne({ email: userSystem.email });
+
+    if (userAuth) {
+      userAuth.email = email;
+      userAuth.role = role;
+
+      if (password) {
+        userAuth.passwordHash = userSystem.passwordHash;
+      }
+
+      await userAuth.save();
+    }
+
+    return NextResponse.json({
+      msg: ["Usuario actualizado correctamente"],
+      success: true,
+    });
+
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { msg: ["Error al actualizar usuario"], success: false },
+      { status: 500 }
+    );
+  }
+}
