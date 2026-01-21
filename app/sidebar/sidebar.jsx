@@ -161,6 +161,7 @@ const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
     ],
     administracion: [
       { href: "/usuarios", text: "Usuarios", icon: UserGroupIcon },
+      { href: "/registroUnificado", text: "UsuariosUnificados", icon: UserGroupIcon },
       { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon },
       { href: "/login", text: "Cerrar Sesión", icon: UserPlusIcon, logout: true },
     ],
