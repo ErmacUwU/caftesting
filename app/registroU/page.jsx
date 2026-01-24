@@ -5,6 +5,7 @@ import uniquid from "uniquid";
 
 export default function RegistroUsuario() {
   const [role, setRole] = useState("");
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -16,13 +17,17 @@ export default function RegistroUsuario() {
     birthdate: "",
     gender: "",
     patientStatus: "activo",
+
+    // terapeuta
     phone: "",
     specialization: "",
+    address: "",
+    city: "",
+    country: "",
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -35,7 +40,6 @@ export default function RegistroUsuario() {
       role,
     };
 
-    // PACIENTE
     if (role === "patient") {
       payload.patientData = {
         idPatient: uniquid(),
@@ -47,13 +51,16 @@ export default function RegistroUsuario() {
       };
     }
 
-    // TERAPEUTA
     if (role === "therapist") {
       payload.therapistData = {
+        idTherapist: uniquid(),
         firstName: form.firstName,
         lastName: form.lastName,
         phone: form.phone,
         specialization: form.specialization,
+        address: form.address,
+        city: form.city,
+        country: form.country,
       };
     }
 
@@ -65,13 +72,8 @@ export default function RegistroUsuario() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        setMsg(data.error || "Error al crear usuario");
-      } else {
-        setMsg("Usuario creado correctamente ✅");
-      }
-    } catch (err) {
+      setMsg(res.ok ? "Usuario creado correctamente ✅" : data.error);
+    } catch {
       setMsg("Error de conexión");
     }
 
@@ -79,123 +81,122 @@ export default function RegistroUsuario() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-lg">
-      <h1 className="text-3xl font-bold mb-6 text-center">
-        Registro de Usuario
-      </h1>
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-xl p-8">
+        <h1 className="text-3xl font-bold text-center mb-6">
+          Registro de Usuario
+        </h1>
 
-      {msg && (
-        <div className="mb-4 p-3 rounded bg-indigo-50 text-indigo-700">
-          {msg}
-        </div>
-      )}
-
-      <form onSubmit={submit} className="space-y-6">
-        {/* Rol */}
-        <div>
-          <label className="font-medium">Tipo de usuario</label>
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="w-full mt-1 p-2 border rounded"
-            required
-          >
-            <option value="">Selecciona</option>
-            <option value="patient">Paciente</option>
-            <option value="therapist">Terapeuta</option>
-            <option value="admin">Administrador</option>
-            <option value="operador">Operador</option>
-          </select>
-        </div>
-
-        {/* Acceso */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input
-            name="email"
-            placeholder="Email"
-            className="input"
-            onChange={handleChange}
-            required
-          />
-          <input
-            name="password"
-            type="password"
-            placeholder="Contraseña"
-            className="input"
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        {/* Campos comunes */}
-        {(role === "patient" || role === "therapist") && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              name="firstName"
-              placeholder="Nombre"
-              className="input"
-              onChange={handleChange}
-              required
-            />
-            <input
-              name="lastName"
-              placeholder="Apellidos"
-              className="input"
-              onChange={handleChange}
-              required
-            />
+        {msg && (
+          <div className="mb-4 text-center p-3 rounded bg-indigo-50 text-indigo-700">
+            {msg}
           </div>
         )}
 
-        {/* Paciente */}
-        {role === "patient" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              type="date"
-              name="birthdate"
-              className="input"
-              onChange={handleChange}
-              required
-            />
+        <form onSubmit={submit} className="space-y-6">
+          {/* ROL */}
+          <div>
+            <label className="label">Tipo de usuario</label>
             <select
-              name="gender"
+              value={role}
+              onChange={(e) => {
+                setRole(e.target.value);
+                setStep(1);
+              }}
               className="input"
-              onChange={handleChange}
               required
             >
-              <option value="">Género</option>
-              <option value="M">Masculino</option>
-              <option value="F">Femenino</option>
+              <option value="">Selecciona</option>
+              <option value="patient">Paciente</option>
+              <option value="therapist">Terapeuta</option>
+              <option value="admin">Administrador</option>
+              <option value="operador">Operador</option>
             </select>
           </div>
-        )}
 
-        {/* Terapeuta */}
-        {role === "therapist" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              name="phone"
-              placeholder="Teléfono"
-              className="input"
-              onChange={handleChange}
-              required
-            />
-            <input
-              name="specialization"
-              placeholder="Especialización"
-              className="input"
-              onChange={handleChange}
-            />
+          {/* ACCESO */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <input name="email" placeholder="Email" className="input" onChange={handleChange} required />
+            <input name="password" type="password" placeholder="Contraseña" className="input" onChange={handleChange} required />
           </div>
-        )}
 
-        <button
-          disabled={loading}
-          className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition"
-        >
-          {loading ? "Guardando..." : "Registrar Usuario"}
-        </button>
-      </form>
+          {/* CAMPOS COMUNES */}
+          {(role === "patient" || role === "therapist") && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <input name="firstName" placeholder="Nombre" className="input" onChange={handleChange} required />
+              <input name="lastName" placeholder="Apellidos" className="input" onChange={handleChange} required />
+            </div>
+          )}
+
+          {/* PACIENTE */}
+          {role === "patient" && (
+            <div className="grid md:grid-cols-2 gap-4">
+              <input type="date" name="birthdate" className="input" onChange={handleChange} required />
+              <select name="gender" className="input" onChange={handleChange} required>
+                <option value="">Género</option>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+            </div>
+          )}
+
+          {/* TERAPEUTA – PASO 1 */}
+          {role === "therapist" && step === 1 && (
+            <>
+              <Stepper step={step} />
+              <div className="grid md:grid-cols-2 gap-4">
+                <input name="phone" placeholder="Teléfono" className="input" onChange={handleChange} required />
+                <input name="specialization" placeholder="Especialización" className="input" onChange={handleChange} />
+              </div>
+
+              <div className="text-right">
+                <button type="button" onClick={() => setStep(2)} className="btn-primary">
+                  Siguiente
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* TERAPEUTA – PASO 2 */}
+          {role === "therapist" && step === 2 && (
+            <>
+              <Stepper step={step} />
+              <div className="grid md:grid-cols-2 gap-4">
+                <input name="address" placeholder="Dirección" className="input" onChange={handleChange} />
+                <input name="city" placeholder="Ciudad" className="input" onChange={handleChange} />
+                <input name="country" placeholder="País" className="input" onChange={handleChange} />
+              </div>
+
+              <div className="flex justify-between">
+                <button type="button" onClick={() => setStep(1)} className="btn-secondary">
+                  Anterior
+                </button>
+                <button type="submit" disabled={loading} className="btn-primary">
+                  {loading ? "Guardando..." : "Registrar"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* ADMIN / OPERADOR */}
+          {(role === "admin" || role === "operador") && (
+            <button disabled={loading} className="btn-primary w-full">
+              Registrar Usuario
+            </button>
+          )}
+        </form>
+      </div>
     </div>
   );
 }
+
+/* COMPONENTES AUX */
+const Stepper = ({ step }) => (
+  <div className="flex items-center gap-4 mb-4">
+    <div className={`step ${step >= 1 && "active"}`}>1</div>
+    <div className="flex-1 h-1 bg-gray-200 rounded">
+      <div className={`h-1 bg-indigo-600 rounded ${step === 2 && "w-full"}`} />
+    </div>
+    <div className={`step ${step === 2 && "active"}`}>2</div>
+  </div>
+);
