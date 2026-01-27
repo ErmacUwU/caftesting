@@ -147,7 +147,7 @@ const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
       { href: "/agendas", text: "Agendas", icon: ClipboardDocumentListIcon },
       { href: "/terapeuta", text: "Terapeuta", icon: UsersIcon },
       { href: "/pacientes", text: "Pacientes", icon: UsersIcon },
-      { href: "/pacientes", text: "Pacientes Modelo Nuevo", icon: UsersIcon },
+      { href: "/pacientesU", text: "Pacientes Modelo Nuevo", icon: UsersIcon },
       { href: "/servicios", text: "Servicios", icon: ClipboardDocumentListIcon },
     ],
     comunicacion: [{ href: "/mensajes", text: "Mensajes", icon: ChatBubbleLeftRightIcon }],
