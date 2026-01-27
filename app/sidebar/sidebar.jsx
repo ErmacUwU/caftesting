@@ -147,6 +147,7 @@ const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
       { href: "/agendas", text: "Agendas", icon: ClipboardDocumentListIcon },
       { href: "/terapeuta", text: "Terapeuta", icon: UsersIcon },
       { href: "/pacientes", text: "Pacientes", icon: UsersIcon },
+      { href: "/pacientes", text: "Pacientes Modelo Nuevo", icon: UsersIcon },
       { href: "/servicios", text: "Servicios", icon: ClipboardDocumentListIcon },
     ],
     comunicacion: [{ href: "/mensajes", text: "Mensajes", icon: ChatBubbleLeftRightIcon }],
@@ -161,7 +162,7 @@ const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
     ],
     administracion: [
       { href: "/usuarios", text: "Usuarios", icon: UserGroupIcon },
-      { href: "/registroUnificado", text: "UsuariosUnificados", icon: UserGroupIcon },
+      { href: "/registroU", text: "Usuarios V1", icon: UserGroupIcon },
       { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon },
       { href: "/login", text: "Cerrar Sesión", icon: UserPlusIcon, logout: true },
     ],

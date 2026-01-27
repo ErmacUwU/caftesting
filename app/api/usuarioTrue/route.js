@@ -117,3 +117,22 @@ export async function POST(req) {
     );
   }
 }
+
+export async function GET(req) {
+  try {
+    await dbConnect();
+
+    // 1. Buscamos solo usuarios cuyo rol sea 'patient'
+    // 2. Usamos .populate('patientProfile') para traer los datos de la otra tabla
+    const pacientes = await UserTrue.find({ role: "patient" })
+      .populate("patientProfile") 
+      .lean();
+
+    return NextResponse.json(pacientes, { status: 200 });
+  } catch (error) {
+    console.error("Error al obtener pacientes:", error);
+    return NextResponse.json({ error: "Error de servidor" }, { status: 500 });
+  }
+}
+
+
