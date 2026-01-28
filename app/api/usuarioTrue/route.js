@@ -121,16 +121,20 @@ export async function POST(req) {
 export async function GET(req) {
   try {
     await dbConnect();
+    const { searchParams } = new URL(req.url);
+    const role = searchParams.get("role");
 
-    // 1. Buscamos solo usuarios cuyo rol sea 'patient'
-    // 2. Usamos .populate('patientProfile') para traer los datos de la otra tabla
-    const pacientes = await UserTrue.find({ role: "patient" })
+    // Si el filtro es "all" o no existe, traemos todos. 
+    // Si no, filtramos por el rol específico.
+    const query = (role && role !== "all") ? { role } : {};
+
+    const usuarios = await UserTrue.find(query)
       .populate("patientProfile") 
+      .populate("therapistProfile")
       .lean();
 
-    return NextResponse.json(pacientes, { status: 200 });
+    return NextResponse.json(usuarios, { status: 200 });
   } catch (error) {
-    console.error("Error al obtener pacientes:", error);
     return NextResponse.json({ error: "Error de servidor" }, { status: 500 });
   }
 }
