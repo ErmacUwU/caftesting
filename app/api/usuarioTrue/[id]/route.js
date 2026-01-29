@@ -1,36 +1,35 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
-import UserTrue from "@/models/UserTrue";
-import PatientU from "@/models/PatientU"; // <--- Nombre correcto
-import TherapistU from "@/models/TherapistU"; // <--- Nombre correcto
-import bcrypt from "bcryptjs"; // Recomendado para la contraseña
+import PatientU from "@/models/PatientU";
+import TherapistU from "@/models/TherapistU";
 
 export async function PUT(req, { params }) {
   try {
     await dbConnect();
-    const { id } = params;
-    const body = await req.json();
-    
-    // NOTA: Aceptamos profileData O patientData para evitar errores de nombre
-    const { email, password, role } = body;
-    const profileData = body.profileData || body.patientData || body.therapistData;
+    const { id } = params; // Este es el profileId
+    const { role, profileData } = await req.json();
 
-    const user = await UserTrue.findById(id);
-    if (!user) return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    let updatedProfile;
 
-    // Actualizar cuenta
-    if (email) user.email = email;
-    if (password && password.trim() !== "") user.password = password; // Middleware se encarga del hash
-    await user.save();
-
-    // Actualizar Perfil
-    if (role === 'patient' && user.patientProfile) {
-      await PatientU.findByIdAndUpdate(user.patientProfile, profileData);
-    } else if (role === 'therapist' && user.therapistProfile) {
-      await TherapistU.findByIdAndUpdate(user.therapistProfile, profileData);
+    if (role === "patient") {
+      updatedProfile = await PatientU.findByIdAndUpdate(
+        id,
+        { $set: profileData },
+        { new: true }
+      );
+    } else if (role === "therapist") {
+      updatedProfile = await TherapistU.findByIdAndUpdate(
+        id,
+        { $set: profileData },
+        { new: true }
+      );
     }
 
-    return NextResponse.json({ message: "Actualizado con éxito" }, { status: 200 });
+    if (!updatedProfile) {
+      return NextResponse.json({ error: "Perfil no encontrado" }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: "Actualizado", updatedProfile });
   } catch (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }

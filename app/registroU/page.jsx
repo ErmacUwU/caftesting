@@ -52,39 +52,68 @@ const getDisplayName = (user) => {
 };
 
 const handleEditClick = (user) => {
-    const profile = user.role === 'patient' ? user.patientProfile : user.therapistProfile;
-    
-    setEditForm({
-      _id: user._id,
-      role: user.role,
-      email: user.email,
-      ...(profile || {}), 
-      contacts: profile?.contacts || []
-    });
-    setIsEditModalOpen(true);
-  };
-
-  // Abrir formulario para editar
-const handleEdit = (user) => {
-  setIsEditing(user._id); // Guardamos el ID para saber que es PUT y no POST
+  // 1. Extraemos el objeto de perfil completo
+  const profile = user.role === 'patient' ? user.patientProfile : user.therapistProfile;
   
-  // 1. Extraer el perfil según el rol
-  const profileData = user.role === "patient" 
-    ? (user.patientProfile || {}) 
-    : (user.therapistProfile || {});
-
-  // 2. Llenar el formulario unificado
-  setForm({
-    ...form,           // Mantenemos la estructura base
-    ...profileData,    // Sobrescribimos con los datos del perfil (firstName, idType, etc.)
-    email: user.email, // Datos del modelo UserTrue
-    password: "",      // Password siempre vacío por seguridad
-    contacts: profileData.contacts || [] // Asegurar que los contactos existan
+  setEditForm({
+    _id: user._id, 
+    role: user.role,
+    email: user.email,
+    password: "", 
+    // 2. Guardamos los IDs de referencia explícitamente para que 'guardarCambios' los vea
+    patientProfile: user.patientProfile?._id || user.patientProfile,
+    therapistProfile: user.therapistProfile?._id || user.therapistProfile,
+    ...(profile || {}), 
+    contacts: profile?.contacts || [] 
   });
 
-  setRole(user.role); 
-  setShowForm(true); // Abrir el modal/panel
+  setIsEditModalOpen(true);
 };
+
+const guardarCambios = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+
+  // 1. Extraemos los IDs de los perfiles que guardamos en handleEditClick
+  const { _id, patientProfile, therapistProfile, role, ...dataToUpdate } = editForm;
+
+  // 2. Seleccionamos el ID del PERFIL (PatientU o TherapistU)
+  const profileId = role === 'patient' ? patientProfile : therapistProfile;
+
+  // VALIDACIÓN: Si profileId sigue siendo undefined, mostramos error antes de la petición
+  if (!profileId) {
+    alert("Error: No se encontró el ID del perfil para actualizar.");
+    setLoading(false);
+    return;
+  }
+
+  try {
+    // 3. Enviamos la petición al ID del perfil
+    const res = await fetch(`/api/usuarioTrue/${profileId}`, { 
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        role,
+        profileData: dataToUpdate // Enviamos los campos de perfil limpios
+      }),
+    });
+
+    if (res.ok) {
+      alert("¡Actualización exitosa! ✅");
+      setIsEditModalOpen(false);
+      fetchUsers(); 
+    } else {
+      const errorData = await res.json();
+      alert(`Error: ${errorData.error}`);
+    }
+  } catch (error) {
+    alert("Error de conexión");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   // Estado unificado (incluye campos de Auth, Paciente, Terapeuta y Contactos)
   const [form, setForm] = useState({
@@ -191,29 +220,32 @@ const handleEdit = (user) => {
 
   // --- SUBMIT ---
   // --- SUBMIT ---
-  const submit = async (e) => {
+const submit = async (e) => {
   e.preventDefault();
   setLoading(true);
+  setError(""); // Limpiamos errores previos
+  setMsg("");   // Limpiamos mensajes previos
 
-  // 1. Decidir URL y Método
-  const url = isEditing ? `/api/usuarioTrue/${isEditing}` : `/api/usuarioTrue`;
-  const method = isEditing ? "PUT" : "POST";
+  // 1. Definimos el destino (Siempre es creación)
+  const url = "/api/usuarioTrue";
+  const method = "POST";
 
-  // 2. Construir el objeto que espera tu API
+  // 2. Construir el objeto (Payload)
   const payload = {
     email: form.email,
+    password: form.password, // En registro nuevo, el password suele ser obligatorio
     role: role,
   };
 
-  // Solo enviamos password si el usuario escribió algo (para no sobreescribir con vacío)
-  if (form.password) payload.password = form.password;
 
-  // Empaquetamos según el rol
+  // Empaquetamos los datos según el rol seleccionado
   if (role === "patient") {
     payload.patientData = { ...form }; 
-    // Nota: El backend recibirá 'firstName' dentro de 'patientData'
   } else if (role === "therapist") {
     payload.therapistData = { ...form };
+  } else if (role === "admin" || role === "operador") {
+    // Si son admins u operadores, podrías enviar datos adicionales aquí si los hubiera
+    payload.adminData = { ...form };
   }
 
   try {
@@ -223,30 +255,28 @@ const handleEdit = (user) => {
       body: JSON.stringify(payload),
     });
 
+    const data = await res.json();
+
     if (res.ok) {
-      setMsg("Operación exitosa ✅");
-      fetchUsers(); // ¡Importante! Recarga la lista de la tabla
+      setMsg("¡Usuario registrado con éxito! ✅");
+      
+      // Esperamos un poco para que el usuario vea el mensaje de éxito antes de cerrar
       setTimeout(() => {
-        resetForm();
-        setShowForm(false);
-        setIsEditing(null);
+        resetForm();      // Limpia todos los inputs
+        setShowForm(false); // Cierra el modal de registro
+        fetchUsers();     // Refresca la tabla para ver al nuevo usuario
       }, 1500);
+    } else {
+      setError(data.error || "No se pudo completar el registro");
     }
   } catch (err) {
-    setError("Error de servidor");
+    console.error("Error al registrar:", err);
+    setError("Error de conexión con el servidor");
   } finally {
     setLoading(false);
   }
 };
-  const agregarContactoEdit = () => {
-  setEditForm({
-    ...editForm,
-    contacts: [
-      ...(editForm.contacts || []), 
-      { firstName: "", lastName: "", phone: "", sendRecordatorios: false }
-    ]
-  });
-};
+
 
 // AGREGAR UN NUEVO CONTACTO VACÍO
 const agregarContacto = () => {
@@ -281,57 +311,6 @@ const eliminarContacto = (indexABorrar) => {
 };
 
 
-const eliminarContactoEdit = (index) => {
-  const nuevosContactos = [...editForm.contacts];
-  nuevosContactos.splice(index, 1);
-  setEditForm({ ...editForm, contacts: nuevosContactos });
-};
-
-const handleContactChangeEdit = (index, e) => {
-  const { name, value, type, checked } = e.target;
-  const nuevosContactos = [...editForm.contacts];
-  nuevosContactos[index] = { 
-    ...nuevosContactos[index], 
-    [name]: type === 'checkbox' ? checked : value 
-  };
-  setEditForm({ ...editForm, contacts: nuevosContactos });
-};
-
-const guardarCambios = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-
-  // 1. Extraemos datos de cuenta y el resto es perfil
-  const { _id, email, password, role, ...restOfProfile } = editForm;
-
-  try {
-    const res = await fetch(`/api/usuarioTrue/${_id}`, { 
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email,
-        password,
-        role,
-        profileData: restOfProfile // Usamos profileData como estándar
-      }),
-    });
-
-    const data = await res.json();
-
-    if (res.ok) {
-      alert("¡Usuario actualizado con éxito! ✅");
-      setIsEditModalOpen(false);
-      fetchUsers(); 
-    } else {
-      // Evita el [object Object] extrayendo el mensaje de error
-      alert(`Error: ${data.error || data.message || "Fallo desconocido"}`);
-    }
-  } catch (error) {
-    alert("Error de conexión con el servidor");
-  } finally {
-    setLoading(false);
-  }
-};
 
   // Filtrado de la lista
   const filteredUsers = users.filter(u => filterRole === "all" || u.role === filterRole);
@@ -407,7 +386,7 @@ const guardarCambios = async (e) => {
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button 
-                      onClick={() => handleEdit(user)}
+                      onClick={() => handleEditClick(user)}
                       className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
                     >
                       Editar
@@ -704,26 +683,19 @@ const guardarCambios = async (e) => {
 
  {isEditModalOpen && (
   <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-y-auto animate-fadeIn">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-fadeIn">
       
-      {/* 1. HEADER DINÁMICO */}
-      <div className={`sticky top-0 p-6 text-white flex justify-between items-center z-20 shadow-lg ${
-        editForm.role === 'patient' ? 'bg-indigo-700' : 
-        editForm.role === 'therapist' ? 'bg-emerald-700' : 'bg-slate-700'
-      }`}>
+      {/* Header Fijo */}
+      <div className="sticky top-0 bg-indigo-700 p-6 text-white flex justify-between items-center z-10">
         <div>
-          <h3 className="text-2xl font-bold uppercase tracking-wider">
-            Edición de {editForm.role === 'patient' ? 'Paciente' : 'Colaborador'}
-          </h3>
-          <p className="text-white/80">Perfil: {editForm.firstName} {editForm.lastName}</p>
+          <h3 className="text-2xl font-bold">Edición Integral de Paciente</h3>
+          <p className="text-indigo-100 opacity-80">Modificando perfil de {editForm.firstName}</p>
         </div>
-        <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-3xl hover:rotate-90 transition-transform">&times;</button>
+        <button onClick={() => setIsEditModalOpen(false)} className="text-white text-2xl">&times;</button>
       </div>
 
-      {/* FORMULARIO ÚNICO (Sin nidos) */}
       <form onSubmit={guardarCambios} className="p-8 space-y-8">
-        
-        {/* SECCIÓN COMÚN: ACCESO */}
+
         <section className="bg-gray-50 p-6 rounded-xl border border-gray-200">
           <h4 className="text-gray-700 font-bold mb-4 flex items-center">🔑 Credenciales de Cuenta</h4>
           <div className="grid md:grid-cols-2 gap-6">
@@ -739,136 +711,165 @@ const guardarCambios = async (e) => {
             </div>
           </div>
         </section>
-
-        {/* --- CAMPOS ESPECÍFICOS PARA PACIENTE --- */}
-        {editForm.role === 'patient' && (
-          <div className="space-y-8">
-            <section>
-              <h4 className="text-indigo-600 font-bold border-b pb-2 mb-4">1. Identificación y Estado</h4>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Nombre</label>
-                  <input type="text" className="w-full p-2 border rounded" value={editForm.firstName || ""} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Apellidos</label>
-                  <input type="text" className="w-full p-2 border rounded" value={editForm.lastName || ""} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">CURP</label>
-                  <input type="text" className="w-full p-2 border rounded uppercase" value={editForm.idType || ""} onChange={(e) => setEditForm({...editForm, idType: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Estado</label>
-                  <select className="w-full p-2 border rounded" value={editForm.patientStatus || "activo"} onChange={(e) => setEditForm({...editForm, patientStatus: e.target.value})}>
-                    <option value="activo">Activo</option>
-                    <option value="inactivo">Inactivo</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Género</label>
-                  <select className="w-full p-2 border rounded" value={editForm.gender || "M"} onChange={(e) => setEditForm({...editForm, gender: e.target.value})}>
-                    <option value="M">Masculino</option>
-                    <option value="F">Femenino</option>
-                  </select>
-                </div>
-              </div>
-            </section>
-
-            <section>
-              <h4 className="text-indigo-600 font-bold border-b pb-2 mb-4">2. Nacimiento y Nacionalidad</h4>
-              <div className="grid md:grid-cols-4 gap-4">
-                <div className="md:col-span-2">
-                  <label className="text-xs font-bold text-gray-500 uppercase">Ciudad de Nacimiento</label>
-                  <input type="text" className="w-full p-2 border rounded" value={editForm.birthCity || ""} onChange={(e) => setEditForm({...editForm, birthCity: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Estado</label>
-                  <input type="text" className="w-full p-2 border rounded" value={editForm.birthState || ""} onChange={(e) => setEditForm({...editForm, birthState: e.target.value})} />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-500 uppercase">Nacionalidad</label>
-                  <input type="text" className="w-full p-2 border rounded" value={editForm.nationality || ""} onChange={(e) => setEditForm({...editForm, nationality: e.target.value})} />
-                </div>
-              </div>
-            </section>
-
-            <section className="bg-indigo-50/30 p-6 rounded-2xl border border-indigo-100">
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-indigo-600 font-bold flex items-center">
-                  <span className="mr-2">🚨</span> 3. Contactos de Emergencia
-                </h4>
-                <button type="button" onClick={agregarContactoEdit} className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition shadow-sm">
-                  + Añadir Contacto
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {editForm.contacts?.map((contact, index) => (
-                  <div key={index} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm relative">
-                    <div className="flex justify-between items-center mb-4">
-                      <p className="font-bold text-indigo-900">Contacto #{index + 1}</p>
-                      <button type="button" onClick={() => eliminarContactoEdit(index)} className="text-red-400 hover:text-red-600 font-bold">Eliminar</button>
-                    </div>
-                    
-                    <div className="grid md:grid-cols-3 gap-4 mb-4">
-                      <input placeholder="Nombre *" name="firstName" className="p-2 bg-blue-50/30 border border-blue-100 rounded-lg" value={contact.firstName || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                      <input placeholder="Apellido P. *" name="lastName" className="p-2 bg-blue-50/30 border border-blue-100 rounded-lg" value={contact.lastName || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                      <input placeholder="Apellido M." name="secondLastName" className="p-2 bg-blue-50/30 border border-blue-100 rounded-lg" value={contact.secondLastName || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                    </div>
-
-                    <div className="grid md:grid-cols-3 gap-4 mb-4">
-                      <input placeholder="Teléfono *" name="phone" className="p-2 bg-blue-50/30 border border-blue-100 rounded-lg" value={contact.phone || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                      <input placeholder="Email" name="email" type="email" className="p-2 bg-blue-50/30 border border-blue-100 rounded-lg" value={contact.email || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                      <input placeholder="Tel. Adicional" name="additionalPhone" className="p-2 bg-blue-50/30 border border-blue-100 rounded-lg" value={contact.additionalPhone || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                    </div>
-
-                    <div className="grid grid-cols-12 gap-2 mb-2">
-                      <input placeholder="Calle/Avenida" name="street" className="col-span-6 p-2 bg-blue-50/30 border border-blue-100 rounded-lg text-sm" value={contact.street || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                      <input placeholder="N. Ext" name="houseNumber" className="col-span-2 p-2 bg-blue-50/30 border border-blue-100 rounded-lg text-sm" value={contact.houseNumber || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                      <input placeholder="C.P." name="zipCode" className="col-span-4 p-2 bg-blue-50/30 border border-blue-100 rounded-lg text-sm" value={contact.zipCode || ""} onChange={(e) => handleContactChangeEdit(index, e)} />
-                    </div>
-
-                    <div className="flex items-center space-x-2 mt-4">
-                      <input type="checkbox" name="sendRecordatorios" className="w-4 h-4 text-blue-600 rounded" checked={contact.sendRecordatorios || false} onChange={(e) => handleContactChangeEdit(index, e)} />
-                      <span className="text-sm text-gray-600 font-medium">Enviar recordatorios</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
-        )}
-
-        {/* --- CAMPOS ESPECÍFICOS PARA TERAPEUTA --- */}
-        {editForm.role === 'therapist' && (
-          <section className="space-y-6">
-            <h4 className="text-emerald-600 font-bold border-b pb-2 mb-4 flex items-center">
-              <span className="mr-2">⚕️</span> Información Profesional
-            </h4>
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <label className="text-xs font-bold text-gray-400 uppercase">Especialidad Principal</label>
-                <input type="text" className="w-full p-2 border rounded" value={editForm.specialty || ""} 
-                  onChange={(e) => setEditForm({...editForm, specialty: e.target.value})} />
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-400 uppercase">Cédula Profesional</label>
-                <input type="text" className="w-full p-2 border rounded" value={editForm.professionalId || ""} 
-                  onChange={(e) => setEditForm({...editForm, professionalId: e.target.value})} />
-              </div>
+        
+        {/* SECCIÓN 1: DATOS PERSONALES */}
+        <section>
+          <h4 className="text-indigo-600 font-bold border-b pb-2 mb-4">1. Identificación y Estado</h4>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500">Nombre</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.firstName} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})} />
             </div>
-          </section>
-        )}
+            <div>
+              <label className="text-xs font-bold text-gray-500">Apellidos</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.lastName} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">CURP</label>
+              <input type="text" className="w-full p-2 border rounded uppercase" value={editForm.idType} onChange={(e) => setEditForm({...editForm, idType: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Estado del Paciente</label>
+              <select className="w-full p-2 border rounded" value={editForm.patientStatus} onChange={(e) => setEditForm({...editForm, patientStatus: e.target.value})}>
+                <option value="activo">Activo</option>
+                <option value="inactivo">Inactivo</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Género</label>
+              <select className="w-full p-2 border rounded" value={editForm.gender} onChange={(e) => setEditForm({...editForm, gender: e.target.value})}>
+                <option value="M">Masculino</option>
+                <option value="F">Femenino</option>
+              </select>
+            </div>
+          </div>
+        </section>
 
-        {/* FOOTER ACCIONES FINAL */}
-        <div className="flex justify-end space-x-4 sticky bottom-0 bg-white pt-6 border-t z-10">
-          <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-6 py-2 text-gray-400 font-bold hover:text-gray-600">
-            Descartar Cambios
-          </button>
-          <button type="submit" disabled={loading} className="bg-blue-600 text-white px-10 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all active:scale-95 disabled:bg-gray-400">
-            {loading ? "Guardando..." : "Actualizar Información Integral"}
-          </button>
+        {/* SECCIÓN 2: LUGAR Y FECHA */}
+        <section>
+          <h4 className="text-indigo-600 font-bold border-b pb-2 mb-4">2. Nacimiento y Nacionalidad</h4>
+          <div className="grid md:grid-cols-4 gap-4">
+            <div className="md:col-span-2">
+              <label className="text-xs font-bold text-gray-500">Ciudad de Nacimiento</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.birthCity} onChange={(e) => setEditForm({...editForm, birthCity: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Estado</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.birthState} onChange={(e) => setEditForm({...editForm, birthState: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Nacionalidad</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.nationality} onChange={(e) => setEditForm({...editForm, nationality: e.target.value})} />
+            </div>
+          </div>
+        </section>
+
+        {/* SECCIÓN 3: CONTACTOS DE EMERGENCIA */}
+        {/* SECCIÓN 3: CONTACTOS DE EMERGENCIA */}
+<section className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
+  <div className="flex justify-between items-center mb-6">
+    <h4 className="text-indigo-600 font-bold flex items-center">
+      <span className="mr-2">🚨</span> 3. Contactos de Emergencia
+    </h4>
+    <button
+      type="button"
+      onClick={agregarContacto}
+      className="text-xs bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition flex items-center shadow-sm"
+    >
+      + Añadir Contacto
+    </button>
+  </div>
+
+  <div className="space-y-4">
+    {editForm.contacts?.map((contact, index) => (
+  <div key={index} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm relative mb-6">
+    <div className="flex justify-between items-center mb-4">
+      <p className="font-bold text-indigo-900">Contacto #{index + 1}</p>
+      <button type="button" onClick={() => eliminarContacto(index)} className="text-red-400 hover:text-red-600">Eliminar</button>
+    </div>
+    
+    {/* FILA 1: NOMBRES */}
+    <div className="grid md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Nombre *</label>
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.firstName} onChange={(e) => handleContactChange(index, {target: {name: 'firstName', value: e.target.value}})} />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Apellido P. *</label>
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.lastName} onChange={(e) => handleContactChange(index, {target: {name: 'lastName', value: e.target.value}})} />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Apellido M.</label>
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.secondLastName} onChange={(e) => handleContactChange(index, {target: {name: 'secondLastName', value: e.target.value}})} />
+      </div>
+    </div>
+
+    {/* FILA 2: CONTACTO */}
+    <div className="grid md:grid-cols-3 gap-4 mb-4">
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Teléfono *</label>
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.phone} onChange={(e) => handleContactChange(index, {target: {name: 'phone', value: e.target.value}})} />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Email</label>
+        <input type="email" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.email} onChange={(e) => handleContactChange(index, {target: {name: 'email', value: e.target.value}})} />
+      </div>
+      <div>
+        <label className="block text-xs text-gray-500 mb-1">Tel. Adicional</label>
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.additionalPhone} onChange={(e) => handleContactChange(index, {target: {name: 'additionalPhone', value: e.target.value}})} />
+      </div>
+    </div>
+
+    {/* FILA 3: DIRECCIÓN (Línea superior) */}
+    <div className="grid grid-cols-12 gap-2 mb-2">
+      <input placeholder="Calle/Avenida" className="col-span-6 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.street} onChange={(e) => handleContactChange(index, {target: {name: 'street', value: e.target.value}})} />
+      <input placeholder="N. Exterior" className="col-span-2 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.houseNumber} onChange={(e) => handleContactChange(index, {target: {name: 'houseNumber', value: e.target.value}})} />
+      <input placeholder="C.P." className="col-span-4 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.zipCode} onChange={(e) => handleContactChange(index, {target: {name: 'zipCode', value: e.target.value}})} />
+    </div>
+
+    {/* FILA 4: DIRECCIÓN (Línea inferior) */}
+    <div className="grid grid-cols-4 gap-2 mb-4">
+      <input placeholder="Colonia" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.neighborhood} onChange={(e) => handleContactChange(index, {target: {name: 'neighborhood', value: e.target.value}})} />
+      <input placeholder="Ciudad" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.city} onChange={(e) => handleContactChange(index, {target: {name: 'city', value: e.target.value}})} />
+      <input placeholder="Estado" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.state} onChange={(e) => handleContactChange(index, {target: {name: 'state', value: e.target.value}})} />
+      <input placeholder="País" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.country} onChange={(e) => handleContactChange(index, {target: {name: 'country', value: e.target.value}})} />
+    </div>
+
+    {/* CHECKBOX RECORDATORIOS */}
+    <div className="flex items-center space-x-2">
+      <input 
+        type="checkbox" 
+        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+        checked={contact.sendRecordatorios} 
+        onChange={(e) => handleContactChange(index, {target: {name: 'sendRecordatorios', value: e.target.checked}})} 
+      />
+      <span className="text-sm text-gray-600 font-medium">Enviar recordatorios a este contacto</span>
+    </div>
+  </div>
+))}
+
+    {editForm.contacts?.length === 0 && (
+      <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-xl">
+        <p className="text-gray-400 text-sm">No hay contactos de emergencia registrados.</p>
+      </div>
+    )}
+  </div>
+</section>
+
+        {/* Footer con Botones */}
+        <div className="flex justify-end space-x-4 sticky bottom-0 bg-white pt-4 border-t">
+          <button type="button" onClick={() => setIsEditModalOpen(false)} className="px-6 py-2 text-gray-500 font-bold">Cancelar</button>
+<button
+  type="submit"
+  disabled={!editForm.contacts || editForm.contacts.length === 0}
+  className={`px-10 py-2 font-bold rounded-lg shadow-lg transition ${
+    !editForm.contacts || editForm.contacts.length === 0
+      ? "bg-gray-400 cursor-not-allowed" // Estilo deshabilitado
+      : "bg-green-600 text-white hover:bg-green-700 shadow-green-200" // Estilo activo
+  }`}
+>
+  Actualizar Todo
+</button>
         </div>
       </form>
     </div>
