@@ -20,6 +20,7 @@ export default function RegistroUsuario() {
   const [isEditing, setIsEditing] = useState(null); // ID del usuario editando
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
+  const [isEditTherapistModalOpen, setIsEditTherapistModalOpen] = useState(false);
 
 useEffect(() => {
   fetchUsers();
@@ -52,22 +53,25 @@ const getDisplayName = (user) => {
 };
 
 const handleEditClick = (user) => {
-  // 1. Extraemos el objeto de perfil completo
-  const profile = user.role === 'patient' ? user.patientProfile : user.therapistProfile;
+  const isPatient = user.role === 'patient';
+  const profile = isPatient ? user.patientProfile : user.therapistProfile;
   
   setEditForm({
     _id: user._id, 
     role: user.role,
     email: user.email,
     password: "", 
-    // 2. Guardamos los IDs de referencia explícitamente para que 'guardarCambios' los vea
     patientProfile: user.patientProfile?._id || user.patientProfile,
     therapistProfile: user.therapistProfile?._id || user.therapistProfile,
     ...(profile || {}), 
-    contacts: profile?.contacts || [] 
   });
 
-  setIsEditModalOpen(true);
+  // Abrimos el modal correspondiente
+  if (isPatient) {
+    setIsEditModalOpen(true);
+  } else {
+    setIsEditTherapistModalOpen(true);
+  }
 };
 
 const guardarCambios = async (e) => {
@@ -101,6 +105,7 @@ const guardarCambios = async (e) => {
     if (res.ok) {
       alert("¡Actualización exitosa! ✅");
       setIsEditModalOpen(false);
+      setIsEditTherapistModalOpen(false);
       fetchUsers(); 
     } else {
       const errorData = await res.json();
@@ -381,8 +386,9 @@ const eliminarContacto = (indexABorrar) => {
                       {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
-                    {user.role === 'patient' ? (user.patientStatus || 'Activo') : (user.specialization || 'N/A')}
+                 <td className="px-6 py-4 text-sm text-gray-600">
+                  {user.role === 'patient' ? (user.patientProfile?.patientStatus || 'Activo') 
+                  : (user.therapistProfile?.specialization || 'General')}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <button 
@@ -764,7 +770,7 @@ const eliminarContacto = (indexABorrar) => {
           </div>
         </section>
 
-        {/* SECCIÓN 3: CONTACTOS DE EMERGENCIA */}
+
         {/* SECCIÓN 3: CONTACTOS DE EMERGENCIA */}
 <section className="bg-gray-50 p-6 rounded-2xl border border-gray-100">
   <div className="flex justify-between items-center mb-6">
@@ -870,6 +876,86 @@ const eliminarContacto = (indexABorrar) => {
 >
   Actualizar Todo
 </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+{isEditTherapistModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto animate-fadeIn">
+      
+      {/* Header Fijo */}
+      <div className="sticky top-0 bg-emerald-700 p-6 text-white flex justify-between items-center z-10">
+        <div>
+          <h3 className="text-2xl font-bold">Gestión de Terapeuta</h3>
+          <p className="text-emerald-100 opacity-80">Modificando perfil profesional de {editForm.firstName}</p>
+        </div>
+        <button onClick={() => setIsEditTherapistModalOpen(false)} className="text-white text-2xl">&times;</button>
+      </div>
+
+      <form onSubmit={guardarCambios} className="p-8 space-y-8">
+
+        {/* SECCIÓN CREDENCIALES */}
+        <section className="bg-gray-50 p-6 rounded-xl border border-gray-200">
+          <h4 className="text-gray-700 font-bold mb-4 flex items-center">🔑 Cuenta de Acceso</h4>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase">Correo Institucional</label>
+              <input type="email" className="w-full p-2 border-b-2 border-gray-300 focus:border-emerald-500 outline-none bg-transparent" 
+                value={editForm.email || ""} onChange={(e) => setEditForm({...editForm, email: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 uppercase">Cambiar Contraseña</label>
+              <input type="password" placeholder="Solo si desea actualizar" className="w-full p-2 border-b-2 border-gray-300 focus:border-emerald-500 outline-none bg-transparent" 
+                onChange={(e) => setEditForm({...editForm, password: e.target.value})} />
+            </div>
+          </div>
+        </section>
+        
+        {/* SECCIÓN PROFESIONAL */}
+        <section>
+          <h4 className="text-emerald-600 font-bold border-b pb-2 mb-4">🩺 Datos Profesionales</h4>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500">Nombre(s)</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.firstName} onChange={(e) => setEditForm({...editForm, firstName: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Apellidos</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.lastName} onChange={(e) => setEditForm({...editForm, lastName: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Especialidad</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.specialization} onChange={(e) => setEditForm({...editForm, specialization: e.target.value})} />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500">Teléfono de Contacto</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.phone} onChange={(e) => setEditForm({...editForm, phone: e.target.value})} />
+            </div>
+              <div>
+              <label className="text-xs font-bold text-gray-500">Direccion</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.address} onChange={(e) => setEditForm({...editForm, address: e.target.value})} />
+            </div>
+              <div>
+              <label className="text-xs font-bold text-gray-500">Cuidad</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.city} onChange={(e) => setEditForm({...editForm, city: e.target.value})} />
+            </div>
+             <div>
+              <label className="text-xs font-bold text-gray-500">Pais</label>
+              <input type="text" className="w-full p-2 border rounded" value={editForm.country} onChange={(e) => setEditForm({...editForm, country: e.target.value})} />
+            </div>
+  
+          </div>
+        </section>
+
+        {/* Footer con Botones */}
+        <div className="flex justify-end space-x-4 sticky bottom-0 bg-white pt-4 border-t">
+          <button type="button" onClick={() => setIsEditTherapistModalOpen(false)} className="px-6 py-2 text-gray-400">Descartar</button>
+          <button type="submit" className="px-10 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition">
+            Guardar Cambios Profesional
+          </button>
         </div>
       </form>
     </div>
