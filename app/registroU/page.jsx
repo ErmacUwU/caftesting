@@ -53,62 +53,51 @@ const getDisplayName = (user) => {
 };
 
 const handleEditClick = (user) => {
-  const isPatient = user.role === 'patient';
-  const profile = isPatient ? user.patientProfile : user.therapistProfile;
+  const profile = user.role === 'patient' ? user.patientProfile : user.therapistProfile;
   
   setEditForm({
-    _id: user._id, 
+    userId: user._id, // ID para la colección UserTrue (Email/Password)
+    profileId: profile?._id || profile, // ID para PatientU/TherapistU
     role: user.role,
     email: user.email,
     password: "", 
-    patientProfile: user.patientProfile?._id || user.patientProfile,
-    therapistProfile: user.therapistProfile?._id || user.therapistProfile,
     ...(profile || {}), 
+    contacts: profile?.contacts || []
   });
 
-  // Abrimos el modal correspondiente
-  if (isPatient) {
-    setIsEditModalOpen(true);
-  } else {
-    setIsEditTherapistModalOpen(true);
-  }
+  if (user.role === 'patient') setIsEditModalOpen(true);
+  else setIsEditTherapistModalOpen(true);
 };
 
 const guardarCambios = async (e) => {
   e.preventDefault();
   setLoading(true);
 
-  // 1. Extraemos los IDs de los perfiles que guardamos en handleEditClick
-  const { _id, patientProfile, therapistProfile, role, ...dataToUpdate } = editForm;
-
-  // 2. Seleccionamos el ID del PERFIL (PatientU o TherapistU)
-  const profileId = role === 'patient' ? patientProfile : therapistProfile;
-
-  // VALIDACIÓN: Si profileId sigue siendo undefined, mostramos error antes de la petición
-  if (!profileId) {
-    alert("Error: No se encontró el ID del perfil para actualizar.");
-    setLoading(false);
-    return;
-  }
+  // Extraemos los IDs específicos que definimos en handleEditClick
+  const { userId, profileId, email, password, role, ...profileData } = editForm;
 
   try {
-    // 3. Enviamos la petición al ID del perfil
-    const res = await fetch(`/api/usuarioTrue/${profileId}`, { 
+    // 1. Actualizar CUENTA (Email)
+    const resAcc = await fetch(`/api/usuarioTrue/${userId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        role,
-        profileData: dataToUpdate // Enviamos los campos de perfil limpios
-      }),
+      body: JSON.stringify({ email, password, isAccountUpdate: true }),
     });
 
-    if (res.ok) {
-      alert("¡Actualización exitosa! ✅");
+    // 2. Actualizar PERFIL (Datos personales)
+    const resProf = await fetch(`/api/usuarioTrue/${profileId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, profileData, isProfileUpdate: true }),
+    });
+
+    if (resAcc.ok && resProf.ok) {
+      alert("¡Email y Perfil actualizados! ✅");
       setIsEditModalOpen(false);
       setIsEditTherapistModalOpen(false);
-      fetchUsers(); 
+      fetchUsers();
     } else {
-      const errorData = await res.json();
+      const errorData = await resAcc.json();
       alert(`Error: ${errorData.error}`);
     }
   } catch (error) {
@@ -349,18 +338,30 @@ const eliminarContacto = (indexABorrar) => {
       {/* FILTROS Y TABLA */}
       <div className="w-full max-w-6xl bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-4 border-b bg-gray-50 flex gap-2">
-          {["all", "patient", "therapist", "admin", "operador"].map((r) => (
-            <button
-              key={r}
-              onClick={() => setFilterRole(r)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-                filterRole === r ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              {r === "all" ? "Todos" : r.charAt(0).toUpperCase() + r.slice(1)}
-            </button>
-          ))}
-        </div>
+    {["all", "patient", "therapist", "admin", "operador"].map((r) => {
+      // Objeto de traducción
+      const labels = {
+        all: "Todos",
+        patient: "Pacientes",
+        therapist: "Terapeutas",
+        admin: "Administradores",
+        operador: "Operadores"
+      };
+
+      return (
+        <button
+          key={r}
+          onClick={() => setFilterRole(r)} // Sigue usando el valor original (inglés/técnico)
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+            filterRole === r ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"
+          }`}
+        >
+          {/* Muestra la traducción o el valor original capitalizado como respaldo */}
+          {labels[r] || r.charAt(0).toUpperCase() + r.slice(1)}
+        </button>
+      );
+    })}
+  </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
@@ -373,33 +374,45 @@ const eliminarContacto = (indexABorrar) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredUsers.map((user) => (
-                <tr key={user.id || user._id} className="hover:bg-indigo-50/30 transition">
-                  <td className="px-6 py-4">
-                    <div className="font-bold text-gray-800">{getDisplayName(user)} </div>
-                    <div className="text-xs text-gray-500">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-                      user.role === 'patient' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
-                    }`}>
-                      {user.role}
-                    </span>
-                  </td>
-                 <td className="px-6 py-4 text-sm text-gray-600">
+              {filteredUsers.map((user) => {
+  // Objeto de mapeo para los roles
+  const roleLabels = {
+    patient: "Paciente",
+    therapist: "Terapeuta",
+    admin: "Administrador",
+    operador: "Operador"
+  };
+
+  return (
+    <tr key={user.id || user._id} className="hover:bg-indigo-50/30 transition">
+      <td className="px-6 py-4">
+        <div className="font-bold text-gray-800">{getDisplayName(user)}</div>
+        <div className="text-xs text-gray-500">{user.email}</div>
+      </td>
+      
+      {/* CELDA DE ROL TRADUCIDA */}
+      <td className="px-6 py-4">
+  <span className={`px-2 py-1 rounded-full text-xs font-bold ${{patient:'bg-blue-100 text-blue-700', therapist:'bg-purple-100 text-purple-700', admin:'bg-red-100 text-red-700', operador:'bg-amber-100 text-amber-700'}[user.role] || 'bg-gray-100 text-gray-700'}`}>
+    {{patient:'Paciente', therapist:'Terapeuta', admin:'Administrador', operador:'Operador'}[user.role] || user.role}
+  </span>
+</td>
+
+      <td className="px-6 py-4 text-sm text-gray-600">
                   {user.role === 'patient' ? (user.patientProfile?.patientStatus || 'Activo') 
                   : (user.therapistProfile?.specialization || 'General')}
                   </td>
-                  <td className="px-6 py-4 text-center">
-                    <button 
-                      onClick={() => handleEditClick(user)}
-                      className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
-                    >
-                      Editar
-                    </button>
-                  </td>
-                </tr>
-              ))}
+
+      <td className="px-6 py-4 text-center">
+        <button 
+          onClick={() => handleEditClick(user)}
+          className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
+        >
+          Editar
+        </button>
+      </td>
+    </tr>
+  );
+})}
             </tbody>
           </table>
           {filteredUsers.length === 0 && (
