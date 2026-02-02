@@ -21,6 +21,7 @@ export default function RegistroUsuario() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [isEditTherapistModalOpen, setIsEditTherapistModalOpen] = useState(false);
+  const [isEditAdminModalOpen, setIsEditAdminModalOpen] = useState(false);
 
 useEffect(() => {
   fetchUsers();
@@ -53,52 +54,57 @@ const getDisplayName = (user) => {
 };
 
 const handleEditClick = (user) => {
+  // 1. Identificamos si tiene perfil o es solo usuario base
+  const hasProfile = user.role === 'patient' || user.role === 'therapist';
   const profile = user.role === 'patient' ? user.patientProfile : user.therapistProfile;
   
   setEditForm({
-    userId: user._id, // ID para la colección UserTrue (Email/Password)
-    profileId: profile?._id || profile, // ID para PatientU/TherapistU
+    _id: user._id, 
     role: user.role,
     email: user.email,
     password: "", 
-    ...(profile || {}), 
-    contacts: profile?.contacts || []
+    // Si tiene perfil, cargamos sus datos, si no, solo los base
+    ...(hasProfile ? (profile || {}) : {})
   });
 
+  // 2. Abrir el modal según el rol
   if (user.role === 'patient') setIsEditModalOpen(true);
-  else setIsEditTherapistModalOpen(true);
+  else if (user.role === 'therapist') setIsEditTherapistModalOpen(true);
+  else setIsEditAdminModalOpen(true); // Para admin y operador
 };
 
 const guardarCambios = async (e) => {
   e.preventDefault();
   setLoading(true);
 
-  // Extraemos los IDs específicos que definimos en handleEditClick
-  const { userId, profileId, email, password, role, ...profileData } = editForm;
+  const { _id, email, password, role } = editForm;
+  const isStaff = role === 'admin' || role === 'operador';
 
   try {
-    // 1. Actualizar CUENTA (Email)
-    const resAcc = await fetch(`/api/usuarioTrue/${userId}`, {
+    // 1. Siempre actualizamos la cuenta base (Email/Password/Rol)
+    const resAcc = await fetch(`/api/usuarioTrue/${_id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, isAccountUpdate: true }),
+      body: JSON.stringify({ email, password, role, isAccountUpdate: true }),
     });
 
-    // 2. Actualizar PERFIL (Datos personales)
-    const resProf = await fetch(`/api/usuarioTrue/${profileId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, profileData, isProfileUpdate: true }),
-    });
+    // 2. Solo actualizamos perfil si NO es staff
+    let resProf = { ok: true }; 
+    if (!isStaff) {
+      const profileId = role === 'patient' ? editForm.patientProfile : editForm.therapistProfile;
+      resProf = await fetch(`/api/usuarioTrue/${profileId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, profileData: editForm, isProfileUpdate: true }),
+      });
+    }
 
     if (resAcc.ok && resProf.ok) {
-      alert("¡Email y Perfil actualizados! ✅");
+      alert("¡Cambios guardados con éxito! ✅");
       setIsEditModalOpen(false);
       setIsEditTherapistModalOpen(false);
+      setIsEditAdminModalOpen(false);
       fetchUsers();
-    } else {
-      const errorData = await resAcc.json();
-      alert(`Error: ${errorData.error}`);
     }
   } catch (error) {
     alert("Error de conexión");
@@ -304,6 +310,37 @@ const eliminarContacto = (indexABorrar) => {
   setEditForm({ ...editForm, contacts: nuevosContactos });
 };
 
+const eliminarUsuario = async (user) => {
+  if (!confirm(`¿Estás seguro de eliminar a ${getDisplayName(user)}? Esta acción no se puede deshacer.`)) {
+    return;
+  }
+
+  try {
+    // Identificamos el ID del perfil si existe
+    const profileId = user.role === 'patient' 
+      ? user.patientProfile?._id || user.patientProfile 
+      : user.therapistProfile?._id || user.therapistProfile;
+
+    const response = await fetch(`/api/usuarioTrue/${user._id}`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ 
+        role: user.role, 
+        profileId: profileId 
+      }),
+    });
+
+    if (response.ok) {
+      alert("Usuario eliminado correctamente ✅");
+      fetchUsers(); // Recarga la tabla para reflejar el cambio
+    } else {
+      const error = await response.json();
+      alert(`Error: ${error.error}`);
+    }
+  } catch (error) {
+    alert("Error al intentar conectar con el servidor");
+  }
+};
 
 
   // Filtrado de la lista
@@ -402,14 +439,20 @@ const eliminarContacto = (indexABorrar) => {
                   : (user.therapistProfile?.specialization || 'General')}
                   </td>
 
-      <td className="px-6 py-4 text-center">
-        <button 
-          onClick={() => handleEditClick(user)}
-          className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
-        >
-          Editar
-        </button>
-      </td>
+     <td className="px-6 py-4 text-center flex justify-center gap-3">
+  <button 
+    onClick={() => handleEditClick(user)}
+    className="text-indigo-600 hover:text-indigo-900 font-semibold text-sm"
+  >
+    Editar
+  </button>
+  <button 
+    onClick={() => eliminarUsuario(user)}
+    className="text-red-600 hover:text-red-900 font-semibold text-sm"
+  >
+    Borrar
+  </button>
+</td>
     </tr>
   );
 })}
@@ -968,6 +1011,69 @@ const eliminarContacto = (indexABorrar) => {
           <button type="button" onClick={() => setIsEditTherapistModalOpen(false)} className="px-6 py-2 text-gray-400">Descartar</button>
           <button type="submit" className="px-10 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-lg shadow-emerald-200 transition">
             Guardar Cambios Profesional
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+{isEditAdminModalOpen && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl animate-fadeIn">
+      
+      {/* Header */}
+      <div className="bg-slate-800 p-6 text-white rounded-t-2xl flex justify-between items-center">
+        <div>
+          <h3 className="text-xl font-bold">Gestión de Personal Administrativo</h3>
+          <p className="text-slate-300 text-sm">Configurando accesos para {editForm.email}</p>
+        </div>
+        <button onClick={() => setIsEditAdminModalOpen(false)} className="text-white text-2xl">&times;</button>
+      </div>
+
+      <form onSubmit={guardarCambios} className="p-8 space-y-6">
+        <div className="grid grid-cols-1 gap-6">
+          {/* Email */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Correo Electrónico</label>
+            <input 
+              type="email" 
+              className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-slate-500 outline-none"
+              value={editForm.email || ""} 
+              onChange={(e) => setEditForm({...editForm, email: e.target.value})} 
+            />
+          </div>
+
+          {/* Rol */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Nivel de Acceso (Rol)</label>
+            <select 
+              className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-slate-500 outline-none"
+              value={editForm.role} 
+              onChange={(e) => setEditForm({...editForm, role: e.target.value})}
+            >
+              <option value="admin">Administrador (Acceso Total)</option>
+              <option value="operador">Operador (Acceso Limitado)</option>
+            </select>
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Restablecer Contraseña</label>
+            <input 
+              type="password" 
+              placeholder="Dejar en blanco para mantener actual"
+              className="w-full p-3 border rounded-xl bg-gray-50 focus:ring-2 focus:ring-slate-500 outline-none"
+              onChange={(e) => setEditForm({...editForm, password: e.target.value})} 
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end space-x-4 pt-6 border-t">
+          <button type="button" onClick={() => setIsEditAdminModalOpen(false)} className="px-6 py-2 text-gray-500">Cerrar</button>
+          <button type="submit" className="px-8 py-2 bg-slate-800 text-white font-bold rounded-lg hover:bg-slate-900 transition shadow-lg">
+            Actualizar Permisos
           </button>
         </div>
       </form>

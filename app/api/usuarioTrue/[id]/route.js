@@ -17,6 +17,8 @@ export async function PUT(req, { params }) {
       const updateFields = {};
       if (body.email) updateFields.email = body.email;
 
+      if (body.role) updateFields.role = body.role;
+
       if (body.password && typeof body.password === 'string' && body.password.trim() !== "") {
         const salt = await bcrypt.genSalt(10);
         updateFields.passwordHash = await bcrypt.hash(body.password, salt);
@@ -66,20 +68,28 @@ export async function PUT(req, { params }) {
 export async function DELETE(req, { params }) {
   try {
     await dbConnect();
-    const { id } = params; 
+    const { id } = params; // ID de UserTrue
+    const { role, profileId } = await req.json();
 
-    const user = await UserTrue.findById(id);
-    if (!user) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    // 1. Si tiene un perfil (Paciente o Terapeuta), lo borramos primero
+    if (role === 'patient' && profileId) {
+      await PatientU.findByIdAndDelete(profileId);
+    } else if (role === 'therapist' && profileId) {
+      await TherapistU.findByIdAndDelete(profileId);
+    }
 
-    if (user.patientProfile) await PatientU.findByIdAndDelete(user.patientProfile);
-    if (user.therapistProfile) await TherapistU.findByIdAndDelete(user.therapistProfile);
+    // 2. Borramos la cuenta principal (UserTrue)
+    const deletedUser = await UserTrue.findByIdAndDelete(id);
 
-    await UserTrue.findByIdAndDelete(id);
-    return NextResponse.json({ message: "Borrado exitoso" });
+    if (!deletedUser) {
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+    }
+
+    return NextResponse.json({ message: "Usuario y perfil eliminados con éxito" });
   } catch (error) {
-    return NextResponse.json({ error: "Error de servidor" }, { status: 500 });
+    console.error("Error en DELETE:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
-
 
 
