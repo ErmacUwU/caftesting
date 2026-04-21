@@ -54,57 +54,61 @@ const getDisplayName = (user) => {
 };
 
 const handleEditClick = (user) => {
-  // 1. Identificamos si tiene perfil o es solo usuario base
-  const hasProfile = user.role === 'patient' || user.role === 'therapist';
+  // El 'user' que viene de la tabla tiene el _id de la CUENTA (UserTrue)
+  // y dentro tiene un objeto (patientProfile o therapistProfile) con su propio _id
   const profile = user.role === 'patient' ? user.patientProfile : user.therapistProfile;
-  
+
   setEditForm({
-    _id: user._id, 
+    userId: user._id, // <--- ID PARA LA CUENTA (Email/Rol)
+    profileId: profile?._id || profile, // <--- ID PARA EL PERFIL (Datos físicos)
     role: user.role,
     email: user.email,
     password: "", 
-    // Si tiene perfil, cargamos sus datos, si no, solo los base
-    ...(hasProfile ? (profile || {}) : {})
+    ...profile, // Esparce los datos del perfil (nombre, especialidad, etc.)
   });
 
-  // 2. Abrir el modal según el rol
   if (user.role === 'patient') setIsEditModalOpen(true);
   else if (user.role === 'therapist') setIsEditTherapistModalOpen(true);
-  else setIsEditAdminModalOpen(true); // Para admin y operador
+  else setIsEditAdminModalOpen(true);
 };
 
 const guardarCambios = async (e) => {
   e.preventDefault();
   setLoading(true);
 
-  const { _id, email, password, role } = editForm;
-  const isStaff = role === 'admin' || role === 'operador';
-
   try {
-    // 1. Siempre actualizamos la cuenta base (Email/Password/Rol)
-    const resAcc = await fetch(`/api/usuarioTrue/${_id}`, {
+    // PETICIÓN 1: Actualizar Cuenta (Usa userId)
+    const resAcc = await fetch(`/api/usuarioTrue/${editForm.userId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role, isAccountUpdate: true }),
+      body: JSON.stringify({ 
+        email: editForm.email, 
+        password: editForm.password, 
+        role: editForm.role, // Esto permite que se mueva de pestaña
+        isAccountUpdate: true 
+      }),
     });
 
-    // 2. Solo actualizamos perfil si NO es staff
-    let resProf = { ok: true }; 
-    if (!isStaff) {
-      const profileId = role === 'patient' ? editForm.patientProfile : editForm.therapistProfile;
-      resProf = await fetch(`/api/usuarioTrue/${profileId}`, {
+    // PETICIÓN 2: Actualizar Perfil (Solo si no es admin/operador y tiene profileId)
+    const isStaff = editForm.role === 'admin' || editForm.role === 'operador';
+    
+    if (!isStaff && editForm.profileId && editForm.profileId !== "undefined") {
+      await fetch(`/api/usuarioTrue/${editForm.profileId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, profileData: editForm, isProfileUpdate: true }),
+        body: JSON.stringify({ 
+          role: editForm.role, 
+          profileData: editForm 
+        }),
       });
     }
 
-    if (resAcc.ok && resProf.ok) {
-      alert("¡Cambios guardados con éxito! ✅");
+    if (resAcc.ok) {
+      alert("¡Cambios guardados! El usuario se moverá de pestaña si cambiaste su rol. ✅");
       setIsEditModalOpen(false);
       setIsEditTherapistModalOpen(false);
       setIsEditAdminModalOpen(false);
-      fetchUsers();
+      fetchUsers(); // Recarga los datos
     }
   } catch (error) {
     alert("Error de conexión");

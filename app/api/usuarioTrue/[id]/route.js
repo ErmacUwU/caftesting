@@ -3,59 +3,60 @@ import dbConnect from "@/lib/dbConnect";
 import PatientU from "@/models/PatientU";
 import TherapistU from "@/models/TherapistU";
 import UserTrue from "@/models/UserTrue";
+import mongoose from "mongoose"; // <--- Verifica esta importación
 
 export async function PUT(req, { params }) {
   try {
     await dbConnect();
     const { id } = params;
+
+    // VALIDACIÓN ANTI-ERROR 500:
+    // Comprobamos si el ID existe, no es la palabra "undefined" y es un formato válido de MongoDB
+    if (!id || id === "undefined" || !mongoose.isValidObjectId(id)) {
+      return NextResponse.json(
+        { error: "ID inválido o no proporcionado" }, 
+        { status: 400 }
+      );
+    }
+
     const body = await req.json();
 
-    console.log("Solicitud PUT para ID:", id, "| ¿Es cuenta?:", !!body.isAccountUpdate);
-
-    // ESCENARIO 1: Actualizar Cuenta (Email y Password en UserTrue)
+    // ESCENARIO 1: Actualizar Cuenta (UserTrue)
     if (body.isAccountUpdate) {
       const updateFields = {};
       if (body.email) updateFields.email = body.email;
+      if (body.role) updateFields.role = body.role; // Permite mover de pestaña
 
-      if (body.role) updateFields.role = body.role;
-
-      if (body.password && typeof body.password === 'string' && body.password.trim() !== "") {
+      if (body.password && body.password.trim() !== "") {
         const salt = await bcrypt.genSalt(10);
         updateFields.passwordHash = await bcrypt.hash(body.password, salt);
       }
 
       const updatedUser = await UserTrue.findByIdAndUpdate(
-        id, 
-        { $set: updateFields }, 
+        id,
+        { $set: updateFields },
         { new: true }
       );
 
       if (!updatedUser) {
-        return NextResponse.json({ error: "Usuario base no encontrado" }, { status: 404 });
+        return NextResponse.json({ error: "Usuario no encontrado en la DB" }, { status: 404 });
       }
-
-      // IMPORTANTE: Return aquí para que no intente ejecutar el código de abajo
-      return NextResponse.json({ message: "Cuenta actualizada correctamente" });
+      return NextResponse.json({ message: "Cuenta/Rol actualizado" });
     }
 
-    // ESCENARIO 2: Actualizar Perfil (PatientU o TherapistU)
+    // ESCENARIO 2: Actualizar Perfil (Patient/Therapist)
     const { role, profileData } = body;
-    
-    if (!role || !profileData) {
-        return NextResponse.json({ error: "Faltan datos de perfil o rol" }, { status: 400 });
+    const Modelo = role === "patient" ? PatientU : role === "therapist" ? TherapistU : null;
+
+    if (!Modelo) {
+      return NextResponse.json({ error: "Este rol no posee perfil físico" }, { status: 400 });
     }
 
-    const Modelo = role === "patient" ? PatientU : TherapistU;
-    
     const updatedProfile = await Modelo.findByIdAndUpdate(
-      id, 
-      { $set: profileData }, 
+      id,
+      { $set: profileData },
       { new: true }
     );
-
-    if (!updatedProfile) {
-        return NextResponse.json({ error: "Perfil no encontrado en la colección correspondiente" }, { status: 404 });
-    }
 
     return NextResponse.json({ message: "Perfil actualizado", updatedProfile });
 
@@ -90,6 +91,6 @@ export async function DELETE(req, { params }) {
     console.error("Error en DELETE:", error);
     return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
-}
+}      
 
 
