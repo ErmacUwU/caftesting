@@ -209,7 +209,7 @@ const guardarCambios = async (e) => {
 
   const handleContactChange = (index, event) => {
     const { name, value, type, checked } = event.target;
-    const updatedContacts = [...form.contacts];
+   const updatedContacts = [...editForm.contacts]; // Usa el nombre correcto de tu estado
     if (type === "checkbox") {
       updatedContacts[index][name] = checked;
     } else {
@@ -858,7 +858,7 @@ const eliminarUsuario = async (user) => {
     <div className="grid md:grid-cols-3 gap-4 mb-4">
       <div>
         <label className="block text-xs text-gray-500 mb-1">Nombre *</label>
-        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.firstName} onChange={(e) => handleContactChange(index, {target: {name: 'firstName', value: e.target.value}})} />
+        <input type="text" name="firstName" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.firstName || ""}  onChange={(e) => handleContactChange(index, e)} />
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">Apellido P. *</label>
@@ -866,7 +866,7 @@ const eliminarUsuario = async (user) => {
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">Apellido M.</label>
-        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.secondLastName} onChange={(e) => handleContactChange(index, {target: {name: 'secondLastName', value: e.target.value}})} />
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.secondLastName || "" } onChange={(e) => handleContactChange(index, {target: {name: 'secondLastName', value: e.target.value}})} />
       </div>
     </div>
 
