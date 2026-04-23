@@ -19,7 +19,7 @@ export default function RegistroUsuario() {
   const [filterRole, setFilterRole] = useState("all"); // Filtro de vista
   const [isEditing, setIsEditing] = useState(null); // ID del usuario editando
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  const [editForm, setEditForm] = useState({contacts: []});
   const [isEditTherapistModalOpen, setIsEditTherapistModalOpen] = useState(false);
   const [isEditAdminModalOpen, setIsEditAdminModalOpen] = useState(false);
 
@@ -207,16 +207,71 @@ const guardarCambios = async (e) => {
     setForm({ ...form, contacts: updatedContacts });
   };
 
-  const handleContactChange = (index, event) => {
-    const { name, value, type, checked } = event.target;
-   const updatedContacts = [...editForm.contacts]; // Usa el nombre correcto de tu estado
-    if (type === "checkbox") {
-      updatedContacts[index][name] = checked;
-    } else {
-      updatedContacts[index][name] = value;
-    }
-    setForm({ ...form, contacts: updatedContacts });
+// Agregamos un tercer parámetro opcional para saber si es edición o registro
+const handleContactChange = (index, event, isEdit = false) => {
+  const { name, value, type, checked } = event.target;
+  
+  // Seleccionamos el estado correcto según el flujo
+  const currentState = isEdit ? editForm : form;
+  const setState = isEdit ? setEditForm : setForm;
+
+  const currentContacts = Array.isArray(currentState?.contacts) ? currentState.contacts : [];
+  const updatedContacts = [...currentContacts];
+
+  // Si el contacto no existe en ese índice (porque es el primero), lo creamos
+  if (!updatedContacts[index]) {
+    updatedContacts[index] = {};
+  }
+
+  const valorFinal = type === "checkbox" ? checked : value;
+  updatedContacts[index] = { ...updatedContacts[index], [name]: valorFinal };
+
+  setState({ ...currentState, contacts: updatedContacts });
+};
+
+const handleEditContactChange = (index, event) => {
+  console.log("Estado actual de editForm:", editForm); // <--- MIRA TU CONSOLA
+  const { name, value, type, checked } = event.target;
+
+  // Trabajamos ÚNICAMENTE con editForm
+  const currentContacts = Array.isArray(editForm?.contacts) ? editForm.contacts : [];
+  const updatedContacts = [...currentContacts];
+
+  // Si por alguna razón el índice no existe, lo inicializamos
+  if (!updatedContacts[index]) {
+    updatedContacts[index] = {};
+  }
+
+  const valorFinal = type === "checkbox" ? checked : value;
+  
+  updatedContacts[index] = { 
+    ...updatedContacts[index], 
+    [name]: valorFinal 
   };
+
+  setEditForm({ ...editForm, contacts: updatedContacts });
+};
+
+const handleRegisterContactChange = (index, event) => {
+  const { name, value, type, checked } = event.target;
+
+  // Trabajamos ÚNICAMENTE con form
+  const currentContacts = Array.isArray(form?.contacts) ? form.contacts : [];
+  const updatedContacts = [...currentContacts];
+
+  if (!updatedContacts[index]) {
+    updatedContacts[index] = {};
+  }
+
+  const valorFinal = type === "checkbox" ? checked : value;
+
+  updatedContacts[index] = { 
+    ...updatedContacts[index], 
+    [name]: valorFinal 
+  };
+
+  setForm({ ...form, contacts: updatedContacts });
+};
 
   const validateCURP = (curp) => {
     return curpPattern.test(curp);
@@ -586,27 +641,27 @@ const eliminarUsuario = async (user) => {
                         <h3 className="font-bold text-gray-700 mb-3">Contacto #{index + 1}</h3>
                         <div className="grid md:grid-cols-3 gap-3 mb-3">
                             {/* Campos del contacto */}
-                            <div><label className="text-xs text-gray-500">Nombre *</label><input type="text" name="firstName" value={contact.firstName} onChange={(e) => handleContactChange(index, e)} className={inputClass} required /></div>
-                            <div><label className="text-xs text-gray-500">Apellido P. *</label><input type="text" name="lastName" value={contact.lastName} onChange={(e) => handleContactChange(index, e)} className={inputClass} required /></div>
-                            <div><label className="text-xs text-gray-500">Apellido M.</label><input type="text" name="middleName" value={contact.middleName} onChange={(e) => handleContactChange(index, e)} className={inputClass} /></div>
-                            <div><label className="text-xs text-gray-500">Teléfono *</label><input type="text" name="phone" value={contact.phone} onChange={(e) => handleContactChange(index, e)} className={inputClass} required /></div>
-                            <div><label className="text-xs text-gray-500">Email</label><input type="email" name="email" value={contact.email} onChange={(e) => handleContactChange(index, e)} className={inputClass} /></div>
-                            <div><label className="text-xs text-gray-500">Tel. Adicional</label><input type="text" name="additionalPhone" value={contact.additionalPhone} onChange={(e) => handleContactChange(index, e)} className={inputClass} /></div>
+                            <div><label className="text-xs text-gray-500">Nombre *</label><input type="text" name="firstName" value={contact.firstName} onChange={(e) => handleRegisterContactChange(index, e)} className={inputClass} required /></div>
+                            <div><label className="text-xs text-gray-500">Apellido P. *</label><input type="text" name="lastName" value={contact.lastName} onChange={(e) => handleRegisterContactChange(index, e)} className={inputClass} required /></div>
+                            <div><label className="text-xs text-gray-500">Apellido M.</label><input type="text" name="middleName" value={contact.middleName} onChange={(e) => handleRegisterContactChange(index, e)} className={inputClass} /></div>
+                            <div><label className="text-xs text-gray-500">Teléfono *</label><input type="text" name="phone" value={contact.phone} onChange={(e) => handleRegisterContactChange(index, e)} className={inputClass} required /></div>
+                            <div><label className="text-xs text-gray-500">Email</label><input type="email" name="email" value={contact.email} onChange={(e) => handleRegisterContactChange(index, e)} className={inputClass} /></div>
+                            <div><label className="text-xs text-gray-500">Tel. Adicional</label><input type="text" name="additionalPhone" value={contact.additionalPhone} onChange={(e) => handleRegisterContactChange(index, e)} className={inputClass} /></div>
                         </div>
                         
                         {/* Dirección del contacto (Acordeón simplificado o Grid completo) */}
                         <div className="grid md:grid-cols-4 gap-3 mb-3 bg-white p-3 rounded border">
-                            <div className="md:col-span-2"><input type="text" name="street" placeholder="Calle" value={contact.street} onChange={(e) => handleContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
-                            <div><input type="text" name="number" placeholder="Número" value={contact.number} onChange={(e) => handleContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
-                            <div><input type="text" name="postalCode" placeholder="CP" value={contact.postalCode} onChange={(e) => handleContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
-                            <div><input type="text" name="neighborhood" placeholder="Colonia" value={contact.neighborhood} onChange={(e) => handleContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
-                            <div><input type="text" name="city" placeholder="Ciudad" value={contact.city} onChange={(e) => handleContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
-                            <div><input type="text" name="state" placeholder="Estado" value={contact.state} onChange={(e) => handleContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
-                            <div><input type="text" name="country" placeholder="País" value={contact.country} onChange={(e) => handleContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
+                            <div className="md:col-span-2"><input type="text" name="street" placeholder="Calle" value={contact.street} onChange={(e) => handleRegisterContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
+                            <div><input type="text" name="number" placeholder="Número" value={contact.number} onChange={(e) => handleRegisterContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
+                            <div><input type="text" name="postalCode" placeholder="CP" value={contact.postalCode} onChange={(e) => handleRegisterContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
+                            <div><input type="text" name="neighborhood" placeholder="Colonia" value={contact.neighborhood} onChange={(e) => handleRegisterContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
+                            <div><input type="text" name="city" placeholder="Ciudad" value={contact.city} onChange={(e) => handleRegisterContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
+                            <div><input type="text" name="state" placeholder="Estado" value={contact.state} onChange={(e) => handleRegisterContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
+                            <div><input type="text" name="country" placeholder="País" value={contact.country} onChange={(e) => handleRegisterContactChange(index, e)} className="w-full text-sm border-b focus:outline-none p-1" /></div>
                         </div>
 
                         <label className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
-                            <input type="checkbox" name="sendReminders" checked={contact.sendReminders} onChange={(e) => handleContactChange(index, e)} className="rounded text-indigo-600 focus:ring-indigo-500" />
+                            <input type="checkbox" name="sendReminders" checked={contact.sendReminders} onChange={(e) => handleRegisterContactChange(index, e)} className="rounded text-indigo-600 focus:ring-indigo-500" />
                             <span>Enviar recordatorios a este contacto</span>
                         </label>
 
@@ -858,15 +913,15 @@ const eliminarUsuario = async (user) => {
     <div className="grid md:grid-cols-3 gap-4 mb-4">
       <div>
         <label className="block text-xs text-gray-500 mb-1">Nombre *</label>
-        <input type="text" name="firstName" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.firstName || ""}  onChange={(e) => handleContactChange(index, e)} />
+        <input type="text" name="firstName" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.firstName || ""}  onChange={(e) => handleEditContactChange(index, e)} />
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">Apellido P. *</label>
-        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.lastName} onChange={(e) => handleContactChange(index, {target: {name: 'lastName', value: e.target.value}})} />
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.lastName} onChange={(e) => handleEditContactChange(index, {target: {name: 'lastName', value: e.target.value}})} />
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">Apellido M.</label>
-        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.secondLastName || "" } onChange={(e) => handleContactChange(index, {target: {name: 'secondLastName', value: e.target.value}})} />
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.secondLastName || "" } onChange={(e) => handleEditContactChange(index, {target: {name: 'secondLastName', value: e.target.value}})} />
       </div>
     </div>
 
@@ -874,31 +929,31 @@ const eliminarUsuario = async (user) => {
     <div className="grid md:grid-cols-3 gap-4 mb-4">
       <div>
         <label className="block text-xs text-gray-500 mb-1">Teléfono *</label>
-        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.phone} onChange={(e) => handleContactChange(index, {target: {name: 'phone', value: e.target.value}})} />
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.phone} onChange={(e) => handleEditContactChange(index, {target: {name: 'phone', value: e.target.value}})} />
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">Email</label>
-        <input type="email" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.email} onChange={(e) => handleContactChange(index, {target: {name: 'email', value: e.target.value}})} />
+        <input type="email" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.email} onChange={(e) => handleEditContactChange(index, {target: {name: 'email', value: e.target.value}})} />
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">Tel. Adicional</label>
-        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.additionalPhone} onChange={(e) => handleContactChange(index, {target: {name: 'additionalPhone', value: e.target.value}})} />
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.additionalPhone} onChange={(e) => handleEditContactChange(index, {target: {name: 'additionalPhone', value: e.target.value}})} />
       </div>
     </div>
 
     {/* FILA 3: DIRECCIÓN (Línea superior) */}
     <div className="grid grid-cols-12 gap-2 mb-2">
-      <input placeholder="Calle/Avenida" className="col-span-6 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.street} onChange={(e) => handleContactChange(index, {target: {name: 'street', value: e.target.value}})} />
-      <input placeholder="N. Exterior" className="col-span-2 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.houseNumber} onChange={(e) => handleContactChange(index, {target: {name: 'houseNumber', value: e.target.value}})} />
-      <input placeholder="C.P." className="col-span-4 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.zipCode} onChange={(e) => handleContactChange(index, {target: {name: 'zipCode', value: e.target.value}})} />
+      <input placeholder="Calle/Avenida" className="col-span-6 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.street} onChange={(e) => handleEditContactChange(index, {target: {name: 'street', value: e.target.value}})} />
+      <input placeholder="N. Exterior" className="col-span-2 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.houseNumber} onChange={(e) => handleEditContactChange(index, {target: {name: 'houseNumber', value: e.target.value}})} />
+      <input placeholder="C.P." className="col-span-4 p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.zipCode} onChange={(e) => handleEditContactChange(index, {target: {name: 'zipCode', value: e.target.value}})} />
     </div>
 
     {/* FILA 4: DIRECCIÓN (Línea inferior) */}
     <div className="grid grid-cols-4 gap-2 mb-4">
-      <input placeholder="Colonia" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.neighborhood} onChange={(e) => handleContactChange(index, {target: {name: 'neighborhood', value: e.target.value}})} />
-      <input placeholder="Ciudad" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.city} onChange={(e) => handleContactChange(index, {target: {name: 'city', value: e.target.value}})} />
-      <input placeholder="Estado" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.state} onChange={(e) => handleContactChange(index, {target: {name: 'state', value: e.target.value}})} />
-      <input placeholder="País" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.country} onChange={(e) => handleContactChange(index, {target: {name: 'country', value: e.target.value}})} />
+      <input placeholder="Colonia" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.neighborhood} onChange={(e) => handleEditContactChange(index, {target: {name: 'neighborhood', value: e.target.value}})} />
+      <input placeholder="Ciudad" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.city} onChange={(e) => handleEditContactChange(index, {target: {name: 'city', value: e.target.value}})} />
+      <input placeholder="Estado" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.state} onChange={(e) => handleEditContactChange(index, {target: {name: 'state', value: e.target.value}})} />
+      <input placeholder="País" className="p-2 bg-blue-50/50 border border-blue-100 rounded-lg text-sm" value={contact.country} onChange={(e) => handleEditContactChange(index, {target: {name: 'country', value: e.target.value}})} />
     </div>
 
     {/* CHECKBOX RECORDATORIOS */}
@@ -907,7 +962,7 @@ const eliminarUsuario = async (user) => {
         type="checkbox" 
         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
         checked={contact.sendRecordatorios} 
-        onChange={(e) => handleContactChange(index, {target: {name: 'sendRecordatorios', value: e.target.checked}})} 
+        onChange={(e) => handleEditContactChange(index, {target: {name: 'sendRecordatorios', value: e.target.checked}})} 
       />
       <span className="text-sm text-gray-600 font-medium">Enviar recordatorios a este contacto</span>
     </div>
