@@ -207,27 +207,6 @@ const guardarCambios = async (e) => {
     setForm({ ...form, contacts: updatedContacts });
   };
 
-// Agregamos un tercer parámetro opcional para saber si es edición o registro
-const handleContactChange = (index, event, isEdit = false) => {
-  const { name, value, type, checked } = event.target;
-  
-  // Seleccionamos el estado correcto según el flujo
-  const currentState = isEdit ? editForm : form;
-  const setState = isEdit ? setEditForm : setForm;
-
-  const currentContacts = Array.isArray(currentState?.contacts) ? currentState.contacts : [];
-  const updatedContacts = [...currentContacts];
-
-  // Si el contacto no existe en ese índice (porque es el primero), lo creamos
-  if (!updatedContacts[index]) {
-    updatedContacts[index] = {};
-  }
-
-  const valorFinal = type === "checkbox" ? checked : value;
-  updatedContacts[index] = { ...updatedContacts[index], [name]: valorFinal };
-
-  setState({ ...currentState, contacts: updatedContacts });
-};
 
 const handleEditContactChange = (index, event) => {
   console.log("Estado actual de editForm:", editForm); // <--- MIRA TU CONSOLA
