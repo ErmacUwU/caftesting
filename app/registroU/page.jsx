@@ -900,7 +900,7 @@ const eliminarUsuario = async (user) => {
       </div>
       <div>
         <label className="block text-xs text-gray-500 mb-1">Apellido M.</label>
-        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.secondLastName || "" } onChange={(e) => handleEditContactChange(index, {target: {name: 'secondLastName', value: e.target.value}})} />
+        <input type="text" className="w-full p-2 bg-blue-50/50 border border-blue-100 rounded-lg" value={contact.middleName || "" } onChange={(e) => handleEditContactChange(index, {target: {name: 'middleName', value: e.target.value}})} />
       </div>
     </div>
 
