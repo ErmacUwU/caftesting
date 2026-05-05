@@ -3,21 +3,19 @@ import React, { useEffect, useState } from 'react';
 import Link from "next/link";
 import { PenBoxIcon } from "lucide-react";
 import BotonDeleteCitas from './BotonDeleteCitas';
-import {ArrowDownIcon, ArrowUpIcon} from "@heroicons/react/24/outline";
+import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/react/24/outline";
 /* xlsx Nos permite crear archivos Excel y 
  file-saver permite descargar archivos en el navegador */
-import * as XLSX from "xlsx"
-import {saveAs} from "file-saver"
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import Terapeutas from '../terapeuta/page';
 import ActualizarCita from './ActualizarCitas';
-import Modal from "react-modal"
-
-
+import Modal from "react-modal";
 
 const TarjetaCitas = () => {
 
-  const [selectedAppointment, setSelectedAppointment] = useState(null)
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [dates, setDates] = useState([]);
   const [filteredDates, setFilteredDates] = useState([]);
   const [therapists, setTherapists] = useState([]);
@@ -36,6 +34,32 @@ const TarjetaCitas = () => {
     setFiltersVisible(!filtersVisible);
   };
 
+  // Función robusta para obtener nombres (maneja perfiles de UserTrue poblados)
+ const getNombre = (entidad) => {
+  if (!entidad) return "No asignado";
+  
+  // Imprimir el objeto completo para ver qué propiedades tiene
+  // Esto te dirá exactamente dónde buscar
+  console.log("Objeto entidad completo:", entidad);
+
+  // Intentamos todas las rutas comunes
+  const f = 
+    entidad.firstName || 
+    entidad.patientProfile?.firstName || 
+    entidad.therapistProfile?.firstName || 
+    entidad.name || 
+    "";
+    
+  const l = 
+    entidad.lastName || 
+    entidad.patientProfile?.lastName || 
+    entidad.therapistProfile?.lastName || 
+    "";
+
+  const nombreCompleto = `${f} ${l}`.trim();
+  return nombreCompleto.length > 0 ? nombreCompleto : "Nombre no encontrado";
+};
+
   useEffect(() => {
     const getDates = async () => {
       try {
@@ -48,7 +72,6 @@ const TarjetaCitas = () => {
         }
 
         const data = await res.json();
-        console.log("Datos recibidos:", data.date); // ← Verifica si `therapist.firstName` aparece aquí
         setDates(data.date || []);
         setFilteredDates(data.date || []);
 
@@ -81,6 +104,19 @@ const TarjetaCitas = () => {
 
     getDates();
   }, []);
+
+  // 🔹 Este efecto fuerza el select cuando los servicios cargan
+useEffect(() => {
+  if (services.length > 0 && selectedService) {
+    setNewService(selectedService.toString());
+    // Opcional: Si quieres que al abrir el modal se ajusten automáticamente los otros valores:
+    const svc = services.find((s) => s._id.toString() === selectedService.toString());
+    if (svc) {
+      setNewDuration(svc.duration);
+      setNewCost(svc.cost);
+    }
+  }
+}, [services, selectedService]);
 
   const handleTherapistChange = (event) => setSelectedTherapist(event.target.value);
   const handlePatientChange = (event) => setSelectedPatient(event.target.value);
@@ -118,8 +154,6 @@ const TarjetaCitas = () => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: "America/Tijuana" });
   };
 
-  //Esta funcion exportToExcel la ejecutamos desde nuestro botón y genera y descarga el Excel
-
   const exportToExcel = () => {
     if (filteredDates.length === 0){
       alert("No hay citas para exportar.")
@@ -128,31 +162,21 @@ const TarjetaCitas = () => {
 
     const dataToExport = filteredDates.map((cita) => ({
       Servicio: cita.title,
-      Terapeuta: `${cita.therapist?.firstName || ''} ${cita.therapist?.lastName || ''}`,
-      Paciente: `${cita.patient?.firstName || ''} ${cita.patient?.lastName || ''}`,
+      Terapeuta: getNombre(cita.therapist),
+      Paciente: getNombre(cita.patient),
       Fecha: new Date(cita.date).toLocaleDateString("es-MX"),
-      HoraInicio: new Date(cita.date).toLocaleDateString("es-MX", {hour: '2-digit', minute: '2-digit'}),
-      HoraFin: new Date(cita.end).toLocaleDateString("es-MX", {hour: '2-digit', minute: '2-digit'}),
+      HoraInicio: new Date(cita.date).toLocaleTimeString("es-MX", {hour: '2-digit', minute: '2-digit'}),
+      HoraFin: new Date(cita.end).toLocaleTimeString("es-MX", {hour: '2-digit', minute: '2-digit'}),
       Duración: `${cita.duration} minutos`,
       Costo: `$${cita.cost}`,
-
     }))
 
-    //Aqui creamos la hoja de excel y agregamos los datos
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
-    //Creamos el libro de excel
     const workbook = XLSX.utils.book_new()
-
     XLSX.utils.book_append_sheet(workbook, worksheet, "Agendas")
-
-    const excelBuffer = XLSX.write(workbook, {
-      bookType: "xlsx",
-      type: "array"
-    })
-
-    const data = new Blob([excelBuffer], {type: "application(octet-stream"})
+    const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
+    const data = new Blob([excelBuffer], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
     saveAs(data, "Agendas.xlsx")
-
   }
 
   const refetchAppointments = async () => {
@@ -169,7 +193,6 @@ const TarjetaCitas = () => {
   return (
     <div className="p-6 rounded-lg shadow-lg">
 
-      {/* Botón para expandir/colapsar filtros */}
       <button 
         onClick={toggleFilters} 
         className="text-blue-700 mb-4 p-2 font-semibold flex items-center gap-2"
@@ -177,10 +200,8 @@ const TarjetaCitas = () => {
         {filtersVisible ? "⤣" :"⤥" } Agregar Filtros
       </button>
 
-      {/* Filtros */}
       {filtersVisible && (
         <div>
-          {/* Filtro de terapeuta */}
           <div className="mb-4 text-black">
             <label className="block mb-1 font-semibold">Filtrar por terapeuta:</label>
             <select 
@@ -191,15 +212,14 @@ const TarjetaCitas = () => {
               <option value="">Todos</option>
               {therapists.map((therapist) => (
                 <option key={therapist._id} value={therapist._id}>
-                  {therapist.firstName} {therapist.lastName}
+                  {getNombre(therapist)}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Filtro de paciente */}
           <div className="mb-4 text-black">
-            <label className="block mb-1  font-semibold">Filtrar por paciente:</label>
+            <label className="block mb-1 font-semibold">Filtrar por paciente:</label>
             <select 
               value={selectedPatient} 
               onChange={handlePatientChange} 
@@ -208,13 +228,12 @@ const TarjetaCitas = () => {
               <option value="">Todos</option>
               {patients.map((patient) => (
                 <option key={patient._id} value={patient._id}>
-                  {patient.firstName} {patient.lastName}
+                  {getNombre(patient)}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Filtro de servicio */}
           <div className="mb-4 text-black">
             <label className="block mb-1 font-semibold">Filtrar por servicio:</label>
             <select 
@@ -231,7 +250,6 @@ const TarjetaCitas = () => {
             </select>
           </div>
 
-          {/* Filtro de fecha única */}
           <div className="mb-4 text-black">
             <label className="block mb-1 font-semibold">Fecha Única:</label>
             <input 
@@ -242,7 +260,6 @@ const TarjetaCitas = () => {
             />
           </div>
 
-          {/* Filtro de rango de tiempo */}
           <div className="mb-4 text-black">
             <label className="block mb-1 font-semibold">Rango de tiempo:</label>
             <div className="flex gap-4">
@@ -251,14 +268,12 @@ const TarjetaCitas = () => {
                 value={startDate} 
                 onChange={handleStartDateChange} 
                 className="border border-gray-400 rounded-md p-2 w-full"
-                placeholder="Fecha inicio"
               />
               <input 
                 type="date" 
                 value={endDate} 
                 onChange={handleEndDateChange} 
                 className="border border-gray-400 rounded-md p-2 w-full"
-                placeholder="Fecha fin"
               />
             </div>
           </div>
@@ -268,95 +283,74 @@ const TarjetaCitas = () => {
       <button
         onClick={exportToExcel}
         className="mb-4 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-        >
-          Exportar a Excel
-        </button>
+      >
+        Exportar a Excel
+      </button>
 
-      {/* Renderizamos las citas filtradas */}
       {filteredDates.map((d) => {
-        const formattedDate = formatToLocalDate(d.date);
-        const formattedStart = formatToLocalTime(d.start);
-        const formattedEnd = formatToLocalTime(d.end);
 
-        return (
-          <div
-            key={d._id}
-            className="p-4 border border-gray-300 rounded-md my-3 flex justify-between gap-5 items-start bg-gray-50 shadow-sm"
-          >
-            <div>
-              <div className="font-semibold text-black">{d.title}</div>
-              <div className="text-black">
-                Terapeuta: {d.therapist?.firstName} {d.therapist?.lastName}
-                </div>
-              <div className="text-black">
-                Paciente: {d.patient?.firstName} {d.patient?.lastName}</div>
-              <div className="text-black">Fecha: {formattedDate}</div>
-              <div className="text-black">Hora: {formattedStart} - {formattedEnd}</div>
-            </div>
-            <div className="flex justify-evenly py-2">
-              <div>
-                <button onClick={() => {
-                  setSelectedAppointment(d)
-                  setIsEditModalOpen(true)
-                }}>
-                    <PenBoxIcon size={24} color="blue" />
-                </button>
-              </div>
-              <div>
-                <BotonDeleteCitas id={d._id} />
-              </div>
+        console.log("Cita ID:", d._id);
+  console.log("Objeto Terapeuta recibido:", d.therapist); 
+  console.log("Objeto Paciente recibido:", d.patient);
+        return(
+        <div key={d._id} className="p-4 border border-gray-300 rounded-md my-3 flex justify-between items-start bg-gray-50 shadow-sm">
+          <div>
+            <div className="font-semibold text-black text-lg">{d.title}</div>
+            <div className="text-black">Terapeuta: {getNombre(d.therapist)}</div>
+            <div className="text-black">Paciente: {getNombre(d.patient)}</div>
+            <div className="text-black">
+              Fecha: {formatToLocalDate(d.date)} | 
+              Hora: {formatToLocalTime(d.start)} - {formatToLocalTime(d.end)}
             </div>
           </div>
-        );
-      })}
-          <Modal
-            isOpen={isEditModalOpen}
-            onRequestClose={() => setIsEditModalOpen(false)}
-            style={{
-              overlay: {
-                backgroundColor: "rgba(0, 0, 0, 0.5)",
-                zIndex: 1000,
-              },
-              content: {
-                marginTop: "auto",
-                marginLeft: "auto",
-                marginRight: "auto",
-                marginBottom: "auto",
-                transform: "traslate(-50%, -50%)",
+          
+          <div className="flex gap-2 py-2">
+            <button onClick={() => {
+              setSelectedAppointment(d);
+              setIsEditModalOpen(true);
+            }}>
+              <PenBoxIcon size={24} color="blue" />
+            </button>
+            <BotonDeleteCitas id={d._id} />
+          </div>
+        </div>)
+})}
 
-                padding: "2rem",
-                maxWidth: "600px",
-                width: "95%",
-              },
+      <Modal
+        isOpen={isEditModalOpen}
+        onRequestClose={() => setIsEditModalOpen(false)}
+        style={{
+          overlay: { backgroundColor: "rgba(0, 0, 0, 0.5)", zIndex: 1000 },
+          content: { margin: "auto", padding: "2rem", maxWidth: "600px", width: "95%" }
+        }}
+      >
+        <h2 className='text-xl font-semibold mb-4'>Editar Cita</h2>
+
+        {selectedAppointment && (
+          <ActualizarCita
+            id={selectedAppointment._id}
+            selectedPatient={selectedAppointment.patient?._id || selectedAppointment.patient}
+            selectedTherapist={selectedAppointment.therapist?._id || selectedAppointment.therapist}
+            selectedService={selectedAppointment.serviceId || ""}
+            appointmentDate={selectedAppointment.date ? new Date(selectedAppointment.date).toISOString().split('T')[0] : ""}
+            appointmentStartTime={new Date(selectedAppointment.start).toTimeString().slice(0, 5)}
+            appointmentEndTime={new Date(selectedAppointment.end).toTimeString().slice(0, 5)}
+            appointmentDuration={selectedAppointment.duration}
+            cost={selectedAppointment.cost}
+            onClose={() => setIsEditModalOpen(false)}
+            onUpdate={() => {
+              setIsEditModalOpen(false);
+              refetchAppointments();
             }}
-          >
-            <h2 className='text-xl font-semibold mb-4'>Editar Cita</h2>
-
-            {selectedAppointment && (
-            <ActualizarCita
-              id={selectedAppointment._id}
-              selectedPatient={selectedAppointment.patient}
-              selectedTherapist={selectedAppointment.therapist}
-              selectedService={selectedAppointment.date.split("T")[0]}
-              appointmentStartTime={new Date(selectedAppointment.start).toTimeString().slice(0, 5)}
-              appointmentEndTime={new Date(selectedAppointment.end).toTimeString().slice(0, 5)}
-              appointmentDuration={selectedAppointment.duration}
-              cost={selectedAppointment.cost}
-              onClose={() => setIsEditModalOpen(false)}
-              onUpdate={() => {
-                setIsEditModalOpen(false)
-                refetchAppointments()
-              }}
-            />
-          )}
-
-          <button
-            onClick={() => setIsEditModalOpen(false)}
-            className='mt-4 bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded'
-          >
-            Cerrar
-          </button>
-          </Modal>
+          />
+        )}
+        <button
+          onClick={() => setIsEditModalOpen(false)}
+          className='mt-4 bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded'
+        >
+          Cerrar
+        </button>
+      </Modal>
     </div>
   );
 }

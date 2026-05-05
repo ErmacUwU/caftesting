@@ -94,3 +94,59 @@ export async function DELETE(req, { params }) {
 }      
 
 
+export async function PATCH(req, { params }) {
+  try {
+    await dbConnect();
+    const { id } = params; // Este es el ID de UserTrue
+    const body = await req.json();
+    const { nuevaCita, cantidad } = body;
+
+    // 1. Buscamos al usuario y poblamos su perfil de paciente
+    const user = await UserTrue.findById(id).populate("patientProfile");
+
+    if (!user || !user.patientProfile) {
+      return NextResponse.json(
+        { error: "Usuario o perfil de paciente no encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const paciente = user.patientProfile;
+
+    // 2. ESCENARIO: Agregar nueva cita
+    if (nuevaCita) {
+      paciente.estadoDeCuenta.citas.push({
+        fecha: nuevaCita.fecha,
+        costo: Number(nuevaCita.costo),
+      });
+      paciente.estadoDeCuenta.total += Number(nuevaCita.costo);
+    }
+
+    // 3. ESCENARIO: Registrar un pago
+    if (cantidad) {
+      const nuevoPago = {
+        fecha: new Date(),
+        cantidad: Number(cantidad),
+        metodoPago: body.metodoPago || "efectivo",
+      };
+      paciente.estadoDeCuenta.total -= Number(cantidad);
+      paciente.estadoDeCuenta.pagos.push(nuevoPago);
+    }
+
+    // 4. Guardar cambios en el perfil (PatientU)
+    await paciente.save();
+
+    return NextResponse.json({
+      message: "Estado de cuenta actualizado correctamente",
+      estadoDeCuenta: paciente.estadoDeCuenta,
+    });
+
+  } catch (error) {
+    console.error("Error en PATCH:", error);
+    return NextResponse.json(
+      { error: "Error al actualizar el estado de cuenta" },
+      { status: 500 }
+    );
+  }
+}
+

@@ -1121,4 +1121,3 @@ const eliminarUsuario = async (user) => {
     </div>
   );
 }
-

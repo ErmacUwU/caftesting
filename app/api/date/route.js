@@ -90,9 +90,16 @@ export async function POST(req) {
 export async function GET() {
   try {
     await dbConnect();
-    const date = await DateModel.find()
-      .populate("therapist", "firstName lastName")
-      .populate("patient", "firstName lastName");
+    // Asegúrate de que tu .populate se vea así:
+const date = await DateModel.find()
+  .populate({
+    path: 'therapist',
+    populate: { path: 'therapistProfile' } // Esto trae los datos del perfil
+  })
+  .populate({
+    path: 'patient',
+    populate: { path: 'patientProfile' } // Esto trae los datos del perfil
+  });
 
     return NextResponse.json({ success: true, date }, { status: 200, ...noStore });
   } catch (error) {

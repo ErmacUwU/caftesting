@@ -140,3 +140,59 @@ export async function GET(req) {
 }
 
 
+export async function PATCH(req, { params }) {
+  await dbConnect();
+  
+  try {
+    // 1. Obtener el ID de la URL
+    // Nota: Dependiendo de tu estructura de carpetas, si el ID viene en la URL 
+    // y el archivo se llama [...id]/route.js, lo obtienes así:
+    const { id } = params; 
+    const body = await req.json();
+    const { cantidad, isAccountUpdate, nuevaCita } = body;
+
+    // 2. Buscar al usuario y su perfil de paciente
+    const user = await UserTrue.findById(id).populate("patientProfile");
+    
+    if (!user || !user.patientProfile) {
+      return NextResponse.json({ msg: "Paciente no encontrado", success: false }, { status: 404 });
+    }
+
+    const paciente = user.patientProfile;
+
+    // 3. Lógica para Registrar Pago
+    if (cantidad) {
+      const nuevoPago = {
+        fecha: new Date(),
+        cantidad: Number(cantidad),
+        metodoPago: body.metodoPago || "efectivo"
+      };
+
+      paciente.estadoDeCuenta.total -= Number(cantidad);
+      paciente.estadoDeCuenta.pagos.push(nuevoPago);
+    }
+
+    // 4. Lógica para Nueva Cita (la que usabas en tu handleSubmit)
+    if (nuevaCita) {
+      paciente.estadoDeCuenta.citas.push({
+        fecha: nuevaCita.fecha,
+        costo: Number(nuevaCita.costo)
+      });
+      // Opcional: Sumar al total si la cita genera deuda
+      paciente.estadoDeCuenta.total += Number(nuevaCita.costo);
+    }
+
+    await paciente.save();
+
+    return NextResponse.json({
+      msg: "Actualización realizada con éxito",
+      success: true,
+      estadoDeCuenta: paciente.estadoDeCuenta,
+    });
+
+  } catch (error) {
+    console.error("Error en PATCH:", error);
+    return NextResponse.json({ msg: "Error al actualizar", success: false }, { status: 500 });
+  }
+}
+

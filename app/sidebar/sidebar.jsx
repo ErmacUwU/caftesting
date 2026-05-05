@@ -23,7 +23,6 @@ import { useAuth } from "../context/AuthContext";
 import { usePathname } from "next/navigation";
 
 const menuSections = {
-  registros: false,
   gestion: false,
   comunicacion: false,
   reportesPagos: false,
@@ -138,16 +137,9 @@ const Sidebar = () => {
 
 const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
   const sectionConfig = {
-    registros: [
-      { href: "/registropacientes", text: "Registro Clientes", icon: UserPlusIcon },
-      { href: "/registroterapeuta", text: "Registro Terapeutas", icon: UsersIcon },
-    ],
     gestion: [
       { href: "/citas", text: "Citas", icon: CalendarDaysIcon },
       { href: "/agendas", text: "Agendas", icon: ClipboardDocumentListIcon },
-      { href: "/terapeuta", text: "Terapeuta", icon: UsersIcon },
-      { href: "/pacientes", text: "Pacientes", icon: UsersIcon },
-      { href: "/pacientesU", text: "Pacientes Modelo Nuevo", icon: UsersIcon },
       { href: "/servicios", text: "Servicios", icon: ClipboardDocumentListIcon },
     ],
     comunicacion: [{ href: "/mensajes", text: "Mensajes", icon: ChatBubbleLeftRightIcon }],
@@ -161,8 +153,7 @@ const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
       { href: "/docs", text: "Documentos", icon: DocumentIcon },
     ],
     administracion: [
-      { href: "/usuarios", text: "Usuarios", icon: UserGroupIcon },
-      { href: "/registroU", text: "Usuarios V1", icon: UserGroupIcon },
+      { href: "/registroU", text: "Usuarios", icon: UserGroupIcon },
       { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon },
       { href: "/login", text: "Cerrar Sesión", icon: UserPlusIcon, logout: true },
     ],

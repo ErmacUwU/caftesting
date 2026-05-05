@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { TimePicker } from "rsuite";
 import "rsuite/dist/rsuite-no-reset.min.css";
@@ -47,39 +47,64 @@ const ActualizarCita = ({
     fetchServices();
   }, []);
 
+ // 1. Añade esto en la parte superior de tu componente
+const isInitialLoad = useRef(true);
+
+// 2. Modifica el useEffect así
+useEffect(() => {
+  // Solo ejecutamos esto si estamos en la carga inicial y los datos están listos
+  if (isInitialLoad.current && services.length > 0 && selectedService) {
+    setNewService(selectedService.toString());
+    
+    const svc = services.find((s) => s._id.toString() === selectedService.toString());
+    
+   
+    
+    // Marcamos que la carga inicial ya ocurrió
+    isInitialLoad.current = false;
+  }
+}, [services, selectedService]);
+
+
+
   // 🔹 Cargar pacientes y terapeutas ordenados alfabéticamente
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [patientsRes, therapistsRes] = await Promise.all([
-          axios.get("/api/patient"),
-          axios.get("/api/therapist"),
-        ]);
+  const fetchData = async () => {
+    try {
+      // 1. Llamamos a la nueva API unificada pasando el rol
+      const [patientsRes, therapistsRes] = await Promise.all([
+        axios.get("/api/usuarioTrue?role=patient"),
+        axios.get("/api/usuarioTrue?role=therapist"),
+      ]);
 
-        const sortedPatients = [...(patientsRes.data.patient || [])].sort((a, b) =>
-          `${a.firstName} ${a.lastName}`.localeCompare(
-            `${b.firstName} ${b.lastName}`,
-            "es",
-            { sensitivity: "base" }
-          )
-        );
+      // 2. Ajuste para el nuevo modelo (UsuarioTrue + populate)
+      // Como ahora usas populate, el perfil está en .patientProfile
+      const formatAndSort = (data) => {
+        return [...data]
+          .map(u => ({
+            ...u,
+            // Aplanamos el nombre para que el sort y el SelectPicker funcionen
+            firstName: u.patientProfile?.firstName || u.therapistProfile?.firstName || "",
+            lastName: u.patientProfile?.lastName || u.therapistProfile?.lastName || "",
+            _id: u._id // Este es el ID del UserTrue que ya está funcionando en tu API
+          }))
+          .sort((a, b) => 
+            `${a.firstName} ${a.lastName}`.localeCompare(
+              `${b.firstName} ${b.lastName}`,
+              "es",
+              { sensitivity: "base" }
+            )
+          );
+      };
 
-        const sortedTherapists = [...(therapistsRes.data.therapist || [])].sort((a, b) =>
-          `${a.firstName} ${a.lastName}`.localeCompare(
-            `${b.firstName} ${b.lastName}`,
-            "es",
-            { sensitivity: "base" }
-          )
-        );
-
-        setPatients(sortedPatients);
-        setTherapists(sortedTherapists);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchData();
-  }, []);
+      setPatients(formatAndSort(patientsRes.data));
+      setTherapists(formatAndSort(therapistsRes.data));
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+  fetchData();
+}, []);
 
   useEffect(() => {
     if (selectedTherapist && selectedService) {
@@ -98,6 +123,8 @@ const ActualizarCita = ({
     end.setMinutes((minutes || 0) + (duration || 0));
     return end.toTimeString().slice(0, 5);
   };
+
+  
 
   const handleServiceChange = (e) => {
     const selectedServiceId = e.target.value;
@@ -121,46 +148,45 @@ const ActualizarCita = ({
   };
 
   const updateAppointment = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    const startDateTime = new Date(`${newAppointmentDate}T${newStartTime}:00`);
-    const endDateTime = new Date(`${newAppointmentDate}T${newEndTime}:00`);
+  const startDateTime = new Date(`${newAppointmentDate}T${newStartTime}:00`);
+  const endDateTime = new Date(`${newAppointmentDate}T${newEndTime}:00`);
 
-    const therapist = therapists.find((t) => t._id === newTherapist);
-    const patient = patients.find((p) => p._id === newPatient);
-    const svc = services.find(
-      (s) =>
-        s._id?.toString() === newService?.toString() ||
-        s.name === selectedService
-    );
+  // Buscamos el servicio para obtener el título
+  const svc = services.find(
+    (s) => s._id?.toString() === newService?.toString() || s.name === selectedService
+  );
 
-    const appointmentData = {
-      newDate: newAppointmentDate,
-      newStart: startDateTime.toISOString(),
-      newEnd: endDateTime.toISOString(),
-      newDuration,
-      newTherapist: therapist,
-      newPatient: patient,
-      newTitle: svc?.name || "",
-      newDescription: svc?.name || "",
-      newCost: parseFloat(newCost),
-      newColor: svc?.color || "#bdc3c7",
-      serviceId: svc?._id,
-    };
+  // CONSTRUCCIÓN DEL OBJETO CORREGIDO
+  // Asegúrate de que esto esté dentro de tu función updateAppointment
+const appointmentData = {
+  date: newAppointmentDate, // Debe ser "2026-05-01"
+  start: startDateTime.toISOString(), // Formato completo
+  end: endDateTime.toISOString(),
+  duration: Number(newDuration),
+  therapist: newTherapist, // Debe ser el ID (string)
+  patient: newPatient,     // Debe ser el ID (string)
+  title: svc?.name || "",
+  cost: parseFloat(newCost),
+  serviceId: newService,   // ID del servicio
+};
 
-    try {
-      const res = await axios.put(`/api/date/${id}`, appointmentData);
-      if (res.status === 200) {
-        onUpdate && onUpdate();
-        onClose();
-      } else {
-        alert("Error en la actualización");
-      }
-    } catch (error) {
-      console.error("Error al actualizar la cita:", error);
-      alert("Error al actualizar la cita");
+console.log("Enviando al Backend:", JSON.stringify(appointmentData, null, 2));
+
+  try {
+    console.log("Enviando actualización:", appointmentData);
+    const res = await axios.put(`/api/date/${id}`, appointmentData);
+    
+    if (res.status === 200) {
+      onUpdate && onUpdate();
+      onClose();
     }
-  };
+  } catch (error) {
+    console.error("Error al actualizar la cita:", error);
+    alert("Error al actualizar la cita. Revisa la consola.");
+  }
+};
 
   return (
     <form className="max-w-md mx-auto p-4 bg-gray-100">
@@ -257,10 +283,11 @@ const ActualizarCita = ({
           required
         >
           {services.map((s) => (
-            <option key={s._id} value={s._id}>
-              {s.name}
-            </option>
-          ))}
+    // Aseguramos que el value sea el ID como string
+    <option key={s._id} value={s._id.toString()}>
+      {s.name}
+    </option>
+  ))}
         </select>
       </div>
 

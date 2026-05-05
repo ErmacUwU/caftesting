@@ -92,31 +92,35 @@ useEffect(() => {
     try {
       const [patientsRes, therapistsRes, appointmentsRes, scheduleRes, serviceRes] =
         await Promise.all([
-          axios.get("/api/patient"),
-          axios.get("/api/therapist"),
+          axios.get("/api/usuarioTrue?role=patient"), // Filtra por rol paciente
+          axios.get("/api/usuarioTrue?role=therapist"), // Filtra por rol terapeuta
           axios.get("/api/date"),
           axios.get("/api/schedule"),
           axios.get("/api/service"),
         ]);
 
       const norm = (s) => (s || "").toString().trim();
-      const fullName = (p) => `${norm(p.firstName)} ${norm(p.lastName)}`.trim();
 
-      const patientsSorted = [...(patientsRes.data.patient || [])].sort((a, b) =>
-        fullName(a).localeCompare(fullName(b), "es", { sensitivity: "base" })
-      );
 
-      const therapistsSorted = [...(therapistsRes.data.therapist || [])].sort((a, b) =>
-        fullName(a).localeCompare(fullName(b), "es", { sensitivity: "base" })
-      );
+     const getFullName = (u) => {
+  const profile = u.patientProfile || u.therapistProfile || u;
+  return `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || u.email;
+};
 
+// Extraer las listas (considerando que el backend puede devolver {users: []} o [])
+const listaP = patientsRes.data.users || patientsRes.data;
+const listaT = therapistsRes.data.users || therapistsRes.data;
+
+setPatients([...listaP].sort((a, b) => getFullName(a).localeCompare(getFullName(b))));
+setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullName(b))));
+
+  
       const servicesSorted = [...(serviceRes.data.services || [])].sort((a, b) =>
         norm(a.name).localeCompare(norm(b.name), "es", { sensitivity: "base" })
       );
 
+    
       setServices(servicesSorted);
-      setPatients(patientsSorted);
-      setTherapists(therapistsSorted);
 
       if (scheduleRes.data) {
         setWorkSchedule({
@@ -269,87 +273,91 @@ useEffect(() => {
 const handleSubmit = async (e) => {
   e.preventDefault();
 
-  // Eliminar domingos
-  const selectedDate = new Date(appointmentDate);
-  if (selectedDate.getUTCDay() === 0) {
-    alert("No se puede registrar citas en domingo");
+  // 1. Validaciones iniciales
+  if (!selectedPatient || !selectedTherapist || !selectedService) {
+    alert("Por favor rellena todos los campos obligatorios (Paciente, Terapeuta y Servicio)");
     return;
   }
 
-  const therapist = therapists.find((t) => t._id === selectedTherapist);
-  const patient = patients.find((p) => p._id === selectedPatient);
-  const service  = services.find((s) => s._id?.toString() === selectedService);
+  // Validar domingos
+  const selectedDate = new Date(appointmentDate);
+  if (selectedDate.getUTCDay() === 0) {
+    alert("No se pueden registrar citas en domingo");
+    return;
+  }
 
+  // 2. Buscar los objetos completos en las listas que cargamos de UsuarioTrue
+  // Esto es para obtener nombres, colores de servicio, etc.
+  const patientData = patients.find((p) => p._id === selectedPatient);
+  const therapistData = therapists.find((t) => t._id === selectedTherapist);
+  const service = services.find((s) => s._id?.toString() === selectedService);
+
+  // 3. Estructura del objeto para la base de datos
+  // IMPORTANTE: Enviamos 'selectedPatient' (el ID) para que el backend lo reconozca
   const appointmentData = {
     idDate: uniquid(),
     date: appointmentDate,
     start: convertToLocalDate(appointmentDate, appointmentStartTime),
-    end:   convertToLocalDate(appointmentDate, appointmentEndTime),
+    end: convertToLocalDate(appointmentDate, appointmentEndTime),
     duration: appointmentDuration,
-    therapist,
-    patient,
-    title: service?.name || "",
+    patient: selectedPatient,   // Enviamos el ID del UsuarioTrue
+    therapist: selectedTherapist, // Enviamos el ID del UsuarioTrue
+    title: service?.name || "Cita Médica",
     description: service?.name || "",
     cost: Number(cost),
-    serviceId: service?._id,
+    serviceId: selectedService,
   };
+
+  // LOG DE DIAGNÓSTICO: Revisa esto en la consola (F12)
+  console.log("Enviando cita a la API:", appointmentData);
 
   let postOk = false;
 
   try {
+    // 4. Guardar la cita en /api/date
     const { data: created } = await axios.post("/api/date", appointmentData);
-
-    setAppointments((prev) => ([
-      ...prev,
-      {
-        idd: created._id,
-        id: created.idDate,
-        title: created.title,
-        start: new Date(created.start),
-        end: new Date(created.end),
-        duration: created.duration,
-        description: created.description,
-        therapist: created.therapist,
-        patient: created.patient,
-        cost: created.cost,
-        serviceId: created.serviceId,
-        backgroundColor: service?.color || "#bdc3c7",
-        borderColor: "#000",
-      },
-    ]));
-
+    
+    console.log("Respuesta del servidor (Cita creada):", created);
     postOk = true;
 
+    // 5. Actualizar el perfil del Paciente en UsuarioTrue (Historial de citas)
     try {
-      await axios.patch(`/api/patient/${selectedPatient}`, {
+      await axios.patch(`/api/usuarioTrue/${selectedPatient}`, {
+        isAccountUpdate: false, // Indica que no es cambio de contraseña/email, sino de perfil
         nuevaCita: {
           fecha: new Date(`${appointmentDate}T00:00:00`).toISOString(),
           costo: Number(cost),
         },
       });
+      console.log("Historial del paciente actualizado correctamente");
     } catch (patchErr) {
-      console.warn("PATCH /api/patient falló (no bloquea la UI):", patchErr);
+      console.warn("La cita se creó, pero no se pudo actualizar el historial del paciente:", patchErr);
     }
 
   } catch (error) {
-    console.error("Error creando cita:", error);
+    console.error("Error crítico al crear la cita:", error);
+    alert("Error al guardar la cita. Revisa la consola.");
     return;
   } finally {
+    // 6. Si todo salió bien, refrescamos y limpiamos
     if (postOk) {
       await refetchAppointments();
-      setCalKey((k) => k + 1);
+      setCalKey((k) => k + 1); // Forzar refresco del calendario
+      
+      // Limpiar formulario
+      setSelectedPatient("");
+      setSelectedTherapist("");
+      setAppointmentDate("");
+      setAppointmentStartTime("");
+      setAppointmentEndTime("");
+      setAppointmentDuration("");
+      setSelectedService("");
+      setCost("");
+      setIsFormVisible(false);
+      
+      alert("Cita registrada exitosamente");
     }
   }
-
-  setSelectedPatient("");
-  setSelectedTherapist("");
-  setAppointmentDate("");
-  setAppointmentStartTime("");
-  setAppointmentEndTime("");
-  setAppointmentDuration("");
-  setSelectedService("");
-  setCost("");
-  setIsFormVisible(false);
 };
 
 
@@ -411,39 +419,66 @@ const handleSubmit = async (e) => {
     setIsFormVisible(true);
   };
 
-  const renderEventContent = (eventInfo) => {
-    const colorStyle = getEventColor(eventInfo.event.title);
-    const patientProp = eventInfo.event.extendedProps.patient;
-    let patientName = "No encontrado";
+ const renderEventContent = (eventInfo) => {
+  const colorStyle = getEventColor(eventInfo.event.title);
+  // 1. Intentamos obtener el paciente de extendedProps
+  const patientProp = eventInfo.event.extendedProps.patient;
+  
+  let patientName = "No asig";
 
-    if (patientProp && typeof patientProp === "object" && patientProp.firstName) {
-      patientName = `${patientProp.firstName} ${patientProp.lastName || ""}`.trim();
-    } else if (patientProp && typeof patientProp === "string") {
-      const p = patients.find((pp) => pp._id === patientProp);
-      if (p) patientName = `${p.firstName} ${p.lastName}`;
+  // 2. Lógica de resolución de nombre
+  if (patientProp) {
+    let p = null;
+
+    // Si patientProp YA ES EL OBJETO (a veces FullCalendar lo deserializa)
+    if (typeof patientProp === "object" && patientProp.firstName) {
+       p = patientProp;
+    }
+    // Si es un objeto del nuevo modelo (UserTrue)
+    else if (typeof patientProp === "object" && patientProp.patientProfile) {
+       p = patientProp.patientProfile;
+    }
+    // Si es un ID, lo buscamos en la lista global 'patients'
+    else {
+       const found = patients.find((pp) => pp._id === patientProp || pp._id === patientProp?._id);
+       if (found) {
+         p = found.patientProfile || found;
+       }
     }
 
-    return (
-      <div className="custom-event-content text-white" style={colorStyle}>
-        <div className="custom-hour">{eventInfo.timeText}</div>
-        <div className="custom-title">{patientName}</div>
+    // 3. Formateo final
+    if (p) {
+      const first = p.firstName || "";
+      const last = p.lastName || "";
+      if (first || last) {
+        patientName = `${first} ${last}`.trim();
+      }
+    }
+  }                  
+
+  return (
+    <div className="custom-event-content text-white" style={colorStyle}>
+      <div className="custom-hour">{eventInfo.timeText}</div>
+      <div className="custom-title" style={{ fontSize: '10px', fontWeight: 'bold' }}>
+        {patientName}
       </div>
-    );
-  };
+    </div>
+  );
+};
 
-  const patientsData = (patients || [])
-    .map(p => ({
-      label: `${p.firstName} ${p.lastName || ""}`.trim(),
-      value: p._id
-    }))
-    .sort((a,b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+const patientsData = (patients || []).map(p => ({
+  label: p.patientProfile 
+    ? `${p.patientProfile.firstName} ${p.patientProfile.lastName}`.trim() 
+    : (p.firstName ? `${p.firstName} ${p.lastName}` : p.email),
+  value: p._id
+})).sort((a, b) => a.label.localeCompare(b.label));
 
-  const therapistsData = (therapists || [])
-    .map(t => ({
-      label: `${t.firstName} ${t.lastName || ""}`.trim(),
-      value: t._id
-    }))
-    .sort((a,b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+const therapistsData = (therapists || []).map(t => ({
+  label: t.therapistProfile 
+    ? `${t.therapistProfile.firstName} ${t.therapistProfile.lastName}`.trim() 
+    : (t.firstName ? `${t.firstName} ${t.lastName}` : t.email),
+  value: t._id
+})).sort((a, b) => a.label.localeCompare(b.label));
 
   const servicesData = (services || [])
     .map(s => ({
@@ -858,28 +893,59 @@ const handleSubmit = async (e) => {
 
         {/* Información */}
         <div className="space-y-2 text-slate-700">
-          <p>
-            <strong>Paciente:</strong>{" "}
-            {(() => {
-              const p = selectedAppointment.patient;
-              if (typeof p === "object" && p.firstName) {
-                return `${p.firstName} ${p.lastName}`;
-              }
-              const found = patients.find((x) => x._id === p);
-              return found ? `${found.firstName} ${found.lastName}` : "No encontrado";
-            })()}
-          </p>
+        <p>
+
+  <strong>Paciente:</strong>{" "}
+  {(() => {
+    const p = selectedAppointment?.patient;
+    if (!p) return "Sin annbvsignar";
+
+    // Intentamos obtener el perfil (ya sea del nuevo modelo o del antiguo)
+    const profile = p.patientProfile || p;
+
+    // Verificamos si existe el nombre en el perfil
+    if (profile && profile.firstName) {
+      return `${profile.firstName} ${profile.lastName || ""}`.trim();
+    }
+
+    // Si solo es un ID o no tiene nombre, buscamos en la lista cargada de pacientes
+    const targetId = typeof p === "object" ? p._id : p;
+    const found = patients.find((x) => x._id === targetId);
+    if (found) {
+      const fProfile = found.patientProfile || found;
+      return `${fProfile.firstName || ""} ${fProfile.lastName || ""}`.trim();
+    }
+
+    return "No encontrado";
+  })()}
+</p>
+
 
           <p>
             <strong>Terapeuta:</strong>{" "}
             {(() => {
-              const t = selectedAppointment.therapist;
-              if (typeof t === "object" && t.firstName) {
-                return `${t.firstName} ${t.lastName}`;
-              }
-              const found = therapists.find((x) => x._id === t);
-              return found ? `${found.firstName} ${found.lastName}` : "No encontrado";
-            })()}
+    // Definimos 't' como el terapeuta de la cita
+    const t = selectedAppointment?.therapist; 
+    if (!t) return "Sin asignar";
+
+    // 1. Intentamos obtener el perfil (si t es un objeto)
+    const profile = t.therapistProfile || (typeof t === "object" ? t : null);
+    if (profile?.firstName) {
+      return `${profile.firstName} ${profile.lastName || ""}`.trim();
+    }
+
+    // 2. Si falló lo anterior, buscamos por ID en la lista global 'therapists'
+    // AQUÍ ESTABA EL ERROR: Usábamos 'p' en lugar de 't'
+    const targetId = typeof t === "object" ? t._id : t;
+    const found = therapists.find((x) => x && x._id === targetId);
+    
+    if (found) {
+      const fProfile = found.therapistProfile || found;
+      return `${fProfile.firstName || ""} ${fProfile.lastName || ""}`.trim();
+    }
+
+    return "No encontrado";
+  })()}
           </p>
 
           <p><strong>Fecha:</strong> {selectedAppointment.formattedDate}</p>
@@ -959,15 +1025,15 @@ const handleSubmit = async (e) => {
           <ActualizarCita
             id={selectedAppointment.idd}
             selectedPatient={
-              typeof selectedAppointment.patient === "object"
-                ? selectedAppointment.patient
-                : patients.find((p) => p._id === selectedAppointment.patient)
-            }
-            selectedTherapist={
-              typeof selectedAppointment.therapist === "object"
-                ? selectedAppointment.therapist
-                : therapists.find((t) => t._id === selectedAppointment.therapist)
-            }
+    typeof selectedAppointment.patient === "object" && selectedAppointment.patient !== null
+      ? selectedAppointment.patient._id
+      : selectedAppointment.patient
+  }
+  selectedTherapist={
+    typeof selectedAppointment.therapist === "object" && selectedAppointment.therapist !== null
+      ? selectedAppointment.therapist._id
+      : selectedAppointment.therapist
+  }
             selectedService={selectedAppointment.serviceId}
             appointmentDate={selectedAppointment.start.toISOString().split("T")[0]}
             appointmentStartTime={selectedAppointment.start.toTimeString().slice(0, 5)}

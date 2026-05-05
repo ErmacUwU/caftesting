@@ -27,12 +27,12 @@ const DateSchema = new mongoose.Schema(
     therapist: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "Therapist",
+      ref: "UserTrue", // Cambiado de "Therapist" a "UserTrue"
     },
     patient: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
-      ref: "Patient",
+      ref: "UserTrue", // Cambiado de "Patient" a "UserTrue"
     },
     title: String,
     description: String,
