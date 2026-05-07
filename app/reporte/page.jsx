@@ -1,11 +1,13 @@
-'use client';
+"use client";
 import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
 const Reporte = () => {
-  const [appointments, setAppointments] = useState([]);
+  // -------------------------------------------------------------------------
+  // 1. ESTADOS
+  // -------------------------------------------------------------------------
   const [selectedTherapist, setSelectedTherapist] = useState("");
   const [selectedPatient, setSelectedPatient] = useState("");
   const [notes, setNotes] = useState("");
@@ -13,43 +15,61 @@ const Reporte = () => {
   const [therapistsList, setTherapistsList] = useState([]);
   const [patientsList, setPatientList] = useState([]);
   const [generating, setGenerating] = useState(false);
+  const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
   const pdfRef = useRef();
   const fileInputRef = useRef();
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
 
-  const therapistObj = therapistsList.find(t => t._id === selectedTherapist);
-  const patientObj = patientsList.find(p => p._id === selectedPatient);
+  // Helpers para encontrar los objetos seleccionados y mostrar sus nombres
+  const therapistObj = therapistsList.find((t) => t._id === selectedTherapist);
+  const patientObj = patientsList.find((p) => p._id === selectedPatient);
 
-  // --- Auth gate ---
+  // -------------------------------------------------------------------------
+  // 2. SEGURIDAD Y CARGA DE DATOS
+  // -------------------------------------------------------------------------
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/login");
   }, [isAuthenticated, isLoading, router]);
 
-  // --- Carga inicial ---
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [appointmentsRes, therapistsRes, patientsRes] = await Promise.all([
-          axios.get("/api/date"),
-          axios.get("/api/therapist"),
-          axios.get("/api/patient"),
-        ]);
-        setAppointments(appointmentsRes.data?.date || []);
-        setTherapistsList(therapistsRes.data?.therapist || []);
-        setPatientList(patientsRes.data?.patient || []);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      }
-    };
-    fetchData();
-  }, []);
+  // --- CARGA DE DATOS CORREGIDA ---
+useEffect(() => {
+  const fetchUsers = async () => {
+    try {
+      console.log("Iniciando carga de usuarios...");
+      
+      const [therapistsRes, patientsRes] = await Promise.all([
+        axios.get("/api/usuarioTrue?role=therapist"),
+        axios.get("/api/usuarioTrue?role=patient"),
+      ]);
 
-  if (isLoading) return <div className="text-center py-10">Cargando...</div>;
-  if (!isAuthenticated) return null;
+      // Log para debugear: Mira esto en F12 -> Console
+      console.log("Respuesta Terapeutas:", therapistsRes.data);
+      console.log("Respuesta Pacientes:", patientsRes.data);
 
-  // --- Imágenes: guardamos los Object URLs para previsualizar en el PDF ---
+      // Intentamos extraer los arrays (manejando diferentes estructuras posibles)
+      const therapists = therapistsRes.data.users || therapistsRes.data || [];
+      const patients = patientsRes.data.users || patientsRes.data || [];
+
+      setTherapistsList(Array.isArray(therapists) ? therapists : []);
+      setPatientList(Array.isArray(patients) ? patients : []);
+
+    } catch (error) {
+      console.error("Error detallado al cargar usuarios:", error.response || error);
+      setStatusMsg({ 
+        type: "error", 
+        text: "Error de conexión. Revisa la consola (F12)." 
+      });
+    }
+  };
+
+  if (isAuthenticated) fetchUsers();
+}, [isAuthenticated]);
+
+  // -------------------------------------------------------------------------
+  // 3. MANEJO DE ARCHIVOS (IMÁGENES)
+  // -------------------------------------------------------------------------
   const handleImageChange = (event) => {
     const files = Array.from(event.target.files || []);
     const newImages = files.map((file) => ({
@@ -59,46 +79,6 @@ const Reporte = () => {
     setImages((prev) => [...prev, ...newImages]);
   };
 
-  // ✅ Sube el PDF a S3 (presigned URL) y guarda registro en BD
-  const uploadToS3AndSaveToDB = async (pdfBlob, filename) => {
-    try {
-      // 1) Pides presigned URL
-      const presign = await axios.post("/api/s3/upload", {
-        name: filename,
-        type: "application/pdf",
-      });
-
-      const { url } = presign.data; // URL con query params (firma)
-
-      // 2) Subir binario a S3
-      await axios.put(url, pdfBlob, {
-        headers: { "Content-Type": "application/pdf" },
-      });
-
-      // 3) Guardar registro en tu BD (ajusta la ruta si usas otra)
-      const saveResponse = await axios.post("/api/reports", {
-        name: filename,
-        type: "application/pdf",
-        size: pdfBlob.size,
-        url: url.split("?")[0], // URL limpia del objeto
-        therapist: selectedTherapist,
-        patient: selectedPatient,
-        notes,
-        // Guarda solo las URLs (si luego vas a subir imágenes real a S3, cambia esto)
-        images: images.map((i) => i.url),
-      });
-
-      if (saveResponse.status === 201) {
-        alert("PDF subido a S3 y registrado en BD con éxito.");
-      } else {
-        alert("Se subió el PDF pero hubo un detalle al guardar en BD.");
-      }
-    } catch (error) {
-      console.error("Error al subir/guardar:", error);
-      alert("Hubo un error al subir el PDF o guardar en BD.");
-    }
-  };
-
   const resetInputs = () => {
     setSelectedTherapist("");
     setSelectedPatient("");
@@ -106,219 +86,263 @@ const Reporte = () => {
     images.forEach((i) => URL.revokeObjectURL(i.url));
     setImages([]);
     if (fileInputRef.current) fileInputRef.current.value = null;
+    setStatusMsg({ type: "success", text: "Reporte procesado y formulario limpio." });
+    setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
   };
 
-  // ✅ Genera el PDF desde el contenido de pdfRef (forma estable con html2pdf)
+  // -------------------------------------------------------------------------
+  // 4. LÓGICA DE PDF Y S3
+  // -------------------------------------------------------------------------
   const generatePDFBlob = async () => {
     const element = pdfRef.current;
-    if (!element) throw new Error("No hay contenido para PDF.");
+    if (!element) throw new Error("Referencia al PDF no encontrada.");
 
     const options = {
       margin: 0.5,
-      filename: "reporte.pdf", // se ignora aquí; el filename real lo controlamos fuera
+      filename: "reporte.pdf",
       image: { type: "jpeg", quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
+      html2canvas: { scale: 2, useCORS: true, logging: false },
       jsPDF: { unit: "in", format: "letter", orientation: "portrait" },
     };
 
+    // Importación dinámica de html2pdf para evitar errores de SSR
     const html2pdfModule = (await import("html2pdf.js")).default;
-
-    // Cadena estable: toPdf().get('pdf') → pdf.output('blob')
     const worker = html2pdfModule().from(element).set(options).toPdf();
     const pdf = await worker.get("pdf");
-    const blob = pdf.output("blob");
-
-    if (!blob || blob.size === 0) throw new Error("PDF vacío.");
-    return blob;
+    return pdf.output("blob");
   };
 
-  // 👉 Generar y SUBIR
-  const generateAndUploadPDF = async () => {
+  const handleGenerateAndUpload = async () => {
     if (!selectedTherapist || !selectedPatient) {
-      alert("Selecciona terapeuta y paciente antes de generar el PDF.");
+      alert("Por favor selecciona terapeuta y paciente.");
       return;
     }
+
     setGenerating(true);
+    setStatusMsg({ type: "info", text: "Generando PDF y subiendo a la nube..." });
+
     try {
-      const filename = `${selectedPatient}_reporte_citas.pdf`;
+      const filename = `Reporte_${patientObj.patientProfile?.lastName || "SinNombre"}_${Date.now()}.pdf`;
       const pdfBlob = await generatePDFBlob();
-      await uploadToS3AndSaveToDB(pdfBlob, filename);
+
+      // 1. Obtener URL firmada de S3
+      const presign = await axios.post("/api/s3/upload", {
+        name: filename,
+        type: "application/pdf",
+      });
+
+      // 2. Subir binario a S3
+      await axios.put(presign.data.url, pdfBlob, {
+        headers: { "Content-Type": "application/pdf" },
+      });
+
+      // 3. Registrar reporte en la Base de Datos
+      await axios.post("/api/reports", {
+        name: filename,
+        url: presign.data.url.split("?")[0],
+        therapist: selectedTherapist,
+        patient: selectedPatient,
+        notes,
+        images: images.map((i) => i.url),
+      });
+
       resetInputs();
     } catch (error) {
-      console.error("Error al generar/subir PDF:", error);
-      alert("Hubo un error al generar/subir el PDF.");
+      console.error(error);
+      setStatusMsg({ type: "error", text: "Error al guardar el reporte." });
     } finally {
       setGenerating(false);
     }
   };
 
-  // 👉 Generar y DESCARGAR localmente (opcional)
-  const generateAndDownloadPDF = async () => {
+  const handleDownloadOnly = async () => {
     setGenerating(true);
     try {
-      const filename = `${selectedPatient || "reporte"}_citas.pdf`;
       const pdfBlob = await generatePDFBlob();
       const url = URL.createObjectURL(pdfBlob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename;
+      a.download = `Reporte_${patientObj?.patientProfile?.lastName || "Paciente"}.pdf`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error al descargar PDF:", error);
-      alert("Hubo un error al generar el PDF.");
+      alert("Error al descargar el PDF.");
     } finally {
       setGenerating(false);
     }
   };
 
+  if (isLoading) return <div className="p-10 text-center font-bold text-slate-500">Verificando sesión...</div>;
+
+  // -------------------------------------------------------------------------
+  // 5. RENDERIZADO
+  // -------------------------------------------------------------------------
   return (
-    <div className="p-6 bg-gray-50 rounded-lg shadow-lg">
-      <h1 className="text-2xl font-extrabold text-center text-gray-800 mb-6">
-        Creador de Reportes para Citas
-      </h1>
+    <div className="min-h-screen bg-gray-100 p-4 md:p-10">
+      <div className="max-w-4xl mx-auto">
+        <header className="mb-8 text-center">
+          <h1 className="text-4xl font-black text-slate-800 tracking-tighter uppercase">
+            Generador de Reportes
+          </h1>
+          <p className="text-slate-500">Sistema de documentación clínica UserTrue</p>
+        </header>
 
-      <div className="space-y-6">
-        {/* Terapeuta */}
-        <div>
-          <label htmlFor="therapists" className="block text-sm font-medium text-gray-700 mb-2">
-            Elige el terapeuta:
-          </label>
-          <select
-            id="therapists"
-            value={selectedTherapist}
-            onChange={(e) => setSelectedTherapist(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">--Seleccione un terapeuta--</option>
-            {therapistsList.map((t) => (
-              <option key={t._id} value={t._id}>
-                {t.firstName} {t.lastName}
-              </option>
-            ))}
-          </select>
-        </div>
+        {statusMsg.text && (
+          <div className={`mb-6 p-4 rounded-lg border-l-4 font-medium ${
+            statusMsg.type === "error" ? "bg-red-100 border-red-500 text-red-700" : 
+            statusMsg.type === "success" ? "bg-green-100 border-green-500 text-green-700" : 
+            "bg-blue-100 border-blue-500 text-blue-700"
+          }`}>
+            {statusMsg.text}
+          </div>
+        )}
 
-        {/* Paciente */}
-        <div>
-          <label htmlFor="patients" className="block text-sm font-medium text-gray-700 mb-2">
-            Elige el paciente:
-          </label>
-          <select
-            id="patients"
-            value={selectedPatient}
-            onChange={(e) => setSelectedPatient(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">--Seleccione un paciente--</option>
-            {patientsList.map((t) => (
-              <option key={t._id} value={t._id}>
-                {t.firstName} {t.lastName}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Notas */}
-        <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-2">
-            Notas:
-          </label>
-          <textarea
-            id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows="4"
-            placeholder="Ingresa tus notas aquí..."
-          />
-        </div>
-
-        {/* Imágenes */}
-        <div>
-          <label htmlFor="images" className="block text-sm font-medium text-gray-700 mb-2">
-            Subir Imágenes:
-          </label>
-          <input
-            type="file"
-            id="images"
-            ref={fileInputRef}
-            accept="image/*"
-            onChange={handleImageChange}
-            multiple
-            className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-
-        {/* Botones */}
-        <div className="grid sm:grid-cols-2 gap-3">
-          <button
-            onClick={generateAndUploadPDF}
-            disabled={generating}
-            className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-          >
-            {generating ? "Generando…" : "Generar y Guardar en S3"}
-          </button>
-
-          <button
-            onClick={generateAndDownloadPDF}
-            disabled={generating}
-            className="w-full p-3 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition disabled:opacity-50"
-          >
-            {generating ? "Generando…" : "Descargar PDF"}
-          </button>
-        </div>
-      </div>
-
-      {/* ====== CONTENIDO DEL PDF ====== */}
-      <div ref={pdfRef} className="p-6 mt-8 bg-white border rounded-lg shadow-md">
-        <div className="text-center mb-6">
-          <h1 className="text-xl font-bold text-gray-800">Reporte de Citas</h1>
-          <p className="text-gray-600">Generado el {new Date().toLocaleDateString()}</p>
-        </div>
-
-        {/* Información Principal */}
-        <div className="mb-6 space-y-1">
-          <p>
-            <strong>Terapeuta:</strong>{" "}
-            {therapistObj ? `${therapistObj.firstName} ${therapistObj.lastName}` : "—"}
-          </p>
-          <p>
-            <strong>Paciente:</strong>{" "}
-            {patientObj ? `${patientObj.firstName} ${patientObj.lastName}` : "—"}
-          </p>
-        </div>
-
-        {/* Notas */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold">Notas</h2>
-          <p className="whitespace-pre-wrap">{notes || "No hay notas ingresadas."}</p>
-        </div>
-
-        {/* Imágenes */}
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold mb-2">Imágenes</h2>
-          {images.length > 0 ? (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {images.map((img, index) => (
-                <div key={index} className="flex flex-col items-center">
-                  <img
-                    src={img.url}
-                    alt={`uploaded-${index}`}
-                    className="w-full max-w-md border border-gray-200 rounded-lg"
-                  />
-                </div>
-              ))}
+        <div className="bg-white p-8 rounded-3xl shadow-xl space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Selector Terapeuta */}
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase mb-2">Terapeuta</label>
+              <select
+                value={selectedTherapist}
+                onChange={(e) => setSelectedTherapist(e.target.value)}
+                className="w-full p-3 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all"
+              >
+                <option value="">Seleccione especialista...</option>
+                {therapistsList.map((t) => (
+                  <option key={t._id} value={t._id}>
+                    {t.therapistProfile?.firstName} {t.therapistProfile?.lastName}
+                  </option>
+                ))}
+              </select>
             </div>
-          ) : (
-            <p>No hay imágenes subidas.</p>
-          )}
+
+            {/* Selector Paciente */}
+            <div>
+              <label className="block text-xs font-black text-slate-400 uppercase mb-2">Paciente</label>
+              <select
+                value={selectedPatient}
+                onChange={(e) => setSelectedPatient(e.target.value)}
+                className="w-full p-3 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all"
+              >
+                <option value="">Seleccione paciente...</option>
+                {patientsList.map((p) => (
+                  <option key={p._id} value={p._id}>
+                    {p.patientProfile?.firstName} {p.patientProfile?.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Observaciones Clínicas</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows="4"
+              className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all"
+              placeholder="Describa el progreso o novedades de la sesión..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Evidencia fotográfica</label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              multiple
+              onChange={handleImageChange}
+              className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-black file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+            />
+          </div>
+
+          <div className="flex flex-col md:flex-row gap-4 pt-4 border-t">
+            <button
+              onClick={handleGenerateAndUpload}
+              disabled={generating}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl shadow-lg shadow-blue-200 transition-all disabled:bg-slate-300"
+            >
+              {generating ? "PROCESANDO..." : "GUARDAR EN SISTEMA (S3)"}
+            </button>
+            <button
+              onClick={handleDownloadOnly}
+              disabled={generating}
+              className="px-8 bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-2xl transition-all disabled:opacity-50"
+            >
+              DESCARGAR PDF
+            </button>
+          </div>
         </div>
 
-        {/* Pie */}
-        <div className="text-center mt-6 text-xs text-gray-500">
-          <p>Este reporte fue generado automáticamente por el sistema.</p>
-          <p className="italic">Vista previa del documento.</p>
+        {/* --- PLANTILLA PDF (HIDDEN/VISIBLE PREVIEW) --- */}
+        <div className="mt-12 overflow-hidden rounded-3xl border-2 border-slate-200 bg-white">
+          <div className="bg-slate-100 p-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            Vista previa del documento a generar
+          </div>
+          
+          <div ref={pdfRef} className="p-12 bg-white text-slate-800">
+            {/* Header PDF */}
+            <div className="flex justify-between items-start border-b-4 border-blue-600 pb-6 mb-8">
+              <div>
+                <h2 className="text-3xl font-black text-blue-600 uppercase">Informe de Sesión</h2>
+                <p className="text-slate-400 font-bold tracking-tighter">USERTRUE CLINICAL SYSTEMS</p>
+              </div>
+              <div className="text-right">
+                <p className="text-sm font-bold">FECHA: {new Date().toLocaleDateString("es-MX")}</p>
+                <p className="text-[10px] text-slate-400">REF: {Math.random().toString(36).substr(2, 9).toUpperCase()}</p>
+              </div>
+            </div>
+
+            {/* Info Participantes */}
+            <div className="grid grid-cols-2 gap-10 mb-10">
+              <div className="bg-slate-50 p-4 rounded-xl">
+                <p className="text-[10px] font-black text-blue-500 uppercase mb-1">Especialista</p>
+                <p className="font-bold text-lg">
+                  {therapistObj ? `${therapistObj.therapistProfile?.firstName} ${therapistObj.therapistProfile?.lastName}` : "— No asignado —"}
+                </p>
+              </div>
+              <div className="bg-slate-50 p-4 rounded-xl">
+                <p className="text-[10px] font-black text-blue-500 uppercase mb-1">Paciente</p>
+                <p className="font-bold text-lg">
+                  {patientObj ? `${patientObj.patientProfile?.firstName} ${patientObj.patientProfile?.lastName}` : "— No seleccionado —"}
+                </p>
+              </div>
+            </div>
+
+            {/* Notas PDF */}
+            <div className="mb-10">
+              <h3 className="text-xs font-black text-slate-400 uppercase mb-3 border-b pb-1">Observaciones Clínicas</h3>
+              <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap italic">
+                {notes || "No se ingresaron notas adicionales para esta sesión."}
+              </p>
+            </div>
+
+            {/* Imágenes PDF */}
+            {images.length > 0 && (
+              <div>
+                <h3 className="text-xs font-black text-slate-400 uppercase mb-4 border-b pb-1">Evidencias Fotográficas</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {images.map((img, idx) => (
+                    <img 
+                      key={idx} 
+                      src={img.url} 
+                      className="w-full h-48 object-cover rounded-xl border border-slate-100 shadow-sm"
+                      alt="evidencia" 
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer PDF */}
+            <div className="mt-20 pt-10 border-t border-slate-100 flex justify-around">
+              
+              <div className="text-center text-slate-300 text-[10px] self-end italic">
+                Documento generado digitalmente por UserTrue
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
