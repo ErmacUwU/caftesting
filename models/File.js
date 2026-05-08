@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import UserTrue from "./UserTrue";
 
 const fileSchema = new mongoose.Schema(
   {
@@ -7,8 +8,8 @@ const fileSchema = new mongoose.Schema(
     size: { type: Number, required: true },
     key: { type: String, required: true },
     url: { type: String, required: true },
-    therapist: { type: String, required: true },
-    patient: { type: String, required: true },
+    patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserTrue' },
+    therapistId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserTrue' },
     notes: { type: String },
     images: [{ type: String }],
   },

@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 
 async function connectToDatabase() {
   if (mongoose.connection.readyState !== 1) {
-    const uri = process.env.MONGO_URI;
+    const uri = process.env.MONGO_URI || process.env.MONGODB_URI;
     if (!uri) throw new Error("Falta MONGO_URI en variables de entorno");
     await mongoose.connect(uri);
   }
@@ -30,34 +30,43 @@ export async function POST(req) {
     await connectToDatabase();
 
     const body = await req.json();
+    
+    // Extraemos datos
     const name = toStr(body.name);
     const type = toStr(body.type);
     const url  = toStr(body.url);
-    const therapist = toStr(body.therapist);
-    const patient   = toStr(body.patient);
     const size = Number(body.size || 0);
     const notes = toStr(body.notes);
     const images = Array.isArray(body.images) ? body.images.filter(s => typeof s === "string") : [];
 
-    if (!name || !type || !url || !therapist || !patient || !size) {
+    // --- IMPORTANTE: Capturamos IDs y Nombres ---
+    const patientId = body.patientId || null;
+    const therapistId = body.therapistId || null;
+    const patientName = toStr(body.patientName || body.patient);
+    const therapistName = toStr(body.therapistName || body.therapist);
+
+    if (!name || !url || !patientName || !therapistName) {
       return NextResponse.json(
-        { error: "Faltan campos obligatorios: name, type, size, url, therapist, patient" },
+        { error: "Faltan campos obligatorios: name, url, patientName, therapistName" },
         { status: 400 }
       );
     }
 
     const key = extractS3Key(url) || name;
 
+    // Creamos el registro incluyendo los IDs para que el populate funcione después
     const file = await File.create({
       name,
       type,
       size,
       url,
       key,
-      therapist,
-      patient, 
+      patientId,    // ID de UserTrue
+      therapistId,  // ID de UserTrue
+      patientName,  // Texto de respaldo
+      therapistName, // Texto de respaldo
       notes,
-      images,  
+      images,
     });
 
     return NextResponse.json(

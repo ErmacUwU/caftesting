@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import File from "@/models/File";
-import Patient from "@/models/Patient";
-import Therapist from "@/models/Therapist";
+import UserTrue from "@/models/UserTrue"; // Importamos el modelo unificado
+import PatientU from "@/models/PatientU"; // Importante para que populate funcione
+import TherapistU from "@/models/TherapistU"; // Importante para que populate funcione
 import mongoose from "mongoose";
 
 export const runtime = "nodejs";
@@ -10,7 +11,6 @@ export const runtime = "nodejs";
 function extractS3Key(url = "") {
   try {
     const u = new URL(url);
-    // quita el / inicial
     return u.pathname.replace(/^\/+/, "");
   } catch {
     return "";
@@ -31,12 +31,13 @@ export async function POST(req) {
       url,
       notes = "",
       images = [],
-      patient: patientId,
-      therapist: therapistId,
+      patient: patientUserId,   // Recibimos el ID del UserTrue
+      therapist: therapistUserId, // Recibimos el ID del UserTrue
       key: keyFromBody,
     } = body || {};
 
-    if (!name || !type || !size || !url || !patientId || !therapistId) {
+    // 1. Validación estricta de campos
+    if (!name || !type || !size || !url || !patientUserId || !therapistUserId) {
       return NextResponse.json(
         { error: "Faltan campos requeridos: name, type, size, url, patient, therapist" },
         { status: 400 }
@@ -48,19 +49,38 @@ export async function POST(req) {
     let patientName = "";
     let therapistName = "";
 
+    // 2. Buscamos nombres a través del modelo UserTrue + Populate
     const lookups = [];
-    if (isObjectId(patientId)) {
-      lookups.push(Patient.findById(patientId).lean().then((p) => {
-        if (p) patientName = `${p.firstName || ""} ${p.lastName || ""}`.trim();
-      }));
+
+    if (isObjectId(patientUserId)) {
+      lookups.push(
+        UserTrue.findById(patientUserId)
+          .populate("patientProfile")
+          .lean()
+          .then((u) => {
+            if (u?.patientProfile) {
+              patientName = `${u.patientProfile.firstName || ""} ${u.patientProfile.lastName || ""}`.trim();
+            }
+          })
+      );
     }
-    if (isObjectId(therapistId)) {
-      lookups.push(Therapist.findById(therapistId).lean().then((t) => {
-        if (t) therapistName = `${t.firstName || ""} ${t.lastName || ""}`.trim();
-      }));
+
+    if (isObjectId(therapistUserId)) {
+      lookups.push(
+        UserTrue.findById(therapistUserId)
+          .populate("therapistProfile")
+          .lean()
+          .then((u) => {
+            if (u?.therapistProfile) {
+              therapistName = `${u.therapistProfile.firstName || ""} ${u.therapistProfile.lastName || ""}`.trim();
+            }
+          })
+      );
     }
+
     await Promise.all(lookups);
 
+    // 3. Crear el documento en la base de datos
     const doc = await File.create({
       name,
       type,
@@ -69,23 +89,27 @@ export async function POST(req) {
       key,
       notes,
       images: Array.isArray(images) ? images : [],
-      patientId: isObjectId(patientId) ? new mongoose.Types.ObjectId(patientId) : undefined,
-      therapistId: isObjectId(therapistId) ? new mongoose.Types.ObjectId(therapistId) : undefined,
-      patientName,
-      therapistName,
+      // Guardamos los IDs originales del UserTrue para referencia futura
+      patientId: isObjectId(patientUserId) ? new mongoose.Types.ObjectId(patientUserId) : undefined,
+      therapistId: isObjectId(therapistUserId) ? new mongoose.Types.ObjectId(therapistUserId) : undefined,
+      
+      // Guardamos los nombres extraídos de los perfiles anidados
+      patientName: patientName || "Paciente no identificado",
+      therapistName: therapistName || "Terapeuta no identificado",
 
-      patient: patientName || patientId, 
-      therapist: therapistName || therapistId,
+      // Campos de compatibilidad (por si tu frontend los espera así)
+      patient: patientName || patientUserId, 
+      therapist: therapistName || therapistUserId,
     });
 
     return NextResponse.json({ file: doc }, { status: 201 });
-  } catch (err) {
 
+  } catch (err) {
     if (err?.name === "ValidationError") {
       console.error("[POST /api/reports] ValidationError:", err?.errors || err);
-      return NextResponse.json({ error: "Validación falló en File", detail: err.message }, { status: 400 });
+      return NextResponse.json({ error: "La validación del archivo falló", detail: err.message }, { status: 400 });
     }
     console.error("[POST /api/reports] error:", err);
-    return NextResponse.json({ error: "Error al guardar el reporte" }, { status: 500 });
+    return NextResponse.json({ error: "Error interno al guardar el reporte" }, { status: 500 });
   }
 }

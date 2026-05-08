@@ -113,8 +113,9 @@ useEffect(() => {
   };
 
   const handleGenerateAndUpload = async () => {
+    // 1. Verificación previa
     if (!selectedTherapist || !selectedPatient) {
-      alert("Por favor selecciona terapeuta y paciente.");
+      alert("Por favor selecciona terapeuta y paciente antes de continuar.");
       return;
     }
 
@@ -122,34 +123,53 @@ useEffect(() => {
     setStatusMsg({ type: "info", text: "Generando PDF y subiendo a la nube..." });
 
     try {
-      const filename = `Reporte_${patientObj.patientProfile?.lastName || "SinNombre"}_${Date.now()}.pdf`;
+      // Definimos el nombre del archivo
+      const filename = `Reporte_${patientObj?.patientProfile?.lastName || "Paciente"}_${Date.now()}.pdf`;
+      
+      // Generamos el binario del PDF
       const pdfBlob = await generatePDFBlob();
 
-      // 1. Obtener URL firmada de S3
+      // 2. Obtener URL firmada de S3
       const presign = await axios.post("/api/s3/upload", {
         name: filename,
         type: "application/pdf",
       });
 
-      // 2. Subir binario a S3
-      await axios.put(presign.data.url, pdfBlob, {
+      const uploadUrl = presign.data.url;
+
+      // 3. Subir el archivo real a S3
+      await axios.put(uploadUrl, pdfBlob, {
         headers: { "Content-Type": "application/pdf" },
       });
 
-      // 3. Registrar reporte en la Base de Datos
-      await axios.post("/api/reports", {
+      // 4. REGISTRO EN BASE DE DATOS (Aquí estaba el error)
+      // Enviamos exactamente los campos que tu API requiere
+      const payload = {
         name: filename,
-        url: presign.data.url.split("?")[0],
-        therapist: selectedTherapist,
-        patient: selectedPatient,
-        notes,
-        images: images.map((i) => i.url),
-      });
+        type: "application/pdf",          // Campo requerido
+        size: pdfBlob.size,               // Campo requerido (en bytes)
+        url: uploadUrl.split("?")[0],     // URL limpia sin tokens de S3
+        patient: selectedPatient,         // ID del UserTrue (paciente)
+        therapist: selectedTherapist,     // ID del UserTrue (terapeuta)
+        notes: notes,                     // Notas opcionales
+        images: images.map((i) => i.url), // URLs de previsualización
+      };
 
-      resetInputs();
+      console.log("Enviando reporte a la BD:", payload);
+
+      const response = await axios.post("/api/reports", payload);
+
+      if (response.status === 201) {
+        resetInputs();
+        setStatusMsg({ type: "success", text: "¡Reporte guardado correctamente!" });
+      }
+
     } catch (error) {
-      console.error(error);
-      setStatusMsg({ type: "error", text: "Error al guardar el reporte." });
+      console.error("Error detallado:", error.response?.data || error);
+      setStatusMsg({ 
+        type: "error", 
+        text: error.response?.data?.error || "Error al procesar el reporte." 
+      });
     } finally {
       setGenerating(false);
     }

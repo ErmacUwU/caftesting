@@ -1,47 +1,40 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/dbConnect";
 import File from "@/models/File";
+import UserTrue from "@/models/UserTrue";
+import PatientU from "@/models/PatientU";
+import TherapistU from "@/models/TherapistU";
 import mongoose from "mongoose";
 import { S3Client, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export const runtime = "nodejs";
 
-// ====== utilidades existentes ======
+// ====== UTILIDADES DE BÚSQUEDA ======
 function escRe(s = "") {
   return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
 const isObjectId = (v = "") =>
   typeof v === "string" && /^[0-9a-fA-F]{24}$/.test(v);
+
 function normName(s = "") {
   return String(s).replace(/\s+/g, " ").trim();
 }
+
 function nameToLooseRegex(name = "") {
   const n = normName(name);
   const pattern = `^\\s*${escRe(n).replace(/\s+/g, "\\s+")}\\s*$`;
   return new RegExp(pattern, "i");
 }
 
-// ====== cliente S3 ======
+// ====== CONFIGURACIÓN CLIENTE S3 ======
 function getS3Client() {
-  const region =
-    process.env.AWS_REGION ||
-    process.env.AWS_BUCKET_REGION ||
-    process.env.S3_REGION;
-  const accessKeyId =
-    process.env.AWS_ACCESS_KEY_ID ||
-    process.env.AWS_ACCESS_KEY ||
-    process.env.S3_ACCESS_KEY_ID ||
-    process.env.S3_ACCESS_KEY;
-  const secretAccessKey =
-    process.env.AWS_SECRET_ACCESS_KEY ||
-    process.env.AWS_SECRET_KEY ||
-    process.env.S3_SECRET_ACCESS_KEY ||
-    process.env.S3_SECRET_KEY;
+  const region = process.env.AWS_REGION || process.env.AWS_BUCKET_REGION || process.env.S3_REGION;
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY || process.env.S3_ACCESS_KEY_ID || process.env.S3_ACCESS_KEY;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY || process.env.AWS_SECRET_KEY || process.env.S3_SECRET_ACCESS_KEY || process.env.S3_SECRET_KEY;
 
   if (!region || !accessKeyId || !secretAccessKey) {
-    throw new Error(
-      "Faltan credenciales/region de AWS: configure AWS_REGION/AWS_BUCKET_REGION, AWS_ACCESS_KEY_ID/AWS_ACCESS_KEY y AWS_SECRET_ACCESS_KEY/AWS_SECRET_KEY"
-    );
+    throw new Error("Faltan credenciales de AWS en las variables de entorno");
   }
 
   return new S3Client({
@@ -51,13 +44,13 @@ function getS3Client() {
 }
 
 function getBucketName() {
-  const bucket =
-    process.env.AWS_BUCKET_NAME || process.env.S3_BUCKET_NAME;
-  if (!bucket) throw new Error("Falta AWS_BUCKET_NAME/S3_BUCKET_NAME");
+  const bucket = process.env.AWS_BUCKET_NAME || process.env.S3_BUCKET_NAME;
+  if (!bucket) throw new Error("Falta la variable AWS_BUCKET_NAME");
   return bucket;
 }
 
-// ====== LISTAR (NO CAMBIADO) ======
+// ====== MÉTODO POST: LISTAR Y FILTRAR ======
+// ====== MÉTODO POST: LISTAR Y FILTRAR ======
 export async function POST(req) {
   try {
     await dbConnect();
@@ -65,106 +58,146 @@ export async function POST(req) {
     const body = await req.json();
     const { patients = [], therapists = [] } = body ?? {};
 
-    const patientIds = patients.filter(isObjectId).map((id) => new mongoose.Types.ObjectId(id));
-    const therapistIds = therapists.filter(isObjectId).map((id) => new mongoose.Types.ObjectId(id));
+    // 1. OBTENER INFORMACIÓN DE PERFILES PARA BÚSQUEDA POR TEXTO (SOPORTE DATOS VIEJOS)
+    // Buscamos los nombres reales de los IDs seleccionados para buscar también por strings
+    const selectedPatientsDocs = await UserTrue.find({ 
+      _id: { $in: patients.filter(isObjectId) } 
+    }).populate("patientProfile").lean();
+    
+    const selectedTherapistsDocs = await UserTrue.find({ 
+      _id: { $in: therapists.filter(isObjectId) } 
+    }).populate("therapistProfile").lean();
 
-    const patientNameRegexes = patients
-      .filter((v) => !isObjectId(v))
-      .map((n) => nameToLooseRegex(n));
+    // Extraemos nombres para crear Regex (búsqueda flexible por texto)
+    const pNames = selectedPatientsDocs.map(u => u.patientProfile?.firstName).filter(Boolean);
+    const tNames = selectedTherapistsDocs.map(u => u.therapistProfile?.firstName).filter(Boolean);
 
-    const therapistNameRegexes = therapists
-      .filter((v) => !isObjectId(v))
-      .map((n) => nameToLooseRegex(n));
+    // 2. CONSTRUCCIÓN DE LA QUERY
+    let query = {};
+    let orConditions = [];
 
-    const and = [];
-
-    if (patientIds.length || patientNameRegexes.length) {
-      and.push({
+    // Filtro de Pacientes: Busca por ID OR por Nombre (en caso de que el ID no esté vinculado)
+    if (patients.length > 0) {
+      const pIds = patients.filter(isObjectId).map(id => new mongoose.Types.ObjectId(id));
+      orConditions.push({
         $or: [
-          ...(patientIds.length ? [{ patientId: { $in: patientIds } }] : []),
-          ...(patientNameRegexes.length
-            ? [
-                { patientName: { $in: patientNameRegexes } },
-                { patient: { $in: patientNameRegexes } },
-              ]
-            : []),
-        ],
+          { patientId: { $in: pIds } },
+          { patientName: { $in: pNames.map(n => new RegExp(n, "i")) } },
+          { patient: { $in: pNames.map(n => new RegExp(n, "i")) } }
+        ]
       });
     }
 
-    if (therapistIds.length || therapistNameRegexes.length) {
-      and.push({
+    // Filtro de Terapeutas
+    if (therapists.length > 0) {
+      const tIds = therapists.filter(isObjectId).map(id => new mongoose.Types.ObjectId(id));
+      orConditions.push({
         $or: [
-          ...(therapistIds.length ? [{ therapistId: { $in: therapistIds } }] : []),
-          ...(therapistNameRegexes.length
-            ? [
-                { therapistName: { $in: therapistNameRegexes } },
-                { therapist: { $in: therapistNameRegexes } },
-              ]
-            : []),
-        ],
+          { therapistId: { $in: tIds } },
+          { therapistName: { $in: tNames.map(n => new RegExp(n, "i")) } },
+          { therapist: { $in: tNames.map(n => new RegExp(n, "i")) } }
+        ]
       });
     }
 
-    const query = and.length ? { $and: and } : {};
-    const docs = await File.find(query).sort({ createdAt: -1 }).lean();
+    // LÓGICA DE BÚSQUEDA: 
+    // Si no hay filtros seleccionados -> query vacía {} (Trae todo)
+    // Si hay filtros -> usamos $or para que sea una suma de resultados
+    if (orConditions.length > 0) {
+      query = { $or: orConditions };
+    }
 
-    const out = docs.map((d) => ({
-      _id: d._id,
-      name: d.name,
-      type: d.type,
-      size: d.size,
-      url: d.url,
-      key: d.key,
-      notes: d.notes ?? "",
-      images: d.images ?? [],
-      patient: d.patientName || d.patient || "",
-      therapist: d.therapistName || d.therapist || "",
-      patientId: d.patientId || null,
-      therapistId: d.therapistId || null,
-      createdAt: d.createdAt,
-    }));
+    // 3. EJECUTAR CONSULTA CON POPULATE BLINDADO
+    const docs = await File.find(query)
+      .sort({ createdAt: -1 })
+      .populate({
+        path: "patientId",
+        model: UserTrue,
+        options: { strictPopulate: false },
+        populate: { 
+          path: "patientProfile", 
+          model: PatientU, 
+          options: { strictPopulate: false } 
+        }
+      })
+      .populate({
+        path: "therapistId",
+        model: UserTrue,
+        options: { strictPopulate: false },
+        populate: { 
+          path: "therapistProfile", 
+          model: TherapistU, 
+          options: { strictPopulate: false } 
+        }
+      })
+      .lean();
+
+    // 4. MAPEO Y FORMATEO DE RESPUESTA
+    const out = docs.map((d) => {
+      // Resolución de nombre de Paciente (Perfil > Campo Texto > "No asignado")
+      let resolvedP = "No asignado";
+      if (d.patientId?.patientProfile) {
+        const prof = d.patientId.patientProfile;
+        resolvedP = `${prof.firstName || ""} ${prof.lastName || ""}`;
+      } else {
+        resolvedP = d.patientName || d.patient || "No asignado";
+      }
+
+      // Resolución de nombre de Terapeuta
+      let resolvedT = "No asignado";
+      if (d.therapistId?.therapistProfile) {
+        const prof = d.therapistId.therapistProfile;
+        resolvedT = `${prof.firstName || ""} ${prof.lastName || ""}`;
+      } else {
+        resolvedT = d.therapistName || d.therapist || "No asignado";
+      }
+
+      return {
+        _id: d._id,
+        name: d.name || "Sin título",
+        type: d.type || "Archivo",
+        size: d.size || 0,
+        url: d.url || "#",
+        key: d.key || "",
+        notes: d.notes || "",
+        images: d.images || [],
+        patientName: resolvedP.trim(),
+        therapistName: resolvedT.trim(),
+        createdAt: d.createdAt,
+      };
+    });
 
     return NextResponse.json({ documents: out }, { status: 200 });
+
   } catch (err) {
-    console.error("[/api/s3/documents][POST] error:", err);
+    console.error("[POST /api/s3/documents] Error crítico:", err);
     return NextResponse.json(
-      { error: "Error interno al consultar documentos" },
+      { error: "Error interno al consultar documentos", details: err.message },
       { status: 500 }
     );
   }
 }
 
-// ====== BORRAR (S3 + Mongo) ======
+// ====== MÉTODO DELETE: ELIMINAR S3 + MONGO ======
 export async function DELETE(req) {
   try {
     await dbConnect();
     const { id, key } = await req.json();
 
     if (!id && !key) {
-      return NextResponse.json(
-        { error: "Debes enviar al menos id o key" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Faltan id o key" }, { status: 400 });
     }
 
     let fileDoc = null;
-
-    // Si no viene key, intento obtenerlo desde Mongo por id
     if (!key && id) {
       fileDoc = await File.findById(id).lean();
       if (!fileDoc) {
-        // no existe en Mongo; no hay manera fiable de borrar en S3 sin key
-        return NextResponse.json(
-          { error: "No se encontró el registro en BD para ese id" },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: "Documento no encontrado" }, { status: 404 });
       }
     }
 
     const s3Key = key || fileDoc?.key || fileDoc?.name || null;
 
-    // Intento borrar en S3 si tengo key
     if (s3Key) {
       try {
         const s3 = getS3Client();
@@ -176,33 +209,24 @@ export async function DELETE(req) {
           })
         );
       } catch (s3err) {
-        // registro y sigo; si falla S3 pero se puede borrar la BD, devuelvo 207 Multi-Status
-        console.error("[DELETE /api/s3/documents] S3 delete error:", s3err);
+        console.error("Error borrando en S3:", s3err);
       }
     }
 
-    // Borro en Mongo si hay id
     let mongoResult = null;
     if (id) {
       mongoResult = await File.deleteOne({ _id: id });
     } else if (s3Key) {
-      // fallback: si no hay id, intento por key
       mongoResult = await File.deleteOne({ key: s3Key });
     }
 
-    return NextResponse.json(
-      {
-        ok: true,
-        deletedFromMongo: Boolean(mongoResult?.deletedCount),
-        deletedKey: s3Key || null,
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      ok: true,
+      deletedFromMongo: Boolean(mongoResult?.deletedCount),
+      deletedKey: s3Key || null,
+    });
   } catch (err) {
     console.error("[/api/s3/documents][DELETE] error:", err);
-    return NextResponse.json(
-      { error: "Error al eliminar el documento" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Error al eliminar" }, { status: 500 });
   }
 }
