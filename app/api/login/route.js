@@ -1,16 +1,8 @@
-// app/api/login/route.js
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/dbConnect";
-import User from "@/models/User";
-import Patient from "@/models/Patient";
-import Therapist from "@/models/Therapist";
+import UserTrue from "@/models/UserTrue"; // <-- Usamos el nuevo modelo
 
-/**
- * ADMIN ROOT (hardcodeado)
- * - Tiene acceso TOTAL
- * - No depende de DB
- */
 const ADMIN_CREDENTIALS = {
   email: "admin@caf.com",
   password: "Admin1234",
@@ -22,106 +14,58 @@ export async function POST(req) {
   await dbConnect();
 
   try {
-    /* =====================================================
-       1️⃣ ADMIN ROOT (bypass DB)
-    ===================================================== */
-    if (
-      email === ADMIN_CREDENTIALS.email &&
-      password === ADMIN_CREDENTIALS.password
-    ) {
+    /* 1️⃣ ADMIN ROOT (Bypass) */
+    if (email === ADMIN_CREDENTIALS.email && password === ADMIN_CREDENTIALS.password) {
       return NextResponse.json({
         msg: "Inicio de sesión exitoso",
         success: true,
         userId: "admin-root",
         userName: ADMIN_CREDENTIALS.name,
-        role: "admin", // 🔥 acceso total
+        role: "admin",
       });
     }
 
-    /* =====================================================
-       2️⃣ BUSCAR USUARIO EN DB
-    ===================================================== */
-    const user = await User.findOne({ email });
+    /* 2️⃣ BUSCAR EN USERTRUE 
+       Usamos .populate() para traer los datos del perfil de una vez */
+    const user = await UserTrue.findOne({ email })
+      .populate("patientProfile")
+      .populate("therapistProfile");
+
     if (!user) {
-      return NextResponse.json(
-        { msg: "Credenciales inválidas" },
-        { status: 401 }
-      );
+      return NextResponse.json({ msg: "Credenciales inválidas" }, { status: 401 });
     }
 
-    const passwordOk = await bcrypt.compare(password, user.passwordHash);
+    // Verificar password (asegúrate que el campo se llame passwordHash o password)
+    const passwordOk = await bcrypt.compare(password, user.passwordHash || user.password);
     if (!passwordOk) {
-      return NextResponse.json(
-        { msg: "Credenciales inválidas" },
-        { status: 401 }
-      );
+      return NextResponse.json({ msg: "Credenciales inválidas" }, { status: 401 });
     }
 
-    /* =====================================================
-       3️⃣ ADMIN / OPERADOR (UserSystem)
-       - NO usan refType
-    ===================================================== */
+    /* 3️⃣ DETERMINAR NOMBRE Y ID DE RETORNO */
+    let userName = user.email; // Default
+    let profileId = user._id.toString(); // Por defecto usamos el ID del sistema
+
     if (user.role === "admin" || user.role === "operador") {
-      return NextResponse.json({
-        msg: "Inicio de sesión exitoso",
-        success: true,
-        userId: user._id.toString(),
-        userName: user.email, // o user.name si lo agregas
-        role: user.role,      // admin | operador
-      });
+      // Para sistema, el nombre suele ser el email o un campo 'name'
+      userName = user.name || user.email;
+    } 
+    else if (user.role === "therapist" && user.therapistProfile) {
+      userName = `${user.therapistProfile.firstName} ${user.therapistProfile.lastName}`;
+      // Si en tu chat usas el ID del perfil para los mensajes, usa:
+      // profileId = user.therapistProfile._id.toString();
+    } 
+    else if (user.role === "patient" && user.patientProfile) {
+      userName = `${user.patientProfile.firstName} ${user.patientProfile.lastName}`;
+      // profileId = user.patientProfile._id.toString();
     }
 
-    /* =====================================================
-       4️⃣ THERAPIST / PATIENT (usan refType + refId)
-    ===================================================== */
-    let userName = "";
-    let displayId = user.refId?.toString();
-
-    if (!displayId) {
-      return NextResponse.json(
-        { msg: "Usuario mal configurado (refId faltante)" },
-        { status: 400 }
-      );
-    }
-
-    if (user.refType === "Therapist") {
-      const therapist = await Therapist.findById(user.refId);
-      if (!therapist) {
-        return NextResponse.json(
-          { msg: "Perfil de terapeuta no encontrado" },
-          { status: 404 }
-        );
-      }
-      userName = `${therapist.firstName} ${therapist.lastName}`;
-    }
-
-    else if (user.refType === "Patient") {
-      const patient = await Patient.findById(user.refId);
-      if (!patient) {
-        return NextResponse.json(
-          { msg: "Perfil de paciente no encontrado" },
-          { status: 404 }
-        );
-      }
-      userName = `${patient.firstName} ${patient.lastName}`;
-    }
-
-    else {
-      return NextResponse.json(
-        { msg: "Tipo de usuario desconocido" },
-        { status: 400 }
-      );
-    }
-
-    /* =====================================================
-       5️⃣ RESPUESTA FINAL
-    ===================================================== */
+    /* 4️⃣ RESPUESTA FINAL */
     return NextResponse.json({
       msg: "Inicio de sesión exitoso",
       success: true,
-      userId: displayId,
-      userName,
-      role: user.role, // therapist | patient
+      userId: profileId, // Este es el ID que usará el context y el Socket
+      userName: userName,
+      role: user.role,
     });
 
   } catch (error) {
