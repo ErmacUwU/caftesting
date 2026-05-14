@@ -1,1 +1,1 @@
-Se esta trabajando en Citas el nuevo modelo de pacientes y terapeutas en visible en el modal de registro pero al momento de verlo reflejado en el modal
+Trabajando en Docs con la funcion Upload
