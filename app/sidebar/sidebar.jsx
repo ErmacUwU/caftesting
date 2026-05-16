@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   HomeIcon,
   UserPlusIcon,
-  UsersIcon,
   CalendarDaysIcon,
   ClipboardDocumentListIcon,
   ChatBubbleLeftRightIcon,
@@ -109,24 +108,32 @@ const Sidebar = () => {
             </li>
           ) : (
             <>
-              {Object.keys(menuSections).map((section) => (
-                <div key={section} className="mt-2 md:mt-0 md:mx-1">
-                  <button
-                    onClick={() => toggleSection(section)}
-                    className="px-4 py-3 hover:bg-gray-700 rounded flex items-center w-full"
-                  >
-                    <h3 className="text-xs text-white uppercase tracking-wide">
-                      {section.replace(/([A-Z])/g, " $1")}
-                    </h3>
-                  </button>
+              {Object.keys(menuSections)
+                // 🔐 CAMBIO 1: Filtramos las secciones principales del menú por Rol
+                .filter((section) => {
+                  if (section === "administracion" && userRole !== "admin") {
+                    return false; // Si no es admin, no renderiza el botón de Administración
+                  }
+                  return true;
+                })
+                .map((section) => (
+                  <div key={section} className="mt-2 md:mt-0 md:mx-1">
+                    <button
+                      onClick={() => toggleSection(section)}
+                      className="px-4 py-3 hover:bg-gray-700 rounded flex items-center w-full"
+                    >
+                      <h3 className="text-xs text-white uppercase tracking-wide">
+                        {section.replace(/([A-Z])/g, " $1")}
+                      </h3>
+                    </button>
 
-                  {openSections[section] && (
-                    <ul className="md:absolute md:bg-[#1a1a2e] md:rounded-md md:shadow-lg">
-                      {getSectionLinks(section, closeMenu, openSections[section], userRole, logout)}
-                    </ul>
-                  )}
-                </div>
-              ))}
+                    {openSections[section] && (
+                      <ul className="md:absolute md:bg-[#1a1a2e] md:rounded-md md:shadow-lg">
+                        {getSectionLinks(section, closeMenu, userRole, logout)}
+                      </ul>
+                    )}
+                  </div>
+                ))}
             </>
           )}
         </ul>
@@ -135,7 +142,8 @@ const Sidebar = () => {
   );
 };
 
-const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
+const getSectionLinks = (section, closeMenu, userRole, logout) => {
+  // 🔐 CAMBIO 2: Añadimos de forma explícita qué roles permitimos por enlace (opcional para control fino)
   const sectionConfig = {
     gestion: [
       { href: "/citas", text: "Citas", icon: CalendarDaysIcon },
@@ -153,15 +161,15 @@ const getSectionLinks = (section, closeMenu, isOpen, userRole, logout) => {
       { href: "/docs", text: "Documentos", icon: DocumentIcon },
     ],
     administracion: [
-      { href: "/registroU", text: "Usuarios", icon: UserGroupIcon },
-      { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon },
+      { href: "/registroU", text: "Usuarios", icon: UserGroupIcon, allowedRoles: ["admin"] },
+      { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon, allowedRoles: ["admin"] },
       { href: "/login", text: "Cerrar Sesión", icon: UserPlusIcon, logout: true },
     ],
   };
 
-  // 🔐 FILTRO POR ROL
+  // 🔐 CAMBIO 3: Filtramos de manera dinámica evaluando los 'allowedRoles' de cada enlace
   const filteredLinks = sectionConfig[section].filter((link) => {
-    if (link.href === "/usuarios" && userRole === "operador") {
+    if (link.allowedRoles && !link.allowedRoles.includes(userRole)) {
       return false;
     }
     return true;
