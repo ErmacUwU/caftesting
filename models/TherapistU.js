@@ -4,7 +4,8 @@ const TherapistSchema = new mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
+      ref: "UserTrue",
+      required: true,
       unique: true,
     },
 

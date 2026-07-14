@@ -7,13 +7,18 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed:services": "node scripts/seedServices.js",
+    "seed:therapists": "node scripts/seedTherapists.js",
+    "seed:patients": "node scripts/seedPatients.js",
+    "seed:appointments": "node scripts/seedAppointments.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.703.0",
     "@aws-sdk/s3-request-presigner": "^3.686.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
+    "@faker-js/faker": "^9.9.0",
     "@fullcalendar/core": "6.1.15",
     "@fullcalendar/daygrid": "^6.1.14",
     "@fullcalendar/interaction": "^6.1.15",
