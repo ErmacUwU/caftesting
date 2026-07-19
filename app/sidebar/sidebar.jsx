@@ -16,6 +16,7 @@ import {
   Cog6ToothIcon,
   DocumentIcon,
   Bars2Icon,
+  ArrowRightOnRectangleIcon
 } from "@heroicons/react/24/outline";
 import { User } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
