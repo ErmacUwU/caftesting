@@ -134,6 +134,20 @@ const Sidebar = () => {
                     )}
                   </div>
                 ))}
+
+                <li className="mt-2 lg:mt-0 lg:ml-4">
+                <button
+                  onClick={() => {
+                    logout();
+                    closeMenu();
+                  }}
+                  className="px-4 py-3 text-red-400 hover:bg-gray-700 rounded flex items-center w-full lg:w-auto text-xs font-medium transition-colors"
+                >
+                  <ArrowRightOnRectangleIcon className="h-5 w-5 mr-2 text-red-400" />
+                  Cerrar Sesión
+                </button>
+              </li>
+
             </>
           )}
         </ul>
@@ -163,7 +177,6 @@ const getSectionLinks = (section, closeMenu, userRole, logout) => {
     administracion: [
       { href: "/registroU", text: "Usuarios", icon: UserGroupIcon, allowedRoles: ["admin"] },
       { href: "/ajustes", text: "Ajustes", icon: Cog6ToothIcon, allowedRoles: ["admin"] },
-      { href: "/login", text: "Cerrar Sesión", icon: UserPlusIcon, logout: true },
     ],
   };
 
@@ -193,3 +206,4 @@ const getSectionLinks = (section, closeMenu, userRole, logout) => {
 };
 
 export default Sidebar;
+
