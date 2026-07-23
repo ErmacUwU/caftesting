@@ -761,7 +761,7 @@ const therapistsData = (therapists || []).map(t => ({
               }}
               locale="es"
               height="auto"
-              slotMinHeight={50}
+              //slotMinHeight={50}
               buttonText={{
                 today: "Hoy",
                 week: "Semana",
