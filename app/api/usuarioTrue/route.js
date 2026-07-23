@@ -124,17 +124,33 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const role = searchParams.get("role");
 
-    // Si el filtro es "all" o no existe, traemos todos. 
-    // Si no, filtramos por el rol específico.
+    // 1. Filtro base por rol
     const query = (role && role !== "all") ? { role } : {};
 
-    const usuarios = await UserTrue.find(query)
-      .populate("patientProfile") 
-      .populate("therapistProfile")
-      .lean();
+    // 2. Construir la consulta omitiendo el hash de contraseña
+    let userQuery = UserTrue.find(query).select("-passwordHash");
 
-    return NextResponse.json(usuarios, { status: 200 });
+    // 3. Hacer populate SOLO del perfil necesario según el rol solicitado
+    if (role === "patient") {
+      userQuery = userQuery.populate("patientProfile");
+    } else if (role === "therapist") {
+      userQuery = userQuery.populate("therapistProfile");
+    } else {
+      // Si piden "all" o no hay rol, traemos ambos
+      userQuery = userQuery
+        .populate("patientProfile")
+        .populate("therapistProfile");
+    }
+
+    // 4. .lean() para devolver JSON liviano y rápido
+    const usuarios = await userQuery.lean();
+
+    return NextResponse.json(usuarios, {
+      status: 200,
+      headers: { "Cache-Control": "no-store" },
+    });
   } catch (error) {
+    console.error("[/api/usuarioTrue] Error GET:", error);
     return NextResponse.json({ error: "Error de servidor" }, { status: 500 });
   }
 }
