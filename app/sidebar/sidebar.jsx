@@ -30,7 +30,7 @@ const navLinks = [
 
 const Sidebar = () => {
   const pathname = usePathname();
-  const { isAuthenticated, logout, userRole } = useAuth();
+  const { isAuthenticated, logout, userRole, loading } = useAuth(); // 👈 Añadimos loading si tu context lo expone
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -56,12 +56,18 @@ const Sidebar = () => {
 
   if (pathname === "/login") return null;
 
-  // Filtrar enlaces según el rol del usuario
+  // 🛡️ FILTRADO SEGURO: Evita parpadeos y bucles durante el re-render
   const visibleLinks = navLinks.filter((link) => {
-    if (link.allowedRoles && !link.allowedRoles.includes(userRole)) {
-      return false;
-    }
-    return true;
+    if (!link.allowedRoles) return true;
+
+    // Convertimos a minúsculas para prevenir discrepancias de formato ("Admin" vs "admin")
+    const currentRole = userRole ? String(userRole).toLowerCase() : null;
+    const allowed = link.allowedRoles.map((r) => r.toLowerCase());
+
+    // Si aún está cargando la sesión pero ya está autenticado, mantenemos la pestaña visible para evitar bucles
+    if (loading && isAuthenticated) return true;
+
+    return currentRole ? allowed.includes(currentRole) : false;
   });
 
   return (
