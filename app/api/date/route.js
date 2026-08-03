@@ -140,8 +140,10 @@ import dbConnect from "@/lib/dbConnect";
 import DateModel from "@/models/Date";
 
 import "@/models/Therapist";
-import "@/models/Patient";
+import "@/models/PatientU";
 import "@/models/Service";
+import "@/models/UserTrue";
+import "@/models/TherapistU";
 
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
