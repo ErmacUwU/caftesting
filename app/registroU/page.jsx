@@ -17,6 +17,7 @@ export default function RegistroUsuario() {
   // --- NUEVOS ESTADOS ---
   const [users, setUsers] = useState([]); // Lista total
   const [filterRole, setFilterRole] = useState("all"); // Filtro de vista
+  const [searchTerm, setSearchTerm] = useState(""); // Búsqueda de usuarios
   const [isEditing, setIsEditing] = useState(null); // ID del usuario editando
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({contacts: []});
@@ -36,7 +37,7 @@ const fetchUsers = async () => {
     
     // Si tu API devuelve directamente el array (como en el GET que mostraste),
     // o si lo devuelve dentro de un objeto { users: [...] }
-    const listaUsuarios = Array.isArray(data) ? data : (data.users || []);
+    const listaUsuarios = (Array.isArray(data) ? data : (data.users || []));
     setUsers(listaUsuarios);
   } catch (err) {
     console.error(err);
@@ -381,8 +382,35 @@ const eliminarUsuario = async (user) => {
 };
 
 
-  // Filtrado de la lista
-  const filteredUsers = users.filter(u => filterRole === "all" || u.role === filterRole);
+  // Filtrado por rol + búsqueda + orden alfabético
+  const filteredUsers = users
+    .filter((user) => {
+      const matchesRole =
+        filterRole === "all" || user.role === filterRole;
+
+      const search = searchTerm.toLowerCase().trim();
+
+      const name = getDisplayName(user).toLowerCase();
+      const email = (user.email || "").toLowerCase();
+      const specialization = (
+        user.therapistProfile?.specialization || ""
+      ).toLowerCase();
+
+      const matchesSearch =
+        !search ||
+        name.includes(search) ||
+        email.includes(search) ||
+        specialization.includes(search);
+
+      return matchesRole && matchesSearch;
+    })
+    .sort((a, b) =>
+      getDisplayName(a).localeCompare(
+        getDisplayName(b),
+        "es",
+        { sensitivity: "base" }
+      )
+    );
 
   // --- NAVEGACIÓN DE PASOS ---
   const handleNextStep = () => setStep(step + 1);
@@ -412,31 +440,65 @@ const eliminarUsuario = async (user) => {
 
       {/* FILTROS Y TABLA */}
       <div className="w-full max-w-6xl bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="p-4 border-b bg-gray-50 flex gap-2">
-    {["all", "patient", "therapist", "admin", "operador"].map((r) => {
-      // Objeto de traducción
-      const labels = {
-        all: "Todos",
-        patient: "Pacientes",
-        therapist: "Terapeutas",
-        admin: "Administradores",
-        operador: "Operadores"
-      };
+        <div className="p-4 border-b bg-gray-50">
 
-      return (
-        <button
-          key={r}
-          onClick={() => setFilterRole(r)} // Sigue usando el valor original (inglés/técnico)
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-            filterRole === r ? "bg-indigo-600 text-white" : "bg-white text-gray-600 hover:bg-gray-100"
-          }`}
-        >
-          {/* Muestra la traducción o el valor original capitalizado como respaldo */}
-          {labels[r] || r.charAt(0).toUpperCase() + r.slice(1)}
-        </button>
-      );
-    })}
-  </div>
+          {/* Barra de búsqueda */}
+          <div className="mb-4">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Buscar por nombre, email o especialidad..."
+                className="w-full p-3 pl-11 rounded-xl border border-gray-300 bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none text-gray-700"
+              />
+
+              {/* Icono de búsqueda */}
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">
+                🔍
+              </span>
+
+              {/* Botón para limpiar */}
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 text-lg"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Botones de roles */}
+          <div className="flex gap-2 flex-wrap">
+            {["all", "patient", "therapist", "admin", "operador"].map((r) => {
+              const labels = {
+                all: "Todos",
+                patient: "Pacientes",
+                therapist: "Terapeutas",
+                admin: "Administradores",
+                operador: "Operadores"
+              };
+
+              return (
+                <button
+                  key={r}
+                  onClick={() => setFilterRole(r)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    filterRole === r
+                      ? "bg-indigo-600 text-white"
+                      : "bg-white text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  {labels[r] || r.charAt(0).toUpperCase() + r.slice(1)}
+                </button>
+              );
+            })}
+          </div>
+
+        </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">

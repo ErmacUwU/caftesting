@@ -15,7 +15,9 @@ const ConsultaDocumentos = () => {
   const [loadingDocuments, setLoadingDocuments] = useState(false); 
   const [selectedPatients, setSelectedPatients] = useState([]); 
   const [selectedTherapists, setSelectedTherapists] = useState([]); 
-  const [errorMessage, setErrorMessage] = useState(""); 
+  const [errorMessage, setErrorMessage] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
+  const [therapistSearch, setTherapistSearch] = useState(""); 
 
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
@@ -67,7 +69,34 @@ const ConsultaDocumentos = () => {
     }
   };
 
-  // --- 3. EFECTO DE ARRANQUE ---
+  // --- 3. LISTAS ORDENADAS Y FILTRADAS ---
+  const filteredPatients = patients
+    .filter((p) => {
+      const name = `${p.patientProfile?.firstName || ""} ${p.patientProfile?.lastName || ""}`.trim();
+      return name.toLocaleLowerCase("es").includes(patientSearch.trim().toLocaleLowerCase("es"));
+    })
+    .sort((a, b) => {
+      const nameA = `${a.patientProfile?.firstName || ""} ${a.patientProfile?.lastName || ""}`.trim();
+      const nameB = `${b.patientProfile?.firstName || ""} ${b.patientProfile?.lastName || ""}`.trim();
+      return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
+    });
+
+  const filteredTherapists = therapists
+    .filter((t) => {
+      const name = `${t.therapistProfile?.firstName || ""} ${t.therapistProfile?.lastName || ""}`.trim();
+      return name.toLocaleLowerCase("es").includes(therapistSearch.trim().toLocaleLowerCase("es"));
+    })
+    .sort((a, b) => {
+      const nameA = `${a.therapistProfile?.firstName || ""} ${a.therapistProfile?.lastName || ""}`.trim();
+      const nameB = `${b.therapistProfile?.firstName || ""} ${b.therapistProfile?.lastName || ""}`.trim();
+      return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
+    });
+
+  const sortedDocuments = [...documents].sort((a, b) =>
+    (a.name || "").localeCompare((b.name || ""), "es", { sensitivity: "base" })
+  );
+
+  // --- 4. EFECTO DE ARRANQUE ---
   useEffect(() => {
     if (!isLoading) {
       if (!isAuthenticated) {
@@ -114,9 +143,28 @@ const ConsultaDocumentos = () => {
             {/* Filtro Pacientes */}
             <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200">
               <h2 className="text-[11px] font-black text-blue-600 uppercase mb-5 tracking-[0.2em]">Pacientes</h2>
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  value={patientSearch}
+                  onChange={(e) => setPatientSearch(e.target.value)}
+                  placeholder="Buscar paciente..."
+                  className="w-full p-3 pl-9 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                {patientSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setPatientSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <div className="space-y-1 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                 {loadingFilters ? <div className="text-xs italic text-slate-400">Cargando...</div> : 
-                  patients.map(p => (
+                  filteredPatients.map(p => (
                     <label key={p._id} className={`flex items-center p-3 rounded-2xl cursor-pointer transition-all ${selectedPatients.includes(p._id) ? 'bg-blue-50 border-blue-100' : 'hover:bg-slate-50'}`}>
                       <input 
                         type="checkbox" 
@@ -139,9 +187,28 @@ const ConsultaDocumentos = () => {
             {/* Filtro Terapeutas */}
             <div className="bg-white p-6 rounded-[32px] shadow-sm border border-slate-200">
               <h2 className="text-[11px] font-black text-blue-600 uppercase mb-5 tracking-[0.2em]">Especialistas</h2>
+              <div className="relative mb-4">
+                <input
+                  type="text"
+                  value={therapistSearch}
+                  onChange={(e) => setTherapistSearch(e.target.value)}
+                  placeholder="Buscar especialista..."
+                  className="w-full p-3 pl-9 pr-8 rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                {therapistSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setTherapistSearch("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
               <div className="space-y-1 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
                 {loadingFilters ? <div className="text-xs italic text-slate-400">Cargando...</div> : 
-                  therapists.map(t => (
+                  filteredTherapists.map(t => (
                     <label key={t._id} className={`flex items-center p-3 rounded-2xl cursor-pointer transition-all ${selectedTherapists.includes(t._id) ? 'bg-blue-50 border-blue-100' : 'hover:bg-slate-50'}`}>
                       <input 
                         type="checkbox" 
@@ -180,7 +247,7 @@ const ConsultaDocumentos = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {documents.length > 0 ? (
-                documents.map((doc) => (
+                sortedDocuments.map((doc) => (
                   <div key={doc._id} className="bg-white p-8 rounded-[40px] shadow-sm border border-slate-100 hover:border-blue-300 hover:shadow-xl transition-all duration-300 group relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-12 -mt-12 transition-all group-hover:bg-blue-600 group-hover:scale-150 duration-500"></div>
                     

@@ -62,6 +62,11 @@ const Citas = () => {
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [appointments, setAppointments] = useState([]);
+
+  // NUEVO: terapeutas que se muestran en el calendario
+  // No afecta al terapeuta seleccionado para crear/editar una cita.
+  const [selectedCalendarTherapists, setSelectedCalendarTherapists] = useState([]);
+
   const [selectedPatient, setSelectedPatient] = useState("");
   const [selectedTherapist, setSelectedTherapist] = useState("");
   const [appointmentDate, setAppointmentDate] = useState("");
@@ -87,6 +92,12 @@ const Citas = () => {
 
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
+  // Obtiene el nombre usando firstName y lastName del perfil correspondiente.
+  const getFullName = (user) => {
+    const profile = user?.patientProfile || user?.therapistProfile || user || {};
+    return `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || user?.email || "Sin nombre";
+  };
+
 useEffect(() => {
   const fetchData = async () => {
     try {
@@ -101,18 +112,17 @@ useEffect(() => {
 
       const norm = (s) => (s || "").toString().trim();
 
-
-     const getFullName = (u) => {
-  const profile = u.patientProfile || u.therapistProfile || u;
-  return `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || u.email;
-};
-
 // Extraer las listas (considerando que el backend puede devolver {users: []} o [])
 const listaP = patientsRes.data.users || patientsRes.data;
 const listaT = therapistsRes.data.users || therapistsRes.data;
 
 setPatients([...listaP].sort((a, b) => getFullName(a).localeCompare(getFullName(b))));
 setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullName(b))));
+
+      // Al cargar la página, todos los terapeutas aparecen seleccionados.
+      setSelectedCalendarTherapists(
+        [...listaT].map((therapist) => therapist._id.toString())
+      );
 
   
       const servicesSorted = [...(serviceRes.data.services || [])].sort((a, b) =>
@@ -487,6 +497,37 @@ const therapistsData = (therapists || []).map(t => ({
     }))
     .sort((a,b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
 
+  // NUEVO: filtrar SOLO las citas que pertenecen a los terapeutas seleccionados.
+  // La colección original de appointments no se modifica.
+  const filteredAppointments = (appointments || []).filter((appointment) => {
+    const therapistId =
+      typeof appointment.therapist === "object" && appointment.therapist !== null
+        ? appointment.therapist._id
+        : appointment.therapist;
+
+    return selectedCalendarTherapists.includes(therapistId?.toString());
+  });
+
+  const toggleCalendarTherapist = (therapistId) => {
+    const id = therapistId.toString();
+
+    setSelectedCalendarTherapists((current) =>
+      current.includes(id)
+        ? current.filter((selectedId) => selectedId !== id)
+        : [...current, id]
+    );
+  };
+
+  const selectAllCalendarTherapists = () => {
+    setSelectedCalendarTherapists(
+      therapists.map((therapist) => therapist._id.toString())
+    );
+  };
+
+  const clearCalendarTherapists = () => {
+    setSelectedCalendarTherapists([]);
+  };
+
 
   return (
   <div className="min-h-screen bg-slate-50">
@@ -502,6 +543,61 @@ const therapistsData = (therapists || []).map(t => ({
           <p className="text-xs text-slate-500">
             Haz clic en un hueco del calendario para crear una nueva cita, o selecciona una existente para ver detalles.
           </p>
+        </div>
+
+        {/* NUEVO: filtro de terapeutas del calendario */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-slate-800">
+              Terapeutas en calendario
+            </h2>
+            <span className="text-[10px] font-semibold text-slate-500">
+              {selectedCalendarTherapists.length}/{therapists.length}
+            </span>
+          </div>
+
+          <div className="flex gap-2 mb-3">
+            <button
+              type="button"
+              onClick={selectAllCalendarTherapists}
+              className="flex-1 text-[11px] font-semibold bg-sky-50 text-sky-600 hover:bg-sky-100 py-2 rounded-lg"
+            >
+              Todos
+            </button>
+            <button
+              type="button"
+              onClick={clearCalendarTherapists}
+              className="flex-1 text-[11px] font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 py-2 rounded-lg"
+            >
+              Ninguno
+            </button>
+          </div>
+
+          <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+            {therapists.map((therapist) => {
+              const therapistId = therapist._id.toString();
+              const isSelected = selectedCalendarTherapists.includes(therapistId);
+
+              return (
+                <label
+                  key={therapistId}
+                  className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition ${
+                    isSelected ? "bg-sky-50" : "hover:bg-slate-50"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleCalendarTherapist(therapistId)}
+                    className="h-4 w-4 accent-sky-500"
+                  />
+                  <span className="text-xs text-slate-700">
+                    {getFullName(therapist)}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
@@ -738,7 +834,7 @@ const therapistsData = (therapists || []).map(t => ({
               key={calKey}
               plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
-              events={appointments}
+              events={filteredAppointments}
               editable={true}
               selectable={true}
               eventDrop={handleEventDrop}
