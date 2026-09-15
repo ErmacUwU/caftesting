@@ -78,6 +78,11 @@ const Citas = () => {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [calKey, setCalKey] = useState(0);
 
+  // --- Citas recurrentes ---
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurrenceFrequency, setRecurrenceFrequency] = useState("weekly");
+  const [recurrenceWeeks, setRecurrenceWeeks] = useState(4);
+
   const [selectedAppointment, setSelectedAppointment] = useState(null);
   const [modalType, setModalType] = useState(null); // "details" o "edit"
   const { isAuthenticated, isLoading } = useAuth();
@@ -172,6 +177,7 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
             backgroundColor: service?.color || "#bdc3c7",
             borderColor: "#000",
             serviceId: appointment.serviceId,
+            recurrenceGroupId: appointment.recurrenceGroupId || null,
           };
         });
         setAppointments(colorAppointments);
@@ -207,6 +213,7 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
           backgroundColor: service?.color || "#bdc3c7",
           borderColor: "#000",
           serviceId: appointment.serviceId,
+          recurrenceGroupId: appointment.recurrenceGroupId || null,
         };
       });
       setAppointments(colorAppointments);
@@ -280,6 +287,18 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
     return new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
   };
 
+  // Suma días a una fecha "YYYY-MM-DD" y devuelve el resultado en el mismo formato.
+  // Se usa para generar las fechas de las citas recurrentes (una por semana).
+  const addDaysToDateString = (dateStr, days) => {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    const dt = new Date(year, month - 1, day);
+    dt.setDate(dt.getDate() + days);
+    const yyyy = dt.getFullYear();
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const dd = String(dt.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
 const handleSubmit = async (e) => {
   e.preventDefault();
 
@@ -296,53 +315,75 @@ const handleSubmit = async (e) => {
     return;
   }
 
+  // Validar configuración de recurrencia
+  if (isRecurring && (!recurrenceWeeks || Number(recurrenceWeeks) < 2)) {
+    alert("Indica un número de semanas válido (mínimo 2) para la cita recurrente");
+    return;
+  }
+
   // 2. Buscar los objetos completos en las listas que cargamos de UsuarioTrue
   // Esto es para obtener nombres, colores de servicio, etc.
   const patientData = patients.find((p) => p._id === selectedPatient);
   const therapistData = therapists.find((t) => t._id === selectedTherapist);
   const service = services.find((s) => s._id?.toString() === selectedService);
 
-  // 3. Estructura del objeto para la base de datos
-  // IMPORTANTE: Enviamos 'selectedPatient' (el ID) para que el backend lo reconozca
-  const appointmentData = {
-    idDate: uniquid(),
-    date: appointmentDate,
-    start: convertToLocalDate(appointmentDate, appointmentStartTime),
-    end: convertToLocalDate(appointmentDate, appointmentEndTime),
-    duration: appointmentDuration,
-    patient: selectedPatient,   // Enviamos el ID del UsuarioTrue
-    therapist: selectedTherapist, // Enviamos el ID del UsuarioTrue
-    title: service?.name || "Cita Médica",
-    description: service?.name || "",
-    cost: Number(cost),
-    serviceId: selectedService,
-  };
+  // 3. Generamos las ocurrencias: 1 sola cita, o varias si es recurrente
+  // (una por semana, compartiendo un recurrenceGroupId para vincularlas).
+  const totalOccurrences = isRecurring ? Math.max(1, Number(recurrenceWeeks)) : 1;
+  const recurrenceGroupId = isRecurring ? uniquid() : null;
+
+  const occurrencesData = Array.from({ length: totalOccurrences }, (_, i) => {
+    const occurrenceDate =
+      i === 0 ? appointmentDate : addDaysToDateString(appointmentDate, i * 7);
+
+    return {
+      idDate: uniquid(),
+      date: occurrenceDate,
+      start: convertToLocalDate(occurrenceDate, appointmentStartTime),
+      end: convertToLocalDate(occurrenceDate, appointmentEndTime),
+      duration: appointmentDuration,
+      patient: selectedPatient,   // Enviamos el ID del UsuarioTrue
+      therapist: selectedTherapist, // Enviamos el ID del UsuarioTrue
+      title: service?.name || "Cita Médica",
+      description: service?.name || "",
+      cost: Number(cost),
+      serviceId: selectedService,
+      recurrenceGroupId,
+    };
+  });
 
   // LOG DE DIAGNÓSTICO: Revisa esto en la consola (F12)
-  console.log("Enviando cita a la API:", appointmentData);
+  console.log("Enviando cita(s) a la API:", occurrencesData);
 
   let postOk = false;
 
   try {
-    // 4. Guardar la cita en /api/date
-    const { data: created } = await axios.post("/api/date", appointmentData);
-    
+    // 4. Guardar la(s) cita(s) en /api/date
+    // - Cita única: mismo payload de siempre (objeto plano).
+    // - Cita recurrente: se envían todas las ocurrencias juntas bajo `occurrences`.
+    const { data: created } = isRecurring
+      ? await axios.post("/api/date", { occurrences: occurrencesData })
+      : await axios.post("/api/date", occurrencesData[0]);
+
     console.log("Respuesta del servidor (Cita creada):", created);
     postOk = true;
 
     // 5. Actualizar el perfil del Paciente en UsuarioTrue (Historial de citas)
-    try {
-      await axios.patch(`/api/usuarioTrue/${selectedPatient}`, {
-        isAccountUpdate: false, // Indica que no es cambio de contraseña/email, sino de perfil
-        nuevaCita: {
-          fecha: new Date(`${appointmentDate}T00:00:00`).toISOString(),
-          costo: Number(cost),
-        },
-      });
-      console.log("Historial del paciente actualizado correctamente");
-    } catch (patchErr) {
-      console.warn("La cita se creó, pero no se pudo actualizar el historial del paciente:", patchErr);
+    // Se registra una entrada de historial por cada ocurrencia creada.
+    for (const occ of occurrencesData) {
+      try {
+        await axios.patch(`/api/usuarioTrue/${selectedPatient}`, {
+          isAccountUpdate: false, // Indica que no es cambio de contraseña/email, sino de perfil
+          nuevaCita: {
+            fecha: new Date(`${occ.date}T00:00:00`).toISOString(),
+            costo: Number(cost),
+          },
+        });
+      } catch (patchErr) {
+        console.warn("La cita se creó, pero no se pudo actualizar el historial del paciente:", patchErr);
+      }
     }
+    console.log("Historial del paciente actualizado correctamente");
 
   } catch (error) {
     console.error("Error crítico al crear la cita:", error);
@@ -353,7 +394,7 @@ const handleSubmit = async (e) => {
     if (postOk) {
       await refetchAppointments();
       setCalKey((k) => k + 1); // Forzar refresco del calendario
-      
+
       // Limpiar formulario
       setSelectedPatient("");
       setSelectedTherapist("");
@@ -364,8 +405,15 @@ const handleSubmit = async (e) => {
       setSelectedService("");
       setCost("");
       setIsFormVisible(false);
-      
-      alert("Cita registrada exitosamente");
+      setIsRecurring(false);
+      setRecurrenceFrequency("weekly");
+      setRecurrenceWeeks(4);
+
+      alert(
+        isRecurring
+          ? `Se registraron ${occurrencesData.length} citas recurrentes exitosamente`
+          : "Cita registrada exitosamente"
+      );
     }
   }
 };
@@ -530,11 +578,11 @@ const therapistsData = (therapists || []).map(t => ({
 
 
   return (
-  <div className="min-h-screen bg-slate-50">
-    <div className="max-w-7xl mx-auto flex gap-4 py-6 px-4">
-      
+  <div className="h-screen overflow-hidden bg-slate-50 flex flex-col">
+    <div className="max-w-7xl w-full mx-auto flex gap-4 py-6 px-4 flex-1 min-h-0">
+
       {/* Sidebar izquierda */}
-      <aside className="w-80 shrink-0 flex flex-col gap-4">
+      <aside className="w-80 flex-shrink-0 h-full overflow-y-auto flex flex-col gap-4">
         {/* Tarjeta superior: info rápida */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-800 mb-2">
@@ -804,6 +852,55 @@ const therapistsData = (therapists || []).map(t => ({
                 />
               </div>
 
+              {/* --- Cita recurrente --- */}
+              <div className="border-t pt-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="h-4 w-4 accent-sky-500"
+                  />
+                  <span className="font-medium text-slate-700">
+                    ¿Es una cita recurrente?
+                  </span>
+                </label>
+
+                {isRecurring && (
+                  <div className="mt-3 space-y-3 bg-sky-50 border border-sky-100 rounded-lg p-3">
+                    <div>
+                      <label className="block mb-1 font-medium text-slate-700">
+                        Frecuencia
+                      </label>
+                      <select
+                        value={recurrenceFrequency}
+                        onChange={(e) => setRecurrenceFrequency(e.target.value)}
+                        className="block w-full p-2 border rounded-md text-xs bg-white"
+                      >
+                        <option value="weekly">Semanal</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block mb-1 font-medium text-slate-700">
+                        Número de semanas
+                      </label>
+                      <input
+                        type="number"
+                        min={2}
+                        max={52}
+                        value={recurrenceWeeks}
+                        onChange={(e) => setRecurrenceWeeks(e.target.value)}
+                        className="block w-full p-2 border rounded-md text-xs bg-white"
+                      />
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Se crearán {Math.max(1, Number(recurrenceWeeks) || 1)} citas, una cada semana a partir de la fecha seleccionada.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <button
                 type="submit"
                 className="w-full bg-sky-500 hover:bg-sky-600 text-white font-semibold py-2 rounded-lg text-xs mt-1"
@@ -816,7 +913,7 @@ const therapistsData = (therapists || []).map(t => ({
       </aside>
 
       {/* Columna principal: calendario */}
-      <main className="flex-1">
+      <main className="flex-1 h-full overflow-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3">
           <div className="mb-3 flex items-center justify-between">
             <div>
@@ -1064,7 +1161,15 @@ const therapistsData = (therapists || []).map(t => ({
             Editar
           </button>
 
-          <BotonDeleteCitas id={selectedAppointment.idd} />
+          <BotonDeleteCitas
+            id={selectedAppointment.idd}
+            recurrenceGroupId={selectedAppointment.recurrenceGroupId}
+            onDeleted={() => {
+              closeModal();
+              refetchAppointments();
+              setCalKey((k) => k + 1);
+            }}
+          />
         </div>
 
       </Modal>

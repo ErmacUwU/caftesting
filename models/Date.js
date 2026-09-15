@@ -41,6 +41,11 @@ const DateSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Service"
     },
+    recurrenceGroupId: {
+      type: String,
+      default: null,
+      index: true,
+    },
   },
   { timestamps: true }
 );
