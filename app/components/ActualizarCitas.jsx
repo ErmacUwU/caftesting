@@ -1,8 +1,10 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import axios from "axios";
 import { TimePicker } from "rsuite";
 import "rsuite/dist/rsuite-no-reset.min.css";
+import { CLINIC_TIMEZONE, zonedTimeToUtc } from "@/lib/clinicTime";
+import useDebounce from "@/hooks/useDebounce";
 
 const ActualizarCita = ({
   id,
@@ -30,6 +32,10 @@ const ActualizarCita = ({
   const [patients, setPatients] = useState([]);
   const [therapists, setTherapists] = useState([]);
   const [services, setServices] = useState([]);
+  const [patientSearch, setPatientSearch] = useState("");
+  const [therapistSearch, setTherapistSearch] = useState("");
+  const debouncedPatientSearch = useDebounce(patientSearch, 300);
+  const debouncedTherapistSearch = useDebounce(therapistSearch, 300);
 
   // 🔹 Cargar y ordenar servicios alfabéticamente
   useEffect(() => {
@@ -115,18 +121,18 @@ useEffect(() => {
     }
   }, [selectedPatient, selectedTherapist, selectedService, appointmentDuration]);
 
-  const calculateEndTime = (startTime, duration) => {
+  const calculateEndTime = useCallback((startTime, duration) => {
     if (!startTime) return "";
     const [hours, minutes] = startTime.split(":").map(Number);
     const end = new Date();
     end.setHours(hours);
     end.setMinutes((minutes || 0) + (duration || 0));
     return end.toTimeString().slice(0, 5);
-  };
+  }, []);
 
-  
 
-  const handleServiceChange = (e) => {
+
+  const handleServiceChange = useCallback((e) => {
     const selectedServiceId = e.target.value;
     setNewService(selectedServiceId);
     const svc = services.find((s) => s._id.toString() === selectedServiceId);
@@ -135,9 +141,9 @@ useEffect(() => {
       setNewDuration(svc.duration);
       setNewCost(svc.cost);
     }
-  };
+  }, [services, newStartTime, calculateEndTime]);
 
-  const handleDurationChange = (e) => {
+  const handleDurationChange = useCallback((e) => {
     let dur = parseInt(e.target.value, 10);
     if (dur > 120) dur = 120;
     if (dur < 0) dur = 0;
@@ -145,13 +151,16 @@ useEffect(() => {
     if (newStartTime) {
       setNewEndTime(calculateEndTime(newStartTime, dur));
     }
-  };
+  }, [newStartTime, calculateEndTime]);
 
-  const updateAppointment = async (e) => {
+  const updateAppointment = useCallback(async (e) => {
   e.preventDefault();
 
-  const startDateTime = new Date(`${newAppointmentDate}T${newStartTime}:00`);
-  const endDateTime = new Date(`${newAppointmentDate}T${newEndTime}:00`);
+  // La fecha/hora tecleada representa siempre la hora de la clínica
+  // (America/Tijuana), no la zona horaria local del navegador de quien
+  // edita la cita — así todos los usuarios guardan/ven el mismo instante.
+  const startDateTime = zonedTimeToUtc(newAppointmentDate, newStartTime, CLINIC_TIMEZONE);
+  const endDateTime = zonedTimeToUtc(newAppointmentDate, newEndTime, CLINIC_TIMEZONE);
 
   // Buscamos el servicio para obtener el título
   const svc = services.find(
@@ -186,7 +195,49 @@ console.log("Enviando al Backend:", JSON.stringify(appointmentData, null, 2));
     console.error("Error al actualizar la cita:", error);
     alert("Error al actualizar la cita. Revisa la consola.");
   }
-};
+  }, [
+    newAppointmentDate,
+    newStartTime,
+    newEndTime,
+    services,
+    newService,
+    selectedService,
+    newDuration,
+    newTherapist,
+    newPatient,
+    newCost,
+    id,
+    onUpdate,
+    onClose,
+  ]);
+
+  // Listas ya vienen ordenadas alfabéticamente (ver formatAndSort); aquí
+  // solo se filtran por la barra de búsqueda (con debounce) de cada
+  // selector. El actualmente seleccionado siempre se mantiene visible,
+  // aunque no coincida con la búsqueda, para no perder la selección del
+  // <select>.
+  const visiblePatients = useMemo(
+    () =>
+      patients.filter(
+        (p) =>
+          p._id === newPatient ||
+          `${p.firstName} ${p.lastName}`
+            .toLowerCase()
+            .includes(debouncedPatientSearch.trim().toLowerCase())
+      ),
+    [patients, newPatient, debouncedPatientSearch]
+  );
+  const visibleTherapists = useMemo(
+    () =>
+      therapists.filter(
+        (t) =>
+          t._id === newTherapist ||
+          `${t.firstName} ${t.lastName}`
+            .toLowerCase()
+            .includes(debouncedTherapistSearch.trim().toLowerCase())
+      ),
+    [therapists, newTherapist, debouncedTherapistSearch]
+  );
 
   return (
     <form className="max-w-md mx-auto p-4 bg-gray-100">
@@ -197,6 +248,18 @@ console.log("Enviando al Backend:", JSON.stringify(appointmentData, null, 2));
         <label htmlFor="patient" className="block text-sm font-medium text-gray-700">
           Paciente<span className="text-red-600">*</span>
         </label>
+        <div className="relative mt-1">
+          <input
+            type="text"
+            value={patientSearch}
+            onChange={(e) => setPatientSearch(e.target.value)}
+            placeholder="Buscar paciente..."
+            className="block w-full p-2 pl-8 border border-gray-300 rounded text-sm"
+          />
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+            🔍
+          </span>
+        </div>
         <select
           id="patient"
           value={newPatient}
@@ -204,7 +267,7 @@ console.log("Enviando al Backend:", JSON.stringify(appointmentData, null, 2));
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
-          {patients.map((p) => (
+          {visiblePatients.map((p) => (
             <option key={p._id} value={p._id}>
               {p.firstName} {p.lastName}
             </option>
@@ -217,6 +280,18 @@ console.log("Enviando al Backend:", JSON.stringify(appointmentData, null, 2));
         <label htmlFor="therapist" className="block text-sm font-medium text-gray-700">
           Terapeuta<span className="text-red-600">*</span>
         </label>
+        <div className="relative mt-1">
+          <input
+            type="text"
+            value={therapistSearch}
+            onChange={(e) => setTherapistSearch(e.target.value)}
+            placeholder="Buscar terapeuta..."
+            className="block w-full p-2 pl-8 border border-gray-300 rounded text-sm"
+          />
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+            🔍
+          </span>
+        </div>
         <select
           id="therapist"
           value={newTherapist}
@@ -224,7 +299,7 @@ console.log("Enviando al Backend:", JSON.stringify(appointmentData, null, 2));
           className="block w-full p-2 mt-1 border border-gray-300 rounded"
           required
         >
-          {therapists.map((t) => (
+          {visibleTherapists.map((t) => (
             <option key={t._id} value={t._id}>
               {t.firstName} {t.lastName}
             </option>

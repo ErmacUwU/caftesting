@@ -46,6 +46,11 @@ const DateSchema = new mongoose.Schema(
       default: null,
       index: true,
     },
+    status: {
+      type: String,
+      enum: ["confirmada", "pendiente", "completada"],
+      default: "confirmada",
+    },
   },
   { timestamps: true }
 );

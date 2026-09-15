@@ -322,16 +322,31 @@ export async function GET(req) {
       };
     }
 
-    // 2. Trae la información completa de paciente y terapeuta sin recortar campos, pero con .lean()
+    // 2. Trae paciente y terapeuta, pero solo los campos que la UI
+    // realmente usa (nombre). Antes se traía el perfil completo (incluye
+    // arreglos de contactos, direcciones, etc. en el caso de pacientes) y
+    // hasta el hash de contraseña del UserTrue para CADA cita. No cambia
+    // qué citas se devuelven ni la forma en que la UI las consume (los
+    // mismos firstName/lastName siguen ahí).
+    //
+    // batchSize(): el driver de Mongo, por defecto, trae los resultados en
+    // lotes de ~100 documentos (una ida y vuelta al servidor por lote). Con
+    // pocas citas no se notaba, pero con miles de registros esas decenas de
+    // idas y vueltas (cada una pagando la latencia de red hacia el clúster)
+    // eran el verdadero cuello de botella — no el tamaño de los datos ni el
+    // populate. Pedir un lote grande trae todo en un solo viaje.
     const date = await DateModel.find(query)
       .populate({
         path: "therapist",
-        populate: { path: "therapistProfile" },
+        select: "email role",
+        populate: { path: "therapistProfile", select: "firstName lastName" },
       })
       .populate({
         path: "patient",
-        populate: { path: "patientProfile" },
+        select: "email role",
+        populate: { path: "patientProfile", select: "firstName lastName" },
       })
+      .batchSize(10000)
       .lean(); // ⚡ Mantiene la velocidad ultra rápida evitando la sobrecarga de Mongoose
 
     return NextResponse.json({ success: true, date }, { status: 200, ...noStore });

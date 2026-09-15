@@ -15,8 +15,12 @@ export function middleware(request) {
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));
 
   if (isAdminRoute) {
+    // Comparación insensible a mayúsculas/minúsculas: un rol guardado como
+    // "Admin" (en vez de "admin") no debe rebotar al usuario a /login.
+    const normalizedRole = (userRole || "").toLowerCase();
+
     // Si no hay token (no está logueado) o el rol no es admin, lo rebotamos
-    if (!token || userRole !== "admin") {
+    if (!token || normalizedRole !== "admin") {
       // Redirige al login o a una página de "no autorizado"
       return NextResponse.redirect(new URL("/login", request.url));
     }

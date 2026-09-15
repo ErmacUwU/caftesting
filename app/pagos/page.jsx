@@ -1,21 +1,29 @@
 "use client";
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Line } from "react-chartjs-2";
-import { Chart, registerables } from "chart.js";
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
+import Spinner from "../components/Spinner";
+import useDebounce from "@/hooks/useDebounce";
+/* ExcelJS (creación de Excel) solo se necesita al exportar, así que se
+ importa de forma perezosa dentro de handleExportExcel. */
 
-// Registro global de Chart.js
-Chart.register(...registerables);
+// Carga perezosa: chart.js + react-chartjs-2 son pesados y solo se
+// necesitan cuando hay un paciente seleccionado, así que viven en su
+// propio chunk en vez de sumarse al bundle inicial de Pagos.
+const LineChart = dynamic(() => import("./LineChart"), {
+  ssr: false,
+  loading: () => <Spinner label="Cargando gráfica..." />,
+});
 
 const Pagos = () => {
   // -------------------------------------------------------------------------
   // 1. ESTADOS Y HOOKS
   // -------------------------------------------------------------------------
   const [users, setUsers] = useState([]);
+  const [patientSearchTerm, setPatientSearchTerm] = useState("");
+  const debouncedPatientSearchTerm = useDebounce(patientSearchTerm, 300);
   const [selectedUser, setSelectedUser] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("efectivo");
@@ -140,16 +148,37 @@ const Pagos = () => {
   // -------------------------------------------------------------------------
   // 4. MANEJADORES DE EVENTOS (Handlers)
   // -------------------------------------------------------------------------
-  const handleSelectUser = (id) => {
+  const handleSelectUser = useCallback((id) => {
     if (!id) return;
     const found = users.find((u) => u._id === id);
     setSelectedUser(found);
     setErrorMessage("");
     setSuccessMessage("");
     setPaymentAmount("");
-  };
+  }, [users]);
 
-  const handleAddPayment = async () => {
+  const getPatientName = useCallback(
+    (u) => `${u.patientProfile?.firstName || ""} ${u.patientProfile?.lastName || ""}`.trim(),
+    []
+  );
+
+  // Lista del selector "Seleccionar Paciente": orden alfabético por defecto
+  // + filtro dinámico (con debounce) por la barra de búsqueda. El paciente
+  // ya seleccionado se mantiene visible aunque no coincida con la
+  // búsqueda, para no perder la selección del <select>.
+  const visiblePatientUsers = useMemo(
+    () =>
+      [...users]
+        .sort((a, b) => getPatientName(a).localeCompare(getPatientName(b), "es", { sensitivity: "base" }))
+        .filter(
+          (u) =>
+            u._id === selectedUser?._id ||
+            getPatientName(u).toLowerCase().includes(debouncedPatientSearchTerm.trim().toLowerCase())
+        ),
+    [users, selectedUser, debouncedPatientSearchTerm, getPatientName]
+  );
+
+  const handleAddPayment = useCallback(async () => {
     if (!selectedUser || !paymentAmount || parseFloat(paymentAmount) <= 0) {
       setErrorMessage("Por favor, ingrese un monto válido.");
       return;
@@ -182,10 +211,17 @@ const Pagos = () => {
     } finally {
       setActionLoading(false);
     }
-  };
+  }, [selectedUser, paymentAmount, selectedPaymentMethod]);
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = useCallback(async () => {
     if (!profile) return;
+    // Carga perezosa: ExcelJS solo se descarga al exportar un reporte.
+    const [exceljsModule, fileSaverModule] = await Promise.all([
+      import("exceljs"),
+      import("file-saver"),
+    ]);
+    const ExcelJS = exceljsModule.default || exceljsModule;
+    const saveAs = fileSaverModule.saveAs || fileSaverModule.default;
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet("Estado de Cuenta");
 
@@ -222,7 +258,7 @@ const Pagos = () => {
 
     const buffer = await workbook.xlsx.writeBuffer();
     saveAs(new Blob([buffer]), `Estado_${profile.lastName}.xlsx`);
-  };
+  }, [profile, totalDebt, historial]);
 
   // -------------------------------------------------------------------------
   // 5. RENDERIZADO (JSX)
@@ -269,13 +305,25 @@ const Pagos = () => {
               <label className="block text-xs font-black text-slate-400 uppercase mb-3 tracking-widest">
                 Seleccionar Paciente
               </label>
+              <div className="relative mb-3">
+                <input
+                  type="text"
+                  value={patientSearchTerm}
+                  onChange={(e) => setPatientSearchTerm(e.target.value)}
+                  placeholder="Buscar paciente..."
+                  className="w-full p-3 pl-9 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-400 outline-none transition-all text-slate-700 text-sm"
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  🔍
+                </span>
+              </div>
               <select
                 onChange={(e) => handleSelectUser(e.target.value)}
                 value={selectedUser?._id || ""}
                 className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-400 outline-none transition-all text-slate-700 font-medium"
               >
                 <option value="">Buscar en la lista...</option>
-                {users.map((u) => (
+                {visiblePatientUsers.map((u) => (
                   <option key={u._id} value={u._id}>
                     {u.patientProfile?.firstName} {u.patientProfile?.lastName}
                   </option>
@@ -354,7 +402,7 @@ const Pagos = () => {
                 <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
                   <h3 className="text-lg font-bold text-slate-700 mb-6 uppercase tracking-tight">Tendencia de Deuda</h3>
                   <div className="h-[400px]">
-                    <Line data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />
+                    <LineChart data={chartData} options={{ responsive: true, maintainAspectRatio: false }} />
                   </div>
                 </div>
 

@@ -1,12 +1,40 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import uniquid from "uniquid";
+import { useAuth } from "../context/AuthContext.js";
+import useDebounce from "@/hooks/useDebounce";
 
 // Expresión regular para validar el CURP
 const curpPattern = /^[a-zA-Z0-9]{18}$/;
 
 export default function RegistroUsuario() {
+  // --- RUTA PROTEGIDA: solo administradores ---
+  // Esta vista no tenía ninguna validación de sesión/rol propia; dependía
+  // por completo del middleware (cookies). Si el rol quedaba guardado con
+  // otra capitalización (p. ej. "Admin"), el middleware rebotaba a /login
+  // una y otra vez sin que el cliente supiera por qué, generando el
+  // "bucle infinito" reportado. Se agrega el mismo patrón ya usado en
+  // otras vistas (ver app/usuarios/page.jsx y app/citas/page.jsx).
+  const { isAuthenticated, isLoading, userRole } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    // 1. No redirigir mientras aún se está verificando la sesión.
+    if (isLoading) return;
+
+    if (!isAuthenticated) {
+      router.replace("/login");
+      return;
+    }
+
+    // 2. Comparación de rol sin sensibilidad a mayúsculas/minúsculas.
+    if (String(userRole || "").toLowerCase() !== "admin") {
+      router.replace("/");
+    }
+  }, [isAuthenticated, isLoading, userRole, router]);
+
   const [role, setRole] = useState("");
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -18,6 +46,7 @@ export default function RegistroUsuario() {
   const [users, setUsers] = useState([]); // Lista total
   const [filterRole, setFilterRole] = useState("all"); // Filtro de vista
   const [searchTerm, setSearchTerm] = useState(""); // Búsqueda de usuarios
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const [isEditing, setIsEditing] = useState(null); // ID del usuario editando
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({ contacts: [] });
@@ -25,11 +54,7 @@ export default function RegistroUsuario() {
   const [isEditAdminModalOpen, setIsEditAdminModalOpen] = useState(false);
   const [isViewMode, setIsViewMode] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-  }, [filterRole]); // Se ejecuta cada vez que el usuario cambia de pestaña de rol
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch(`/api/usuarioTrue?role=${filterRole}`);
@@ -42,18 +67,22 @@ export default function RegistroUsuario() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filterRole]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]); // Se ejecuta cada vez que el usuario cambia de pestaña de rol
 
   // 2. Función para extraer el nombre independientemente del rol
-  const getDisplayName = (user) => {
+  const getDisplayName = useCallback((user) => {
     if (user.patientProfile)
       return `${user.patientProfile.firstName} ${user.patientProfile.lastName}`;
     if (user.therapistProfile)
       return `${user.therapistProfile.firstName} ${user.therapistProfile.lastName}`;
     return user.email; // Fallback
-  };
+  }, []);
 
-  const handleEditClick = (user) => {
+  const handleEditClick = useCallback((user) => {
     const profile =
       user.role === "patient" ? user.patientProfile : user.therapistProfile;
 
@@ -69,9 +98,9 @@ export default function RegistroUsuario() {
     if (user.role === "patient") setIsEditModalOpen(true);
     else if (user.role === "therapist") setIsEditTherapistModalOpen(true);
     else setIsEditAdminModalOpen(true);
-  };
+  }, []);
 
-  const handleViewClick = (user) => {
+  const handleViewClick = useCallback((user) => {
     const profile =
       user.role === "patient" ? user.patientProfile : user.therapistProfile;
     setEditForm({
@@ -87,7 +116,7 @@ export default function RegistroUsuario() {
     if (user.role === "patient") setIsEditModalOpen(true);
     else if (user.role === "therapist") setIsEditTherapistModalOpen(true);
     else setIsEditAdminModalOpen(true);
-  };
+  }, []);
 
   const guardarCambios = async (e) => {
     e.preventDefault();
@@ -378,7 +407,7 @@ export default function RegistroUsuario() {
     setEditForm({ ...editForm, contacts: nuevosContactos });
   };
 
-  const eliminarUsuario = async (user) => {
+  const eliminarUsuario = useCallback(async (user) => {
     if (
       !confirm(
         `¿Estás seguro de eliminar a ${getDisplayName(
@@ -414,33 +443,38 @@ export default function RegistroUsuario() {
     } catch (error) {
       alert("Error al intentar conectar con el servidor");
     }
-  };
+  }, [getDisplayName, fetchUsers]);
 
-  const filteredUsers = users
-    .filter((user) => {
-      const matchesRole = filterRole === "all" || user.role === filterRole;
+  // Filtrado (con debounce) + orden alfabético del listado de usuarios.
+  const filteredUsers = useMemo(
+    () =>
+      users
+        .filter((user) => {
+          const matchesRole = filterRole === "all" || user.role === filterRole;
 
-      const search = searchTerm.toLowerCase().trim();
+          const search = debouncedSearchTerm.toLowerCase().trim();
 
-      const name = getDisplayName(user).toLowerCase();
-      const email = (user.email || "").toLowerCase();
-      const specialization = (
-        user.therapistProfile?.specialization || ""
-      ).toLowerCase();
+          const name = getDisplayName(user).toLowerCase();
+          const email = (user.email || "").toLowerCase();
+          const specialization = (
+            user.therapistProfile?.specialization || ""
+          ).toLowerCase();
 
-      const matchesSearch =
-        !search ||
-        name.includes(search) ||
-        email.includes(search) ||
-        specialization.includes(search);
+          const matchesSearch =
+            !search ||
+            name.includes(search) ||
+            email.includes(search) ||
+            specialization.includes(search);
 
-      return matchesRole && matchesSearch;
-    })
-    .sort((a, b) =>
-      getDisplayName(a).localeCompare(getDisplayName(b), "es", {
-        sensitivity: "base",
-      })
-    );
+          return matchesRole && matchesSearch;
+        })
+        .sort((a, b) =>
+          getDisplayName(a).localeCompare(getDisplayName(b), "es", {
+            sensitivity: "base",
+          })
+        ),
+    [users, filterRole, debouncedSearchTerm, getDisplayName]
+  );
 
   const handleNextStep = () => setStep(step + 1);
   const handlePrevStep = () => setStep(step - 1);
@@ -658,6 +692,23 @@ export default function RegistroUsuario() {
       </div>
     );
   };
+
+  // 3. Pantalla de carga mientras se verifica la sesión: evita que se
+  // dispare cualquier redirección (o se muestre el panel) antes de tiempo.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-3">
+        <div className="h-10 w-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+        <p className="text-sm text-gray-500">Verificando sesión...</p>
+      </div>
+    );
+  }
+
+  // Sesión ya resuelta pero sin acceso: el useEffect de arriba ya está
+  // redirigiendo, así que no renderizamos el panel mientras tanto.
+  if (!isAuthenticated || String(userRole || "").toLowerCase() !== "admin") {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center p-6">

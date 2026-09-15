@@ -1,8 +1,9 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import useDebounce from "@/hooks/useDebounce";
 
 const Reporte = () => {
   // -------------------------------------------------------------------------
@@ -14,6 +15,8 @@ const Reporte = () => {
   const [images, setImages] = useState([]);
   const [therapistsList, setTherapistsList] = useState([]);
   const [patientsList, setPatientList] = useState([]);
+  const [therapistSearch, setTherapistSearch] = useState("");
+  const [patientSearch, setPatientSearch] = useState("");
   const [generating, setGenerating] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
@@ -25,6 +28,44 @@ const Reporte = () => {
   // Helpers para encontrar los objetos seleccionados y mostrar sus nombres
   const therapistObj = therapistsList.find((t) => t._id === selectedTherapist);
   const patientObj = patientsList.find((p) => p._id === selectedPatient);
+
+  const debouncedTherapistSearch = useDebounce(therapistSearch, 300);
+  const debouncedPatientSearch = useDebounce(patientSearch, 300);
+
+  const getTherapistName = useCallback(
+    (t) => `${t.therapistProfile?.firstName || ""} ${t.therapistProfile?.lastName || ""}`.trim(),
+    []
+  );
+  const getPatientName = useCallback(
+    (p) => `${p.patientProfile?.firstName || ""} ${p.patientProfile?.lastName || ""}`.trim(),
+    []
+  );
+
+  // Orden alfabético por defecto + filtro por la barra de búsqueda (con
+  // debounce). El elemento ya seleccionado se mantiene visible aunque no
+  // coincida con la búsqueda, para no perder la selección del <select>.
+  const visibleTherapistsList = useMemo(
+    () =>
+      [...therapistsList]
+        .sort((a, b) => getTherapistName(a).localeCompare(getTherapistName(b), "es", { sensitivity: "base" }))
+        .filter(
+          (t) =>
+            t._id === selectedTherapist ||
+            getTherapistName(t).toLowerCase().includes(debouncedTherapistSearch.trim().toLowerCase())
+        ),
+    [therapistsList, selectedTherapist, debouncedTherapistSearch, getTherapistName]
+  );
+  const visiblePatientsList = useMemo(
+    () =>
+      [...patientsList]
+        .sort((a, b) => getPatientName(a).localeCompare(getPatientName(b), "es", { sensitivity: "base" }))
+        .filter(
+          (p) =>
+            p._id === selectedPatient ||
+            getPatientName(p).toLowerCase().includes(debouncedPatientSearch.trim().toLowerCase())
+        ),
+    [patientsList, selectedPatient, debouncedPatientSearch, getPatientName]
+  );
 
   // -------------------------------------------------------------------------
   // 2. SEGURIDAD Y CARGA DE DATOS
@@ -70,16 +111,16 @@ useEffect(() => {
   // -------------------------------------------------------------------------
   // 3. MANEJO DE ARCHIVOS (IMÁGENES)
   // -------------------------------------------------------------------------
-  const handleImageChange = (event) => {
+  const handleImageChange = useCallback((event) => {
     const files = Array.from(event.target.files || []);
     const newImages = files.map((file) => ({
       file,
       url: URL.createObjectURL(file),
     }));
     setImages((prev) => [...prev, ...newImages]);
-  };
+  }, []);
 
-  const resetInputs = () => {
+  const resetInputs = useCallback(() => {
     setSelectedTherapist("");
     setSelectedPatient("");
     setNotes("");
@@ -88,12 +129,12 @@ useEffect(() => {
     if (fileInputRef.current) fileInputRef.current.value = null;
     setStatusMsg({ type: "success", text: "Reporte procesado y formulario limpio." });
     setTimeout(() => setStatusMsg({ type: "", text: "" }), 5000);
-  };
+  }, [images]);
 
   // -------------------------------------------------------------------------
   // 4. LÓGICA DE PDF Y S3
   // -------------------------------------------------------------------------
-  const generatePDFBlob = async () => {
+  const generatePDFBlob = useCallback(async () => {
     const element = pdfRef.current;
     if (!element) throw new Error("Referencia al PDF no encontrada.");
 
@@ -110,9 +151,9 @@ useEffect(() => {
     const worker = html2pdfModule().from(element).set(options).toPdf();
     const pdf = await worker.get("pdf");
     return pdf.output("blob");
-  };
+  }, []);
 
-  const handleGenerateAndUpload = async () => {
+  const handleGenerateAndUpload = useCallback(async () => {
     // 1. Verificación previa
     if (!selectedTherapist || !selectedPatient) {
       alert("Por favor selecciona terapeuta y paciente antes de continuar.");
@@ -166,16 +207,16 @@ useEffect(() => {
 
     } catch (error) {
       console.error("Error detallado:", error.response?.data || error);
-      setStatusMsg({ 
-        type: "error", 
-        text: error.response?.data?.error || "Error al procesar el reporte." 
+      setStatusMsg({
+        type: "error",
+        text: error.response?.data?.error || "Error al procesar el reporte."
       });
     } finally {
       setGenerating(false);
     }
-  };
+  }, [selectedTherapist, selectedPatient, patientObj, notes, images, generatePDFBlob, resetInputs]);
 
-  const handleDownloadOnly = async () => {
+  const handleDownloadOnly = useCallback(async () => {
     setGenerating(true);
     try {
       const pdfBlob = await generatePDFBlob();
@@ -190,7 +231,7 @@ useEffect(() => {
     } finally {
       setGenerating(false);
     }
-  };
+  }, [generatePDFBlob, patientObj]);
 
   if (isLoading) return <div className="p-10 text-center font-bold text-slate-500">Verificando sesión...</div>;
 
@@ -222,13 +263,25 @@ useEffect(() => {
             {/* Selector Terapeuta */}
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase mb-2">Terapeuta</label>
+              <div className="relative mb-2">
+                <input
+                  type="text"
+                  value={therapistSearch}
+                  onChange={(e) => setTherapistSearch(e.target.value)}
+                  placeholder="Buscar terapeuta..."
+                  className="w-full p-2 pl-8 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all text-sm"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                  🔍
+                </span>
+              </div>
               <select
                 value={selectedTherapist}
                 onChange={(e) => setSelectedTherapist(e.target.value)}
                 className="w-full p-3 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all"
               >
                 <option value="">Seleccione especialista...</option>
-                {therapistsList.map((t) => (
+                {visibleTherapistsList.map((t) => (
                   <option key={t._id} value={t._id}>
                     {t.therapistProfile?.firstName} {t.therapistProfile?.lastName}
                   </option>
@@ -239,13 +292,25 @@ useEffect(() => {
             {/* Selector Paciente */}
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase mb-2">Paciente</label>
+              <div className="relative mb-2">
+                <input
+                  type="text"
+                  value={patientSearch}
+                  onChange={(e) => setPatientSearch(e.target.value)}
+                  placeholder="Buscar paciente..."
+                  className="w-full p-2 pl-8 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all text-sm"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                  🔍
+                </span>
+              </div>
               <select
                 value={selectedPatient}
                 onChange={(e) => setSelectedPatient(e.target.value)}
                 className="w-full p-3 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all"
               >
                 <option value="">Seleccione paciente...</option>
-                {patientsList.map((p) => (
+                {visiblePatientsList.map((p) => (
                   <option key={p._id} value={p._id}>
                     {p.patientProfile?.firstName} {p.patientProfile?.lastName}
                   </option>

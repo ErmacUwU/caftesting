@@ -1,8 +1,9 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "../context/AuthContext.js"; 
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import axios from "axios";
+import useDebounce from "@/hooks/useDebounce";
 
 const ConsultaDocumentos = () => {
   // --- ESTADOS DE DATOS ---
@@ -17,7 +18,9 @@ const ConsultaDocumentos = () => {
   const [selectedTherapists, setSelectedTherapists] = useState([]); 
   const [errorMessage, setErrorMessage] = useState("");
   const [patientSearch, setPatientSearch] = useState("");
-  const [therapistSearch, setTherapistSearch] = useState(""); 
+  const [therapistSearch, setTherapistSearch] = useState("");
+  const debouncedPatientSearch = useDebounce(patientSearch, 300);
+  const debouncedTherapistSearch = useDebounce(therapistSearch, 300);
 
   const { isAuthenticated, isLoading } = useAuth();
   const router = useRouter();
@@ -52,7 +55,7 @@ const ConsultaDocumentos = () => {
   }, [selectedPatients, selectedTherapists]);
 
   // --- 2. CARGA DE FILTROS (PACIENTES/TERAPEUTAS) ---
-  const fetchFilters = async () => {
+  const fetchFilters = useCallback(async () => {
     try {
       setLoadingFilters(true);
       const [tRes, pRes] = await Promise.all([
@@ -67,33 +70,45 @@ const ConsultaDocumentos = () => {
     } finally {
       setLoadingFilters(false);
     }
-  };
+  }, []);
 
-  // --- 3. LISTAS ORDENADAS Y FILTRADAS ---
-  const filteredPatients = patients
-    .filter((p) => {
-      const name = `${p.patientProfile?.firstName || ""} ${p.patientProfile?.lastName || ""}`.trim();
-      return name.toLocaleLowerCase("es").includes(patientSearch.trim().toLocaleLowerCase("es"));
-    })
-    .sort((a, b) => {
-      const nameA = `${a.patientProfile?.firstName || ""} ${a.patientProfile?.lastName || ""}`.trim();
-      const nameB = `${b.patientProfile?.firstName || ""} ${b.patientProfile?.lastName || ""}`.trim();
-      return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
-    });
+  // --- 3. LISTAS ORDENADAS Y FILTRADAS (con debounce en la búsqueda) ---
+  const filteredPatients = useMemo(
+    () =>
+      patients
+        .filter((p) => {
+          const name = `${p.patientProfile?.firstName || ""} ${p.patientProfile?.lastName || ""}`.trim();
+          return name.toLocaleLowerCase("es").includes(debouncedPatientSearch.trim().toLocaleLowerCase("es"));
+        })
+        .sort((a, b) => {
+          const nameA = `${a.patientProfile?.firstName || ""} ${a.patientProfile?.lastName || ""}`.trim();
+          const nameB = `${b.patientProfile?.firstName || ""} ${b.patientProfile?.lastName || ""}`.trim();
+          return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
+        }),
+    [patients, debouncedPatientSearch]
+  );
 
-  const filteredTherapists = therapists
-    .filter((t) => {
-      const name = `${t.therapistProfile?.firstName || ""} ${t.therapistProfile?.lastName || ""}`.trim();
-      return name.toLocaleLowerCase("es").includes(therapistSearch.trim().toLocaleLowerCase("es"));
-    })
-    .sort((a, b) => {
-      const nameA = `${a.therapistProfile?.firstName || ""} ${a.therapistProfile?.lastName || ""}`.trim();
-      const nameB = `${b.therapistProfile?.firstName || ""} ${b.therapistProfile?.lastName || ""}`.trim();
-      return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
-    });
+  const filteredTherapists = useMemo(
+    () =>
+      therapists
+        .filter((t) => {
+          const name = `${t.therapistProfile?.firstName || ""} ${t.therapistProfile?.lastName || ""}`.trim();
+          return name.toLocaleLowerCase("es").includes(debouncedTherapistSearch.trim().toLocaleLowerCase("es"));
+        })
+        .sort((a, b) => {
+          const nameA = `${a.therapistProfile?.firstName || ""} ${a.therapistProfile?.lastName || ""}`.trim();
+          const nameB = `${b.therapistProfile?.firstName || ""} ${b.therapistProfile?.lastName || ""}`.trim();
+          return nameA.localeCompare(nameB, "es", { sensitivity: "base" });
+        }),
+    [therapists, debouncedTherapistSearch]
+  );
 
-  const sortedDocuments = [...documents].sort((a, b) =>
-    (a.name || "").localeCompare((b.name || ""), "es", { sensitivity: "base" })
+  const sortedDocuments = useMemo(
+    () =>
+      [...documents].sort((a, b) =>
+        (a.name || "").localeCompare((b.name || ""), "es", { sensitivity: "base" })
+      ),
+    [documents]
   );
 
   // --- 4. EFECTO DE ARRANQUE ---
@@ -106,13 +121,13 @@ const ConsultaDocumentos = () => {
         fetchDocuments(true); // Carga inicial automática de todos los registros
       }
     }
-  }, [isAuthenticated, isLoading, router, fetchDocuments]);
+  }, [isAuthenticated, isLoading, router, fetchDocuments, fetchFilters]);
 
   // --- 4. MANEJADORES DE SELECCIÓN ---
-  const toggleSelection = (id, type) => {
+  const toggleSelection = useCallback((id, type) => {
     const setter = type === 'p' ? setSelectedPatients : setSelectedTherapists;
     setter(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
-  };
+  }, []);
 
   if (isLoading) return <div className="p-20 text-center font-black text-slate-300 animate-pulse uppercase tracking-widest">Verificando Credenciales...</div>;
   if (!isAuthenticated) return null;

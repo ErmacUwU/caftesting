@@ -1,16 +1,16 @@
 'use client'
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from "next/link";
 import { PenBoxIcon } from "lucide-react";
 import BotonDeleteCitas from './BotonDeleteCitas';
 import { ArrowDownIcon, ArrowUpIcon } from "@heroicons/react/24/outline";
-/* xlsx Nos permite crear archivos Excel y 
- file-saver permite descargar archivos en el navegador */
-import * as XLSX from "xlsx";
-import { saveAs } from "file-saver";
 import Terapeutas from '../terapeuta/page';
 import ActualizarCita from './ActualizarCitas';
 import Modal from "react-modal";
+import useDebounce from "@/hooks/useDebounce";
+/* xlsx (creación de Excel) y file-saver (descarga) solo se necesitan al
+ exportar, así que se importan de forma perezosa dentro de exportToExcel
+ en vez de sumarse al bundle inicial de esta vista. */
 
 const TarjetaCitas = () => {
 
@@ -24,41 +24,45 @@ const TarjetaCitas = () => {
   const [selectedTherapist, setSelectedTherapist] = useState('');
   const [selectedPatient, setSelectedPatient] = useState('');
   const [selectedService, setSelectedService] = useState('');
+  const [therapistFilterSearch, setTherapistFilterSearch] = useState('');
+  const [patientFilterSearch, setPatientFilterSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   
   const [filtersVisible, setFiltersVisible] = useState(false);
+  const debouncedTherapistFilterSearch = useDebounce(therapistFilterSearch, 300);
+  const debouncedPatientFilterSearch = useDebounce(patientFilterSearch, 300);
 
-  const toggleFilters = () => {
-    setFiltersVisible(!filtersVisible);
-  };
+  const toggleFilters = useCallback(() => {
+    setFiltersVisible((prev) => !prev);
+  }, []);
 
   // Función robusta para obtener nombres (maneja perfiles de UserTrue poblados)
- const getNombre = (entidad) => {
+ const getNombre = useCallback((entidad) => {
   if (!entidad) return "No asignado";
-  
+
   // Imprimir el objeto completo para ver qué propiedades tiene
   // Esto te dirá exactamente dónde buscar
   console.log("Objeto entidad completo:", entidad);
 
   // Intentamos todas las rutas comunes
-  const f = 
-    entidad.firstName || 
-    entidad.patientProfile?.firstName || 
-    entidad.therapistProfile?.firstName || 
-    entidad.name || 
+  const f =
+    entidad.firstName ||
+    entidad.patientProfile?.firstName ||
+    entidad.therapistProfile?.firstName ||
+    entidad.name ||
     "";
-    
-  const l = 
-    entidad.lastName || 
-    entidad.patientProfile?.lastName || 
-    entidad.therapistProfile?.lastName || 
+
+  const l =
+    entidad.lastName ||
+    entidad.patientProfile?.lastName ||
+    entidad.therapistProfile?.lastName ||
     "";
 
   const nombreCompleto = `${f} ${l}`.trim();
   return nombreCompleto.length > 0 ? nombreCompleto : "Nombre no encontrado";
-};
+}, []);
 
   useEffect(() => {
     const getDates = async () => {
@@ -118,15 +122,43 @@ useEffect(() => {
   }
 }, [services, selectedService]);
 
-  const handleTherapistChange = (event) => setSelectedTherapist(event.target.value);
-  const handlePatientChange = (event) => setSelectedPatient(event.target.value);
-  const handleServiceChange = (event) => setSelectedService(event.target.value);
-  const handleDateChange = (event) => {
+  const handleTherapistChange = useCallback((event) => setSelectedTherapist(event.target.value), []);
+  const handlePatientChange = useCallback((event) => setSelectedPatient(event.target.value), []);
+
+  // Orden alfabético por defecto + filtro por la barra de búsqueda (con
+  // debounce) de cada selector. El elemento ya seleccionado se mantiene
+  // visible aunque no coincida con la búsqueda, para no perder la
+  // selección del <select>.
+  const visibleFilterTherapists = useMemo(
+    () =>
+      [...therapists]
+        .sort((a, b) => getNombre(a).localeCompare(getNombre(b), "es", { sensitivity: "base" }))
+        .filter(
+          (therapist) =>
+            therapist._id === selectedTherapist ||
+            getNombre(therapist).toLowerCase().includes(debouncedTherapistFilterSearch.trim().toLowerCase())
+        ),
+    [therapists, selectedTherapist, debouncedTherapistFilterSearch, getNombre]
+  );
+
+  const visibleFilterPatients = useMemo(
+    () =>
+      [...patients]
+        .sort((a, b) => getNombre(a).localeCompare(getNombre(b), "es", { sensitivity: "base" }))
+        .filter(
+          (patient) =>
+            patient._id === selectedPatient ||
+            getNombre(patient).toLowerCase().includes(debouncedPatientFilterSearch.trim().toLowerCase())
+        ),
+    [patients, selectedPatient, debouncedPatientFilterSearch, getNombre]
+  );
+  const handleServiceChange = useCallback((event) => setSelectedService(event.target.value), []);
+  const handleDateChange = useCallback((event) => {
     const selectedDateISO = new Date(event.target.value).toISOString().split("T")[0];
     setSelectedDate(selectedDateISO);
-  };
-  const handleStartDateChange = (event) => setStartDate(event.target.value);
-  const handleEndDateChange = (event) => setEndDate(event.target.value);
+  }, []);
+  const handleStartDateChange = useCallback((event) => setStartDate(event.target.value), []);
+  const handleEndDateChange = useCallback((event) => setEndDate(event.target.value), []);
 
   useEffect(() => {
     const filtered = dates.filter((d) => {
@@ -143,18 +175,18 @@ useEffect(() => {
     setFilteredDates(filtered);
   }, [selectedTherapist, selectedPatient, selectedService, selectedDate, startDate, endDate, dates]);
 
-  const formatToLocalDate = (dateString) => {
+  const formatToLocalDate = useCallback((dateString) => {
     const [year, month, day] = dateString.split("T")[0].split("-");
     const localDate = new Date(year, month - 1, day);
     return localDate.toLocaleDateString("es-ES", { timeZone: "America/Tijuana" });
-  };
+  }, []);
 
-  const formatToLocalTime = (dateString) => {
+  const formatToLocalTime = useCallback((dateString) => {
     const date = new Date(dateString);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: "America/Tijuana" });
-  };
+  }, []);
 
-  const exportToExcel = () => {
+  const exportToExcel = useCallback(async () => {
     if (filteredDates.length === 0){
       alert("No hay citas para exportar.")
       return
@@ -171,24 +203,31 @@ useEffect(() => {
       Costo: `$${cita.cost}`,
     }))
 
+    // Carga perezosa: xlsx y file-saver solo se descargan al exportar.
+    const [XLSX, fileSaverModule] = await Promise.all([
+      import("xlsx"),
+      import("file-saver"),
+    ]);
+    const saveAs = fileSaverModule.saveAs || fileSaverModule.default;
+
     const worksheet = XLSX.utils.json_to_sheet(dataToExport)
     const workbook = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(workbook, worksheet, "Agendas")
     const excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" })
     const data = new Blob([excelBuffer], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})
     saveAs(data, "Agendas.xlsx")
-  }
+  }, [filteredDates, getNombre]);
 
-  const refetchAppointments = async () => {
+  const refetchAppointments = useCallback(async () => {
     try {
       const res = await fetch("/api/date", { cache: "no-store" })
       const data = await res.json()
       setDates(data.date || [])
-      setFilteredDates(data.date || []) 
+      setFilteredDates(data.date || [])
     } catch (error) {
       console.error("Error al recargar citas:", error)
     }
-  }
+  }, []);
 
   return (
     <div className="p-6 rounded-lg shadow-lg">
@@ -204,13 +243,25 @@ useEffect(() => {
         <div>
           <div className="mb-4 text-black">
             <label className="block mb-1 font-semibold">Filtrar por terapeuta:</label>
-            <select 
-              value={selectedTherapist} 
-              onChange={handleTherapistChange} 
+            <div className="relative mb-2">
+              <input
+                type="text"
+                value={therapistFilterSearch}
+                onChange={(e) => setTherapistFilterSearch(e.target.value)}
+                placeholder="Buscar terapeuta..."
+                className="border border-gray-400 rounded-md p-2 pl-8 w-full text-sm"
+              />
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                🔍
+              </span>
+            </div>
+            <select
+              value={selectedTherapist}
+              onChange={handleTherapistChange}
               className="border border-gray-400 rounded-md p-2 w-full"
             >
               <option value="">Todos</option>
-              {therapists.map((therapist) => (
+              {visibleFilterTherapists.map((therapist) => (
                 <option key={therapist._id} value={therapist._id}>
                   {getNombre(therapist)}
                 </option>
@@ -220,13 +271,25 @@ useEffect(() => {
 
           <div className="mb-4 text-black">
             <label className="block mb-1 font-semibold">Filtrar por paciente:</label>
-            <select 
-              value={selectedPatient} 
-              onChange={handlePatientChange} 
+            <div className="relative mb-2">
+              <input
+                type="text"
+                value={patientFilterSearch}
+                onChange={(e) => setPatientFilterSearch(e.target.value)}
+                placeholder="Buscar paciente..."
+                className="border border-gray-400 rounded-md p-2 pl-8 w-full text-sm"
+              />
+              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                🔍
+              </span>
+            </div>
+            <select
+              value={selectedPatient}
+              onChange={handlePatientChange}
               className="border border-gray-400 rounded-md p-2 w-full"
             >
               <option value="">Todos</option>
-              {patients.map((patient) => (
+              {visibleFilterPatients.map((patient) => (
                 <option key={patient._id} value={patient._id}>
                   {getNombre(patient)}
                 </option>

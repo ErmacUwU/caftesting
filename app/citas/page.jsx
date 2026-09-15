@@ -1,19 +1,34 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import dynamic from "next/dynamic";
 import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import { TimePicker, SelectPicker } from "rsuite";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
 import axios from "axios";
 import uniquid from "uniquid";
 import Modal from "react-modal";
 import ActualizarCita from "../components/ActualizarCitas";
 import BotonDeleteCitas from "../components/BotonDeleteCitas";
+import Spinner from "../components/Spinner";
+import useDebounce from "@/hooks/useDebounce";
 import "./app.css";
 import "rsuite/dist/rsuite-no-reset.min.css";
+import {
+  CLINIC_TIMEZONE,
+  zonedTimeToUtc,
+  formatZonedDate,
+  formatZonedTime,
+  toFullCalendarDate,
+  fromFullCalendarDate,
+} from "@/lib/clinicTime";
+
+// Carga perezosa: FullCalendar (+ sus plugins) es pesado y solo se
+// necesita en esta vista, así que se separa en su propio chunk en vez de
+// sumarse al bundle inicial de la Agenda.
+const FullCalendarView = dynamic(() => import("./FullCalendarView"), {
+  ssr: false,
+  loading: () => <Spinner label="Cargando calendario..." />,
+});
 
 const customStyles = {
   overlay: {
@@ -66,6 +81,10 @@ const Citas = () => {
   // NUEVO: terapeutas que se muestran en el calendario
   // No afecta al terapeuta seleccionado para crear/editar una cita.
   const [selectedCalendarTherapists, setSelectedCalendarTherapists] = useState([]);
+  const [therapistFilterSearch, setTherapistFilterSearch] = useState("");
+  // Se filtra con el valor "asentado" (300ms) para no recalcular la lista
+  // en cada tecla; el input en sí sigue mostrando lo que se escribe al instante.
+  const debouncedTherapistFilterSearch = useDebounce(therapistFilterSearch, 300);
 
   const [selectedPatient, setSelectedPatient] = useState("");
   const [selectedTherapist, setSelectedTherapist] = useState("");
@@ -98,10 +117,10 @@ const Citas = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
 
   // Obtiene el nombre usando firstName y lastName del perfil correspondiente.
-  const getFullName = (user) => {
+  const getFullName = useCallback((user) => {
     const profile = user?.patientProfile || user?.therapistProfile || user || {};
     return `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || user?.email || "Sin nombre";
-  };
+  }, []);
 
 useEffect(() => {
   const fetchData = async () => {
@@ -238,21 +257,24 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
     setIsScheduleModalOpen(false);
   };
 
-  const getEventColor = (serviceName) => {
-    const service = services.find((s) => s.name === serviceName);
-    return {
-      backgroundColor: service?.color || "#bdc3c7",
-      borderColor: "#000",
-    };
-  };
+  const getEventColor = useCallback(
+    (serviceName) => {
+      const service = services.find((s) => s.name === serviceName);
+      return {
+        backgroundColor: service?.color || "#bdc3c7",
+        borderColor: "#000",
+      };
+    },
+    [services]
+  );
 
-  const calculateEndTime = (startTime, duration) => {
+  const calculateEndTime = useCallback((startTime, duration) => {
     if (!startTime || !duration) return "";
     const [hours, minutes] = startTime.split(":").map(Number);
     const endMinutes = minutes + duration;
     const endHours = hours + Math.floor(endMinutes / 60);
     return `${String(endHours).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
-  };
+  }, []);
 
   // Actualizar duración y hora de fin automáticamente
   const handleDurationChange = (e) => {
@@ -280,11 +302,14 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
     }
   };
 
+  // IMPORTANTE: la fecha/hora que el usuario teclea o selecciona en el
+  // formulario representa siempre la hora de la CLÍNICA (America/Tijuana),
+  // sin importar en qué zona horaria esté el navegador de quien la crea.
+  // Antes se interpretaba con la zona horaria local del navegador, lo que
+  // hacía que la misma cita se guardara en un instante distinto según quién
+  // la registrara (p. ej. México vs. Filipinas).
   const convertToLocalDate = (dateStr, timeStr) => {
-    const [year, month, day] = dateStr.split("-");
-    const [hours, minutes] = timeStr.split(":");
-    if (!year || !month || !day || !hours || !minutes) return null;
-    return new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(minutes));
+    return zonedTimeToUtc(dateStr, timeStr, CLINIC_TIMEZONE);
   };
 
   // Suma días a una fecha "YYYY-MM-DD" y devuelve el resultado en el mismo formato.
@@ -419,53 +444,75 @@ const handleSubmit = async (e) => {
 };
 
 
-  const handleEventClick = (info) => {
+  const handleEventClick = useCallback((info) => {
     const appointment = appointments.find((app) => app.id === info.event.id);
     if (appointment) {
+      // Se formatea en la zona horaria de la clínica (no la del navegador)
+      // para que todos los usuarios vean la misma fecha/hora de la cita.
       setSelectedAppointment({
         ...appointment,
-        formattedDate: appointment.start.toLocaleDateString("es-ES"),
-        formattedStart: appointment.start.toTimeString().slice(0, 5),
-        formattedEnd: appointment.end.toTimeString().slice(0, 5),
+        formattedDate: appointment.start.toLocaleDateString("es-ES", {
+          timeZone: CLINIC_TIMEZONE,
+        }),
+        formattedStart: formatZonedTime(appointment.start, CLINIC_TIMEZONE),
+        formattedEnd: formatZonedTime(appointment.end, CLINIC_TIMEZONE),
       });
       setModalType("details");
     }
-  };
+  }, [appointments]);
 
-  const handleEventDrop = async (eventDropInfo) => {
+  const handleEventDrop = useCallback(async (eventDropInfo) => {
     const { event } = eventDropInfo;
-    const newDate = event.start.toISOString().split("T")[0];
+    // event.start/end vienen "disfrazados" (calendario en timeZone="UTC");
+    // hay que reconvertirlos al instante UTC real de la clínica antes de
+    // persistirlos, igual que al crear una cita.
+    const realStart = fromFullCalendarDate(event.start, CLINIC_TIMEZONE);
+    const realEnd = fromFullCalendarDate(event.end, CLINIC_TIMEZONE);
+    const newDate = realStart.toISOString().split("T")[0];
 
     try {
+      // La API espera { date, start, end } (mismo contrato que usa
+      // ActualizarCita.jsx) — antes se enviaba { newDate, newStart, newEnd },
+      // nombres que el handler PUT no reconocía, así que la cita se movía
+      // visualmente pero nunca se guardaba el nuevo horario.
       const response = await axios.put(`/api/date/${event.extendedProps.idd}`, {
-        newDate,
-        newStart: event.start.toISOString(),
-        newEnd: event.end.toISOString(),
+        date: newDate,
+        start: realStart.toISOString(),
+        end: realEnd.toISOString(),
       });
       console.log("Evento actualizado en la base de datos:", response.data);
     } catch (error) {
       console.error("Error al actualizar evento:", error);
     }
-  };
+  }, []);
 
-  const closeModal = () => {
+  const closeModal = useCallback(() => {
     setSelectedAppointment(null);
     setModalType(null);
-  };
+  }, []);
 
-  const openEditModal = () => {
+  const openEditModal = useCallback(() => {
     setModalType("edit");
-  };
+  }, []);
 
-  const handleDateClick = (info) => {
+  const handleDateClick = useCallback((info) => {
+    // El calendario corre con timeZone="UTC" recibiendo fechas "disfrazadas"
+    // (ver toFullCalendarDate), así que los getters UTC de info.date ya dan
+    // directamente la fecha/hora de pared de la clínica, igual para
+    // cualquier usuario sin importar su propia zona horaria.
     const clickedDate = info.date;
-    const dayWeek = clickedDate.getDay();
+    const dayWeek = clickedDate.getUTCDay();
     if (dayWeek === 0) {
       alert("No se pueden crear citas los domingos");
       return;
     }
-    const fecha = clickedDate.toLocaleDateString("sv-SE");
-    const hora = clickedDate.toTimeString().slice(0, 5);
+    const fecha = `${clickedDate.getUTCFullYear()}-${String(
+      clickedDate.getUTCMonth() + 1
+    ).padStart(2, "0")}-${String(clickedDate.getUTCDate()).padStart(2, "0")}`;
+    const hora = `${String(clickedDate.getUTCHours()).padStart(
+      2,
+      "0"
+    )}:${String(clickedDate.getUTCMinutes()).padStart(2, "0")}`;
 
     setAppointmentDate(fecha);
     setAppointmentStartTime(hora);
@@ -475,9 +522,9 @@ const handleSubmit = async (e) => {
       setAppointmentEndTime(calculateEndTime(hora, service.duration));
     }
     setIsFormVisible(true);
-  };
+  }, [services, selectedService, calculateEndTime]);
 
- const renderEventContent = (eventInfo) => {
+ const renderEventContent = useCallback((eventInfo) => {
   const colorStyle = getEventColor(eventInfo.event.title);
   // 1. Intentamos obtener el paciente de extendedProps
   const patientProp = eventInfo.event.extendedProps.patient;
@@ -522,41 +569,91 @@ const handleSubmit = async (e) => {
       </div>
     </div>
   );
-};
+}, [getEventColor, patients]);
 
-const patientsData = (patients || []).map(p => ({
-  label: p.patientProfile 
-    ? `${p.patientProfile.firstName} ${p.patientProfile.lastName}`.trim() 
-    : (p.firstName ? `${p.firstName} ${p.lastName}` : p.email),
-  value: p._id
-})).sort((a, b) => a.label.localeCompare(b.label));
+const patientsData = useMemo(
+  () =>
+    (patients || [])
+      .map((p) => ({
+        label: p.patientProfile
+          ? `${p.patientProfile.firstName} ${p.patientProfile.lastName}`.trim()
+          : p.firstName
+          ? `${p.firstName} ${p.lastName}`
+          : p.email,
+        value: p._id,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  [patients]
+);
 
-const therapistsData = (therapists || []).map(t => ({
-  label: t.therapistProfile 
-    ? `${t.therapistProfile.firstName} ${t.therapistProfile.lastName}`.trim() 
-    : (t.firstName ? `${t.firstName} ${t.lastName}` : t.email),
-  value: t._id
-})).sort((a, b) => a.label.localeCompare(b.label));
+const therapistsData = useMemo(
+  () =>
+    (therapists || [])
+      .map((t) => ({
+        label: t.therapistProfile
+          ? `${t.therapistProfile.firstName} ${t.therapistProfile.lastName}`.trim()
+          : t.firstName
+          ? `${t.firstName} ${t.lastName}`
+          : t.email,
+        value: t._id,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  [therapists]
+);
 
-  const servicesData = (services || [])
-    .map(s => ({
-      label: s.name,
-      value: s._id
-    }))
-    .sort((a,b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" }));
+  const servicesData = useMemo(
+    () =>
+      (services || [])
+        .map((s) => ({
+          label: s.name,
+          value: s._id,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
+    [services]
+  );
+
+  // Terapeutas del checklist "Terapeutas en calendario": orden alfabético +
+  // filtro por la barra de búsqueda (con debounce). No afecta a `therapists`
+  // (usado por los SelectPicker de Paciente/Terapeuta del formulario).
+  const visibleCalendarTherapists = useMemo(
+    () =>
+      [...therapists]
+        .sort((a, b) => getFullName(a).localeCompare(getFullName(b), "es", { sensitivity: "base" }))
+        .filter((therapist) =>
+          getFullName(therapist)
+            .toLowerCase()
+            .includes(debouncedTherapistFilterSearch.trim().toLowerCase())
+        ),
+    [therapists, debouncedTherapistFilterSearch, getFullName]
+  );
 
   // NUEVO: filtrar SOLO las citas que pertenecen a los terapeutas seleccionados.
   // La colección original de appointments no se modifica.
-  const filteredAppointments = (appointments || []).filter((appointment) => {
-    const therapistId =
-      typeof appointment.therapist === "object" && appointment.therapist !== null
-        ? appointment.therapist._id
-        : appointment.therapist;
+  const filteredAppointments = useMemo(
+    () =>
+      (appointments || [])
+        .filter((appointment) => {
+          const therapistId =
+            typeof appointment.therapist === "object" && appointment.therapist !== null
+              ? appointment.therapist._id
+              : appointment.therapist;
 
-    return selectedCalendarTherapists.includes(therapistId?.toString());
-  });
+          return selectedCalendarTherapists.includes(therapistId?.toString());
+        })
+        // El calendario se renderiza con timeZone="UTC" para que todos los
+        // usuarios vean la misma hora sin importar su propia zona horaria; aquí
+        // se "disfrazan" los instantes reales como su hora de pared en la
+        // clínica para que FullCalendar los dibuje correctamente. El estado
+        // `appointments` original (instantes reales) no se toca.
+        .map((appointment) => ({
+          ...appointment,
+          start: toFullCalendarDate(appointment.start, CLINIC_TIMEZONE),
+          end: toFullCalendarDate(appointment.end, CLINIC_TIMEZONE),
+        })),
+    [appointments, selectedCalendarTherapists]
+  );
 
-  const toggleCalendarTherapist = (therapistId) => {
+  const toggleCalendarTherapist = useCallback((therapistId) => {
     const id = therapistId.toString();
 
     setSelectedCalendarTherapists((current) =>
@@ -564,17 +661,17 @@ const therapistsData = (therapists || []).map(t => ({
         ? current.filter((selectedId) => selectedId !== id)
         : [...current, id]
     );
-  };
+  }, []);
 
-  const selectAllCalendarTherapists = () => {
+  const selectAllCalendarTherapists = useCallback(() => {
     setSelectedCalendarTherapists(
       therapists.map((therapist) => therapist._id.toString())
     );
-  };
+  }, [therapists]);
 
-  const clearCalendarTherapists = () => {
+  const clearCalendarTherapists = useCallback(() => {
     setSelectedCalendarTherapists([]);
-  };
+  }, []);
 
 
   return (
@@ -621,8 +718,21 @@ const therapistsData = (therapists || []).map(t => ({
             </button>
           </div>
 
+          <div className="relative mb-3">
+            <input
+              type="text"
+              value={therapistFilterSearch}
+              onChange={(e) => setTherapistFilterSearch(e.target.value)}
+              placeholder="Buscar terapeuta..."
+              className="w-full text-xs p-2 pl-8 rounded-lg border border-slate-200 bg-white focus:ring-2 focus:ring-sky-400 focus:border-sky-400 outline-none text-slate-700"
+            />
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs">
+              🔍
+            </span>
+          </div>
+
           <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
-            {therapists.map((therapist) => {
+            {visibleCalendarTherapists.map((therapist) => {
               const therapistId = therapist._id.toString();
               const isSelected = selectedCalendarTherapists.includes(therapistId);
 
@@ -645,6 +755,11 @@ const therapistsData = (therapists || []).map(t => ({
                 </label>
               );
             })}
+            {visibleCalendarTherapists.length === 0 && (
+              <p className="text-xs text-slate-400 text-center py-3">
+                Sin resultados
+              </p>
+            )}
           </div>
         </div>
 
@@ -927,10 +1042,16 @@ const therapistsData = (therapists || []).map(t => ({
           </div>
 
           <div className="calendar-container">
-            <FullCalendar
+            <FullCalendarView
               key={calKey}
-              plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
               initialView="timeGridWeek"
+              // Fijo a "UTC": junto con el "disfraz" aplicado en
+              // filteredAppointments, hace que TODOS los usuarios vean la
+              // misma hora de la clínica, sin importar la zona horaria de
+              // su propio navegador (antes usaba la zona local por
+              // defecto, lo que ocultaba citas fuera de slotMinTime/Max
+              // para usuarios en zonas muy distintas, p. ej. Filipinas).
+              timeZone="UTC"
               events={filteredAppointments}
               editable={true}
               selectable={true}
@@ -1236,9 +1357,9 @@ const therapistsData = (therapists || []).map(t => ({
       : selectedAppointment.therapist
   }
             selectedService={selectedAppointment.serviceId}
-            appointmentDate={selectedAppointment.start.toISOString().split("T")[0]}
-            appointmentStartTime={selectedAppointment.start.toTimeString().slice(0, 5)}
-            appointmentEndTime={selectedAppointment.end.toTimeString().slice(0, 5)}
+            appointmentDate={formatZonedDate(selectedAppointment.start, CLINIC_TIMEZONE)}
+            appointmentStartTime={formatZonedTime(selectedAppointment.start, CLINIC_TIMEZONE)}
+            appointmentEndTime={formatZonedTime(selectedAppointment.end, CLINIC_TIMEZONE)}
             appointmentDuration={selectedAppointment.duration}
             cost={selectedAppointment.cost}
             onClose={closeModal}
