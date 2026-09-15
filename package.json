@@ -12,7 +12,7 @@
     "seed:therapists": "node scripts/seedTherapists.js",
     "seed:patients": "node scripts/seedPatients.js",
     "seed:appointments": "node scripts/seedAppointments.js",
-    "seed:recent-appointments": "node scripts/seedRecentAppointments.js"
+    "seed:balanced-appointments": "node scripts/reseedBalancedAppointments.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.703.0",

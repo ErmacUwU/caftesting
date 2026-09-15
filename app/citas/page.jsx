@@ -95,6 +95,7 @@ const Citas = () => {
   const [selectedService, setSelectedService] = useState("");
   const [cost, setCost] = useState("");
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [calKey, setCalKey] = useState(0);
 
   // --- Citas recurrentes ---
@@ -125,11 +126,14 @@ const Citas = () => {
 useEffect(() => {
   const fetchData = async () => {
     try {
-      const [patientsRes, therapistsRes, appointmentsRes, scheduleRes, serviceRes] =
+      // Antes se pedía también "/api/date" aquí (las citas completas, sin
+      // filtrar), pero esa respuesta nunca se usaba: las citas las carga
+      // el efecto de abajo, ya filtradas por rango de fechas visible. Se
+      // quita esa quinta petición redundante del montaje.
+      const [patientsRes, therapistsRes, scheduleRes, serviceRes] =
         await Promise.all([
           axios.get("/api/usuarioTrue?role=patient"), // Filtra por rol paciente
           axios.get("/api/usuarioTrue?role=therapist"), // Filtra por rol terapeuta
-          axios.get("/api/date"),
           axios.get("/api/schedule"),
           axios.get("/api/service"),
         ]);
@@ -171,13 +175,44 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
 }, []);
 
 
-  // Cargar citas coloreadas por servicio cuando ya hay services
+  // Rango de fechas que el calendario tiene visible ahora mismo (semana o
+  // día), en instantes UTC reales. Se actualiza vía el callback `datesSet`
+  // de FullCalendar cada vez que el usuario navega (prev/next, cambia de
+  // vista, etc.) y se usa para pedir a /api/date SOLO las citas de ese
+  // rango en vez de la colección completa — antes se traían TODAS las
+  // citas de la base de datos en cada carga, lo cual dominaba el tiempo de
+  // respuesta conforme crecía el histórico.
+  const [visibleRange, setVisibleRange] = useState(null);
+
+  const handleDatesSet = useCallback((arg) => {
+    // arg.start/arg.end vienen "disfrazados" (el calendario corre con
+    // timeZone="UTC"); hay que devolverlos a su instante UTC real antes de
+    // usarlos como parámetros de la API, igual que con eventDrop.
+    const realStart = fromFullCalendarDate(arg.start, CLINIC_TIMEZONE);
+    const realEnd = fromFullCalendarDate(arg.end, CLINIC_TIMEZONE);
+    const start = realStart.toISOString();
+    const end = realEnd.toISOString();
+    // FullCalendar puede volver a llamar datesSet aunque el rango visible
+    // no haya cambiado en realidad (p. ej. al re-renderizar Citas, ya que
+    // headerToolbar/buttonText/customButtons se recrean como objetos
+    // nuevos en cada render). Si no se filtra por valor aquí, ese
+    // "no-cambio" dispara setVisibleRange -> re-render -> nuevas props ->
+    // datesSet de nuevo, un ciclo infinito ("Maximum update depth
+    // exceeded"). Comparando por valor, solo se actualiza el estado (y por
+    // tanto se refetch) cuando el rango realmente cambió.
+    setVisibleRange((prev) =>
+      prev && prev.start === start && prev.end === end ? prev : { start, end }
+    );
+  }, []);
+
+  // Cargar citas coloreadas por servicio cuando ya hay services Y ya
+  // sabemos qué rango de fechas está viendo el usuario.
   useEffect(() => {
-    if (services.length === 0) return;
+    if (services.length === 0 || !visibleRange) return;
 
     const fetchAppointments = async () => {
       try {
-        const response = await axios.get("/api/date");
+        const response = await axios.get("/api/date", { params: visibleRange });
         const appointmentData = response.data?.date || [];
 
         const colorAppointments = appointmentData.map((appointment) => {
@@ -205,12 +240,15 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
       }
     };
     fetchAppointments();
-  }, [services]);
+  }, [services, visibleRange]);
 
-  // Refrescar citas post
+  // Refrescar citas post (crear/editar/borrar/mover): mismo rango visible
+  // que ya se le pidió al calendario, no la colección completa.
   const refetchAppointments = async () => {
     try {
-      const response = await axios.get("/api/date");
+      const response = await axios.get("/api/date", {
+        params: visibleRange || undefined,
+      });
       const appointmentData = response.data?.date || [];
 
       const colorAppointments = appointmentData.map((appointment) => {
@@ -673,13 +711,76 @@ const therapistsData = useMemo(
     setSelectedCalendarTherapists([]);
   }, []);
 
+  // Al colapsar/expandir el sidebar, el <aside> cambia de ancho con una
+  // transición CSS de 300ms; FullCalendar solo recalcula el tamaño de su
+  // grilla ante un evento 'resize' de window (handleWindowResize, activo
+  // por defecto), así que aquí se dispara uno sintético para que la
+  // columna deje de quedarse a la mitad con espacio en blanco a la
+  // derecha. Se dispara una vez al cambiar el estado y otra vez al
+  // terminar la transición, para capturar el ancho final del contenedor.
+  useEffect(() => {
+    window.dispatchEvent(new Event("resize"));
+    const timeoutId = setTimeout(() => {
+      window.dispatchEvent(new Event("resize"));
+    }, 320);
+    return () => clearTimeout(timeoutId);
+  }, [isSidebarCollapsed]);
+
+  // Config estática de FullCalendar: antes se pasaban como objetos/arrays
+  // literales inline, es decir, una referencia NUEVA en cada render de
+  // Citas. @fullcalendar/react vuelve a aplicar opciones cuando cambian
+  // por referencia, lo que además de trabajo de más, alimentaba el ciclo
+  // de re-render junto con datesSet. Memoizados, solo cambian cuando de
+  // verdad deben cambiar.
+  const calendarSlotLabelFormat = useMemo(
+    () => ({ hour: "numeric", minute: "2-digit", meridiem: "short", hour12: false }),
+    []
+  );
+  const calendarHeaderToolbar = useMemo(
+    () => ({ left: "prev,next today,horario", center: "title", right: "timeGridWeek,timeGridDay" }),
+    []
+  );
+  const calendarButtonText = useMemo(
+    () => ({ today: "Hoy", week: "Semana", day: "Día", horario: "Horario" }),
+    []
+  );
+  const calendarCustomButtons = useMemo(
+    () => ({
+      horario: {
+        text: "Horario",
+        click: () => setIsScheduleModalOpen(true),
+      },
+    }),
+    []
+  );
+  const calendarHiddenDays = useMemo(() => [0], []);
+
 
   return (
   <div className="h-screen overflow-hidden bg-slate-50 flex flex-col">
     <div className="max-w-7xl w-full mx-auto flex gap-4 py-6 px-4 flex-1 min-h-0">
 
-      {/* Sidebar izquierda */}
-      <aside className="w-80 flex-shrink-0 h-full overflow-y-auto flex flex-col gap-4">
+      {/* Sidebar izquierda: colapsable. Al colapsar se reduce a una barra
+          delgada (solo el botón de toggle) y `main`, al ser flex-1, ocupa
+          automáticamente el ancho que libera. */}
+      <aside
+        className={`relative flex-shrink-0 h-full overflow-y-auto flex flex-col gap-4 transition-all duration-300 ${
+          isSidebarCollapsed ? "w-12" : "w-80"
+        }`}
+      >
+        <div className={`flex ${isSidebarCollapsed ? "justify-center" : "justify-end"}`}>
+          <button
+            type="button"
+            onClick={() => setIsSidebarCollapsed((prev) => !prev)}
+            title={isSidebarCollapsed ? "Expandir panel" : "Colapsar panel"}
+            className="bg-white border border-slate-200 rounded-lg shadow-sm h-8 w-8 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:text-slate-700 transition"
+          >
+            {isSidebarCollapsed ? "»" : "«"}
+          </button>
+        </div>
+
+        {!isSidebarCollapsed && (
+        <>
         {/* Tarjeta superior: info rápida */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-4">
           <h2 className="text-sm font-semibold text-slate-800 mb-2">
@@ -717,6 +818,18 @@ const therapistsData = useMemo(
               Ninguno
             </button>
           </div>
+
+          {/* Aviso: con muchos terapeutas a la vez la vista Semana se
+              satura visualmente (varias citas simultáneas por celda). */}
+          {selectedCalendarTherapists.length > 4 && (
+            <div className="mb-3 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2">
+              <span className="text-amber-500 text-xs leading-none mt-0.5">⚠️</span>
+              <p className="text-[11px] text-amber-700 leading-snug">
+                Tienes {selectedCalendarTherapists.length} terapeutas a la vista. Para mayor claridad, prueba la vista{" "}
+                <strong>"Día"</strong> del calendario (arriba a la derecha).
+              </p>
+            </div>
+          )}
 
           <div className="relative mb-3">
             <input
@@ -1025,10 +1138,12 @@ const therapistsData = useMemo(
             </form>
           )}
         </div>
+        </>
+        )}
       </aside>
 
       {/* Columna principal: calendario */}
-      <main className="flex-1 h-full overflow-auto">
+      <main className="flex-1 min-w-0 h-full overflow-auto">
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-3">
           <div className="mb-3 flex items-center justify-between">
             <div>
@@ -1041,10 +1156,11 @@ const therapistsData = useMemo(
             </div>
           </div>
 
-          <div className="calendar-container">
+          <div className="calendar-container w-full min-w-0 flex-1">
             <FullCalendarView
               key={calKey}
               initialView="timeGridWeek"
+              datesSet={handleDatesSet}
               // Fijo a "UTC": junto con el "disfraz" aplicado en
               // filteredAppointments, hace que TODOS los usuarios vean la
               // misma hora de la clínica, sin importar la zona horaria de
@@ -1058,36 +1174,17 @@ const therapistsData = useMemo(
               eventDrop={handleEventDrop}
               dateClick={handleDateClick}
               eventClick={handleEventClick}
-              hiddenDays={[0]}
+              hiddenDays={calendarHiddenDays}
               eventContent={renderEventContent}
-              slotLabelFormat={{
-                hour: "numeric",
-                minute: "2-digit",
-                meridiem: "short",
-                hour12: false,
-              }}
+              slotLabelFormat={calendarSlotLabelFormat}
               slotMinTime={workSchedule.startTime}
               slotMaxTime={workSchedule.endTime}
-              headerToolbar={{
-                left: "prev,next today,horario",
-                center: "title",
-                right: "timeGridWeek,timeGridDay",
-              }}
+              headerToolbar={calendarHeaderToolbar}
               locale="es"
               height="auto"
               //slotMinHeight={50}
-              buttonText={{
-                today: "Hoy",
-                week: "Semana",
-                day: "Día",
-                horario: "Horario",
-              }}
-              customButtons={{
-                horario: {
-                  text: "Horario",
-                  click: () => setIsScheduleModalOpen(true),
-                },
-              }}
+              buttonText={calendarButtonText}
+              customButtons={calendarCustomButtons}
             />
           </div>
         </div>

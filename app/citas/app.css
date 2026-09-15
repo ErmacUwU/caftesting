@@ -132,22 +132,30 @@ body::before{
   overflow: hidden;
 }
 
-/* Contenido del evento */
+/* Contenido del evento — modo compacto: cuando muchas citas caen en la
+   misma hora, FullCalendar reparte el ancho de la columna entre todas y
+   las tarjetas se angostan mucho. Con tipografía/padding más chicos el
+   texto sigue siendo legible; la hora, además, puede desplazarse
+   horizontalmente (en vez de recortarse sin más) si de plano no cabe. */
 .custom-event-content {
   color: #fff;
-  padding: 8px 10px;
+  padding: 4px 6px;
 }
 .custom-hour{
   text-align: center;
-  font-size: 13px;
+  font-size: 11px;
   color: rgba(255,255,255,.95);
-  padding: 4px 0 2px;
+  padding: 2px 0 1px;
   font-weight: 700;
-  letter-spacing:.2px;
+  letter-spacing:.1px;
+  white-space: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
+.custom-hour::-webkit-scrollbar { height: 3px; }
 .custom-title{
-  font-size: 14px;
-  line-height: 1.25;
+  font-size: 11px;
+  line-height: 1.2;
   white-space: normal;
   word-break: break-word;
   display: -webkit-box;
