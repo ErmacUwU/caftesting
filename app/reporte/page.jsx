@@ -78,16 +78,10 @@ const Reporte = () => {
 useEffect(() => {
   const fetchUsers = async () => {
     try {
-      console.log("Iniciando carga de usuarios...");
-      
       const [therapistsRes, patientsRes] = await Promise.all([
         axios.get("/api/usuarioTrue?role=therapist"),
         axios.get("/api/usuarioTrue?role=patient"),
       ]);
-
-      // Log para debugear: Mira esto en F12 -> Console
-      console.log("Respuesta Terapeutas:", therapistsRes.data);
-      console.log("Respuesta Pacientes:", patientsRes.data);
 
       // Intentamos extraer los arrays (manejando diferentes estructuras posibles)
       const therapists = therapistsRes.data.users || therapistsRes.data || [];
@@ -183,6 +177,24 @@ useEffect(() => {
         headers: { "Content-Type": "application/pdf" },
       });
 
+      // 3.5 Subir cada imagen adjunta a S3 (antes se guardaba la URL blob:
+      // de la previsualización local, válida solo en esta pestaña — quedaba
+      // muerta en cuanto se recargaba la página o se abría el reporte
+      // después).
+      const uploadedImageUrls = await Promise.all(
+        images.map(async ({ file }, idx) => {
+          const imgFilename = `${filename.replace(/\.pdf$/, "")}_img${idx + 1}_${file.name}`;
+          const imgPresign = await axios.post("/api/s3/upload", {
+            name: imgFilename,
+            type: file.type,
+          });
+          await axios.put(imgPresign.data.url, file, {
+            headers: { "Content-Type": file.type },
+          });
+          return imgPresign.data.url.split("?")[0];
+        })
+      );
+
       // 4. REGISTRO EN BASE DE DATOS (Aquí estaba el error)
       // Enviamos exactamente los campos que tu API requiere
       const payload = {
@@ -193,10 +205,8 @@ useEffect(() => {
         patient: selectedPatient,         // ID del UserTrue (paciente)
         therapist: selectedTherapist,     // ID del UserTrue (terapeuta)
         notes: notes,                     // Notas opcionales
-        images: images.map((i) => i.url), // URLs de previsualización
+        images: uploadedImageUrls,        // URLs reales y persistentes en S3
       };
-
-      console.log("Enviando reporte a la BD:", payload);
 
       const response = await axios.post("/api/reports", payload);
 

@@ -24,20 +24,35 @@ export async function GET(req) {
   if (!searchParams.get("list")) {
     return NextResponse.json({ error: "Use ?list=true" }, { status: 400 });
   }
-  const data = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET }));
-  return NextResponse.json({ files: data.Contents || [] });
+  try {
+    const data = await s3.send(new ListObjectsV2Command({ Bucket: BUCKET }));
+    return NextResponse.json({ files: data.Contents || [] });
+  } catch (error) {
+    console.error("[GET /api/s3/upload] error:", error);
+    return NextResponse.json({ error: "Error al listar archivos" }, { status: 500 });
+  }
 }
 
 export async function POST(req) {
-  const { name, type } = await req.json();
-  const cmd = new PutObjectCommand({ Bucket: BUCKET, Key: name, ContentType: type });
-  const url = await getSignedUrl(s3, cmd, { expiresIn: 3600 });
-  return NextResponse.json({ url });
+  try {
+    const { name, type } = await req.json();
+    const cmd = new PutObjectCommand({ Bucket: BUCKET, Key: name, ContentType: type });
+    const url = await getSignedUrl(s3, cmd, { expiresIn: 3600 });
+    return NextResponse.json({ url });
+  } catch (error) {
+    console.error("[POST /api/s3/upload] error:", error);
+    return NextResponse.json({ error: "Error al generar la URL de subida" }, { status: 500 });
+  }
 }
 
 export async function DELETE(req) {
-  const { searchParams } = new URL(req.url);
-  const fileName = searchParams.get("fileName");
-  await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: fileName }));
-  return NextResponse.json({ message: "Archivo eliminado" });
+  try {
+    const { searchParams } = new URL(req.url);
+    const fileName = searchParams.get("fileName");
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: fileName }));
+    return NextResponse.json({ message: "Archivo eliminado" });
+  } catch (error) {
+    console.error("[DELETE /api/s3/upload] error:", error);
+    return NextResponse.json({ error: "Error al eliminar el archivo" }, { status: 500 });
+  }
 }

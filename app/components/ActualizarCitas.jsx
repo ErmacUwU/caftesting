@@ -18,6 +18,13 @@ const ActualizarCita = ({
   cost,
   onClose,
   onUpdate,
+  // Opcionales: si quien nos monta (p. ej. app/citas/page.jsx) ya tiene
+  // pacientes/terapeutas/servicios cargados, los reutilizamos en vez de
+  // volver a pedirlos a la API. Si no se pasan, este componente sigue
+  // cargándolos por su cuenta como antes (caso de TarjetaCitas.jsx).
+  preloadedPatients,
+  preloadedTherapists,
+  preloadedServices,
 }) => {
   const [newPatient, setNewPatient] = useState(selectedPatient);
   const [newTherapist, setNewTherapist] = useState(selectedTherapist);
@@ -37,21 +44,28 @@ const ActualizarCita = ({
   const debouncedPatientSearch = useDebounce(patientSearch, 300);
   const debouncedTherapistSearch = useDebounce(therapistSearch, 300);
 
-  // 🔹 Cargar y ordenar servicios alfabéticamente
+  // 🔹 Cargar y ordenar servicios alfabéticamente (o reutilizar los del padre)
   useEffect(() => {
+    const sortServices = (list) =>
+      [...(list || [])].sort((a, b) =>
+        a.name.localeCompare(b.name, "es", { sensitivity: "base" })
+      );
+
+    if (preloadedServices) {
+      setServices(sortServices(preloadedServices));
+      return;
+    }
+
     const fetchServices = async () => {
       try {
         const res = await axios.get("/api/service");
-        const sorted = [...(res.data.services || [])].sort((a, b) =>
-          a.name.localeCompare(b.name, "es", { sensitivity: "base" })
-        );
-        setServices(sorted);
+        setServices(sortServices(res.data.services));
       } catch (error) {
         console.error("Error al cargar los servicios", error);
       }
     };
     fetchServices();
-  }, []);
+  }, [preloadedServices]);
 
  // 1. Añade esto en la parte superior de tu componente
 const isInitialLoad = useRef(true);
@@ -73,44 +87,49 @@ useEffect(() => {
 
 
 
-  // 🔹 Cargar pacientes y terapeutas ordenados alfabéticamente
+  // 🔹 Cargar pacientes y terapeutas ordenados alfabéticamente (o reutilizar
+  // los del padre, p. ej. app/citas/page.jsx, que ya los tiene cargados).
   useEffect(() => {
-  const fetchData = async () => {
-    try {
-      // 1. Llamamos a la nueva API unificada pasando el rol
-      const [patientsRes, therapistsRes] = await Promise.all([
-        axios.get("/api/usuarioTrue?role=patient"),
-        axios.get("/api/usuarioTrue?role=therapist"),
-      ]);
+    // Ajuste para el modelo UsuarioTrue + populate: el perfil está en
+    // .patientProfile/.therapistProfile, aquí lo aplanamos para que el
+    // sort y el <select> funcionen igual sin importar de dónde vino la lista.
+    const formatAndSort = (data) => {
+      return [...(data || [])]
+        .map(u => ({
+          ...u,
+          firstName: u.patientProfile?.firstName || u.therapistProfile?.firstName || "",
+          lastName: u.patientProfile?.lastName || u.therapistProfile?.lastName || "",
+          _id: u._id
+        }))
+        .sort((a, b) =>
+          `${a.firstName} ${a.lastName}`.localeCompare(
+            `${b.firstName} ${b.lastName}`,
+            "es",
+            { sensitivity: "base" }
+          )
+        );
+    };
 
-      // 2. Ajuste para el nuevo modelo (UsuarioTrue + populate)
-      // Como ahora usas populate, el perfil está en .patientProfile
-      const formatAndSort = (data) => {
-        return [...data]
-          .map(u => ({
-            ...u,
-            // Aplanamos el nombre para que el sort y el SelectPicker funcionen
-            firstName: u.patientProfile?.firstName || u.therapistProfile?.firstName || "",
-            lastName: u.patientProfile?.lastName || u.therapistProfile?.lastName || "",
-            _id: u._id // Este es el ID del UserTrue que ya está funcionando en tu API
-          }))
-          .sort((a, b) => 
-            `${a.firstName} ${a.lastName}`.localeCompare(
-              `${b.firstName} ${b.lastName}`,
-              "es",
-              { sensitivity: "base" }
-            )
-          );
-      };
-
-      setPatients(formatAndSort(patientsRes.data));
-      setTherapists(formatAndSort(therapistsRes.data));
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    if (preloadedPatients && preloadedTherapists) {
+      setPatients(formatAndSort(preloadedPatients));
+      setTherapists(formatAndSort(preloadedTherapists));
+      return;
     }
-  };
-  fetchData();
-}, []);
+
+    const fetchData = async () => {
+      try {
+        const [patientsRes, therapistsRes] = await Promise.all([
+          axios.get("/api/usuarioTrue?role=patient"),
+          axios.get("/api/usuarioTrue?role=therapist"),
+        ]);
+        setPatients(formatAndSort(patientsRes.data));
+        setTherapists(formatAndSort(therapistsRes.data));
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    fetchData();
+  }, [preloadedPatients, preloadedTherapists]);
 
   useEffect(() => {
     if (selectedTherapist && selectedService) {
@@ -181,10 +200,7 @@ const appointmentData = {
   serviceId: newService,   // ID del servicio
 };
 
-console.log("Enviando al Backend:", JSON.stringify(appointmentData, null, 2));
-
   try {
-    console.log("Enviando actualización:", appointmentData);
     const res = await axios.put(`/api/date/${id}`, appointmentData);
     
     if (res.status === 200) {

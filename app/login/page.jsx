@@ -19,7 +19,9 @@ const Login = () => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const redirect = params.get("redirect");
-      if (redirect) {
+      // Solo se acepta una ruta interna (empieza con "/", no con "//" que el
+      // navegador podría interpretar como protocolo-relativo hacia otro host).
+      if (redirect && redirect.startsWith("/") && !redirect.startsWith("//")) {
         setRedirectTo(redirect);
       }
     }

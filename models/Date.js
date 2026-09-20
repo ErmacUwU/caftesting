@@ -13,9 +13,10 @@ const DateSchema = new mongoose.Schema(
     start: {
       type: Date,
       required: true,
+      index: true, // /api/date filtra por rango de fechas en cada carga de la agenda
     },
     end: {
-      type: Date, 
+      type: Date,
       required: true,
     },
     duration: {

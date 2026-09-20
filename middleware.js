@@ -9,7 +9,7 @@ export function middleware(request) {
 
   // 2. Definir las rutas que están estrictamente protegidas para Administradores
   // Añade aquí todas las rutas a las que los operadores/pacientes no deban entrar
-  const adminRoutes = ["/registroU", "/ajustes", "/admin"];
+  const adminRoutes = ["/registroU", "/admin"];
 
   // 3. Evaluar si el usuario intenta acceder a una ruta de administrador
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route));

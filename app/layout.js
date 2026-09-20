@@ -2,7 +2,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Sidebar from "@/app/sidebar/sidebar"; // Asegúrate de que la ruta sea correcta
 import { AuthProvider } from "./context/AuthContext.js"; // Importa el proveedor de contexto de autenticación.
-import TawkClient from "./components/TawkClient";
 import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin"] });

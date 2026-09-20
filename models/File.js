@@ -10,6 +10,12 @@ const fileSchema = new mongoose.Schema(
     url: { type: String, required: true },
     patientId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserTrue' },
     therapistId: { type: mongoose.Schema.Types.ObjectId, ref: 'UserTrue' },
+    // Respaldo en texto plano: permite ubicar el documento por nombre aunque
+    // el perfil vinculado (patientId/therapistId) cambie o se borre.
+    patientName: { type: String },
+    therapistName: { type: String },
+    patient: { type: String },
+    therapist: { type: String },
     notes: { type: String },
     images: [{ type: String }],
   },

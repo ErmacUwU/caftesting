@@ -48,7 +48,7 @@ const BotonDeleteCitas = ({ id, recurrenceGroupId, onDeleted }) => {
   return (
     <div>
       <button
-        className="mt-4 bg-red-500 text-white p-2 rounded"
+        className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition disabled:opacity-50"
         onClick={handleDeleteClick}
         disabled={isDeleting}
       >

@@ -4,6 +4,7 @@ import PatientU from "@/models/PatientU";
 import TherapistU from "@/models/TherapistU";
 import UserTrue from "@/models/UserTrue";
 import mongoose from "mongoose"; // <--- Verifica esta importación
+import bcrypt from "bcryptjs";
 
 export async function PUT(req, { params }) {
   try {

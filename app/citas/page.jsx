@@ -288,10 +288,9 @@ setTherapists([...listaT].sort((a, b) => getFullName(a).localeCompare(getFullNam
 
   // Guardar cambios de horario en la base de datos
   const handleSaveSchedule = async () => {
-    const response = await axios.put("/api/schedule", workSchedule, {
+    await axios.put("/api/schedule", workSchedule, {
       headers: { "Content-Type": "application/json" },
     });
-    console.log("Horario actualizado:", response.data);
     setIsScheduleModalOpen(false);
   };
 
@@ -415,38 +414,37 @@ const handleSubmit = async (e) => {
     };
   });
 
-  // LOG DE DIAGNÓSTICO: Revisa esto en la consola (F12)
-  console.log("Enviando cita(s) a la API:", occurrencesData);
-
   let postOk = false;
 
   try {
     // 4. Guardar la(s) cita(s) en /api/date
     // - Cita única: mismo payload de siempre (objeto plano).
     // - Cita recurrente: se envían todas las ocurrencias juntas bajo `occurrences`.
-    const { data: created } = isRecurring
+    isRecurring
       ? await axios.post("/api/date", { occurrences: occurrencesData })
       : await axios.post("/api/date", occurrencesData[0]);
 
-    console.log("Respuesta del servidor (Cita creada):", created);
     postOk = true;
 
     // 5. Actualizar el perfil del Paciente en UsuarioTrue (Historial de citas)
-    // Se registra una entrada de historial por cada ocurrencia creada.
-    for (const occ of occurrencesData) {
-      try {
-        await axios.patch(`/api/usuarioTrue/${selectedPatient}`, {
-          isAccountUpdate: false, // Indica que no es cambio de contraseña/email, sino de perfil
-          nuevaCita: {
-            fecha: new Date(`${occ.date}T00:00:00`).toISOString(),
-            costo: Number(cost),
-          },
-        });
-      } catch (patchErr) {
-        console.warn("La cita se creó, pero no se pudo actualizar el historial del paciente:", patchErr);
-      }
-    }
-    console.log("Historial del paciente actualizado correctamente");
+    // Se registra una entrada de historial por cada ocurrencia creada. En
+    // paralelo (antes era secuencial: una cita recurrente de N semanas
+    // esperaba N round-trips uno tras otro antes de terminar de "guardar").
+    await Promise.all(
+      occurrencesData.map((occ) =>
+        axios
+          .patch(`/api/usuarioTrue/${selectedPatient}`, {
+            isAccountUpdate: false, // Indica que no es cambio de contraseña/email, sino de perfil
+            nuevaCita: {
+              fecha: new Date(`${occ.date}T00:00:00`).toISOString(),
+              costo: Number(cost),
+            },
+          })
+          .catch((patchErr) => {
+            console.warn("La cita se creó, pero no se pudo actualizar el historial del paciente:", patchErr);
+          })
+      )
+    );
 
   } catch (error) {
     console.error("Error crítico al crear la cita:", error);
@@ -513,12 +511,11 @@ const handleSubmit = async (e) => {
       // ActualizarCita.jsx) — antes se enviaba { newDate, newStart, newEnd },
       // nombres que el handler PUT no reconocía, así que la cita se movía
       // visualmente pero nunca se guardaba el nuevo horario.
-      const response = await axios.put(`/api/date/${event.extendedProps.idd}`, {
+      await axios.put(`/api/date/${event.extendedProps.idd}`, {
         date: newDate,
         start: realStart.toISOString(),
         end: realEnd.toISOString(),
       });
-      console.log("Evento actualizado en la base de datos:", response.data);
     } catch (error) {
       console.error("Error al actualizar evento:", error);
     }
@@ -1459,6 +1456,9 @@ const therapistsData = useMemo(
             appointmentEndTime={formatZonedTime(selectedAppointment.end, CLINIC_TIMEZONE)}
             appointmentDuration={selectedAppointment.duration}
             cost={selectedAppointment.cost}
+            preloadedPatients={patients}
+            preloadedTherapists={therapists}
+            preloadedServices={services}
             onClose={closeModal}
             onUpdate={refetchAppointments}
           />

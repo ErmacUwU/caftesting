@@ -31,13 +31,9 @@ const ConsultaDocumentos = () => {
     setLoadingDocuments(true);
     setErrorMessage("");
     try {
-      const payload = isInitial 
-        ? { patients: [], therapists: [] } 
+      const payload = isInitial
+        ? { patients: [], therapists: [] }
         : { patients: selectedPatients, therapists: selectedTherapists };
-
-        console.log("👀 PAYLOAD ENVIADO AL BACKEND:", payload); // <-- AÑADE ESTO
-
-
 
       const response = await axios.post("/api/s3/documents", payload);
       const docs = response.data.documents || [];
