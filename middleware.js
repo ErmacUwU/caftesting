@@ -22,7 +22,10 @@ export function middleware(request) {
     // Si no hay token (no está logueado) o el rol no es admin, lo rebotamos
     if (!token || normalizedRole !== "admin") {
       // Redirige al login o a una página de "no autorizado"
-      return NextResponse.redirect(new URL("/login", request.url));
+      // Se recuerda la ruta original para volver a ella tras iniciar sesión.
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 

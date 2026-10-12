@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation';
 
 const AuthContext = createContext();
 
+const clearStoredSession = () => {
+  localStorage.removeItem('isAuthenticated');
+  localStorage.removeItem('userId');
+  localStorage.removeItem("userName");
+  localStorage.removeItem("userRole");
+};
+
 export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -15,6 +22,20 @@ export const AuthProvider = ({ children }) => {
 
 
   useEffect(() => {
+    // Las cookies de sesión (las que revisa el middleware) caducan a las 24h,
+    // pero localStorage no. Si la cookie ya no existe, la sesión guardada en
+    // localStorage es vieja: se descarta para que la app no "crea" que hay
+    // sesión mientras el middleware rebota a /login (ciclo de login en
+    // /registroU).
+    const hasSessionCookie = document.cookie
+      .split("; ")
+      .some((c) => c.startsWith("userRole=") && c.length > "userRole=".length);
+    if (!hasSessionCookie) {
+      clearStoredSession();
+      setIsLoading(false);
+      return;
+    }
+
     const storedAuth = localStorage.getItem('isAuthenticated');
     const storedUserId = localStorage.getItem('userId');
     const storedName = localStorage.getItem("userName");
@@ -33,7 +54,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
 
-  const login = (id, name, role) => {
+  const login = (id, name, role, redirectTo = '/') => {
     console.log("🔐 Login con:", id, name, role);
     setIsAuthenticated(true);
     setUserId(id);
@@ -43,16 +64,22 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('userId', id);
     localStorage.setItem('userName', name);
     localStorage.setItem("userRole", role)
-    router.replace('/'); // ⬅ Evita que el usuario regrese al login después de autenticarse
+    router.replace(redirectTo); // ⬅ Evita que el usuario regrese al login después de autenticarse
   };
 
-  const logout = () => {
+  const logout = async () => {
     setIsAuthenticated(false);
     setUserId(null);
     setUserName("")
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userId');
-    localStorage.removeItem("userName");
+    setUserRole("")
+    clearStoredSession();
+    // Sin esto las cookies seguían vivas y el middleware quedaba desfasado
+    // respecto a la sesión del cliente.
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } catch (error) {
+      console.error("Error al cerrar sesión en el servidor:", error);
+    }
     router.replace('/login');
   };
 

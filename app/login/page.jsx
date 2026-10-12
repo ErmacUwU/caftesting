@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.js'; 
-import { useRouter } from 'next/navigation'; 
 import Image from 'next/image';
 import child from '../assets/images/bby.webp';
 import '../globals.css';
@@ -12,7 +11,6 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth();
-  const router = useRouter();
   const [redirectTo, setRedirectTo] = useState("/");
 
   useEffect(() => {
@@ -43,18 +41,9 @@ const Login = () => {
       if (response.ok && data.success) {
         // 1. Actualizamos el Contexto de Autenticación
         // Usamos exactamente lo que el backend de UserTrue nos devuelve
-        login(data.userId, data.userName, data.role);
-
-        // 2. Persistencia manual (Solo si tu AuthContext no lo hace ya internamente)
-        if (typeof window !== "undefined") {
-          localStorage.setItem("isAuthenticated", "true");
-          localStorage.setItem("userId", data.userId);
-          localStorage.setItem("userName", data.userName);
-          localStorage.setItem("userRole", data.role);
-        }
-
-        // 3. Redirección
-        router.replace(redirectTo);
+        // login() guarda la sesión en localStorage y redirige a la ruta
+        // que se intentaba abrir (o a "/").
+        login(data.userId, data.userName, data.role, redirectTo);
       } else {
         // AJUSTE: El backend ahora envía el error en 'msg', no en 'message'
         setError(data.msg || 'Error al iniciar sesión');
