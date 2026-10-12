@@ -5,7 +5,9 @@ import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 import Spinner from "../components/Spinner";
-import useDebounce from "@/hooks/useDebounce";
+import { SelectPicker } from "rsuite";
+import "rsuite/dist/rsuite-no-reset.min.css";
+import { searchByLabel } from "@/lib/searchText";
 /* ExcelJS (creación de Excel) solo se necesita al exportar, así que se
  importa de forma perezosa dentro de handleExportExcel. */
 
@@ -22,8 +24,6 @@ const Pagos = () => {
   // 1. ESTADOS Y HOOKS
   // -------------------------------------------------------------------------
   const [users, setUsers] = useState([]);
-  const [patientSearchTerm, setPatientSearchTerm] = useState("");
-  const debouncedPatientSearchTerm = useDebounce(patientSearchTerm, 300);
   const [selectedUser, setSelectedUser] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("efectivo");
@@ -162,20 +162,15 @@ const Pagos = () => {
     []
   );
 
-  // Lista del selector "Seleccionar Paciente": orden alfabético por defecto
-  // + filtro dinámico (con debounce) por la barra de búsqueda. El paciente
-  // ya seleccionado se mantiene visible aunque no coincida con la
-  // búsqueda, para no perder la selección del <select>.
-  const visiblePatientUsers = useMemo(
+  // Opciones del selector "Seleccionar Paciente" en orden alfabético. La
+  // búsqueda la hace el propio SelectPicker (searchable), mostrando los
+  // resultados al teclear.
+  const patientOptions = useMemo(
     () =>
-      [...users]
-        .sort((a, b) => getPatientName(a).localeCompare(getPatientName(b), "es", { sensitivity: "base" }))
-        .filter(
-          (u) =>
-            u._id === selectedUser?._id ||
-            getPatientName(u).toLowerCase().includes(debouncedPatientSearchTerm.trim().toLowerCase())
-        ),
-    [users, selectedUser, debouncedPatientSearchTerm, getPatientName]
+      users
+        .map((u) => ({ label: getPatientName(u), value: u._id }))
+        .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
+    [users, getPatientName]
   );
 
   const handleAddPayment = useCallback(async () => {
@@ -305,30 +300,19 @@ const Pagos = () => {
               <label className="block text-xs font-black text-slate-400 uppercase mb-3 tracking-widest">
                 Seleccionar Paciente
               </label>
-              <div className="relative mb-3">
-                <input
-                  type="text"
-                  value={patientSearchTerm}
-                  onChange={(e) => setPatientSearchTerm(e.target.value)}
-                  placeholder="Buscar paciente..."
-                  className="w-full p-3 pl-9 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-400 outline-none transition-all text-slate-700 text-sm"
-                />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  🔍
-                </span>
-              </div>
-              <select
-                onChange={(e) => handleSelectUser(e.target.value)}
-                value={selectedUser?._id || ""}
-                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-xl focus:border-blue-400 outline-none transition-all text-slate-700 font-medium"
-              >
-                <option value="">Buscar en la lista...</option>
-                {visiblePatientUsers.map((u) => (
-                  <option key={u._id} value={u._id}>
-                    {u.patientProfile?.firstName} {u.patientProfile?.lastName}
-                  </option>
-                ))}
-              </select>
+              <SelectPicker
+                data={patientOptions}
+                value={selectedUser?._id || null}
+                onChange={handleSelectUser}
+                placeholder="Buscar paciente..."
+                searchBy={searchByLabel}
+                locale={{ searchPlaceholder: "Escribe un nombre...", noResultsText: "Sin resultados" }}
+                loading={loading}
+                cleanable={false}
+                searchable
+                block
+                size="lg"
+              />
             </div>
 
             {selectedUser && (

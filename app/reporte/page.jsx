@@ -3,7 +3,9 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useAuth } from "../context/AuthContext.js";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import useDebounce from "@/hooks/useDebounce";
+import { SelectPicker } from "rsuite";
+import "rsuite/dist/rsuite-no-reset.min.css";
+import { searchByLabel } from "@/lib/searchText";
 
 const Reporte = () => {
   // -------------------------------------------------------------------------
@@ -15,8 +17,6 @@ const Reporte = () => {
   const [images, setImages] = useState([]);
   const [therapistsList, setTherapistsList] = useState([]);
   const [patientsList, setPatientList] = useState([]);
-  const [therapistSearch, setTherapistSearch] = useState("");
-  const [patientSearch, setPatientSearch] = useState("");
   const [generating, setGenerating] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
@@ -29,9 +29,6 @@ const Reporte = () => {
   const therapistObj = therapistsList.find((t) => t._id === selectedTherapist);
   const patientObj = patientsList.find((p) => p._id === selectedPatient);
 
-  const debouncedTherapistSearch = useDebounce(therapistSearch, 300);
-  const debouncedPatientSearch = useDebounce(patientSearch, 300);
-
   const getTherapistName = useCallback(
     (t) => `${t.therapistProfile?.firstName || ""} ${t.therapistProfile?.lastName || ""}`.trim(),
     []
@@ -41,30 +38,21 @@ const Reporte = () => {
     []
   );
 
-  // Orden alfabético por defecto + filtro por la barra de búsqueda (con
-  // debounce). El elemento ya seleccionado se mantiene visible aunque no
-  // coincida con la búsqueda, para no perder la selección del <select>.
-  const visibleTherapistsList = useMemo(
+  // Opciones de los SelectPicker en orden alfabético. La búsqueda la hace
+  // el propio SelectPicker (searchable), mostrando los resultados al teclear.
+  const therapistOptions = useMemo(
     () =>
-      [...therapistsList]
-        .sort((a, b) => getTherapistName(a).localeCompare(getTherapistName(b), "es", { sensitivity: "base" }))
-        .filter(
-          (t) =>
-            t._id === selectedTherapist ||
-            getTherapistName(t).toLowerCase().includes(debouncedTherapistSearch.trim().toLowerCase())
-        ),
-    [therapistsList, selectedTherapist, debouncedTherapistSearch, getTherapistName]
+      therapistsList
+        .map((t) => ({ label: getTherapistName(t), value: t._id }))
+        .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
+    [therapistsList, getTherapistName]
   );
-  const visiblePatientsList = useMemo(
+  const patientOptions = useMemo(
     () =>
-      [...patientsList]
-        .sort((a, b) => getPatientName(a).localeCompare(getPatientName(b), "es", { sensitivity: "base" }))
-        .filter(
-          (p) =>
-            p._id === selectedPatient ||
-            getPatientName(p).toLowerCase().includes(debouncedPatientSearch.trim().toLowerCase())
-        ),
-    [patientsList, selectedPatient, debouncedPatientSearch, getPatientName]
+      patientsList
+        .map((p) => ({ label: getPatientName(p), value: p._id }))
+        .sort((a, b) => a.label.localeCompare(b.label, "es", { sensitivity: "base" })),
+    [patientsList, getPatientName]
   );
 
   // -------------------------------------------------------------------------
@@ -273,59 +261,33 @@ useEffect(() => {
             {/* Selector Terapeuta */}
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase mb-2">Terapeuta</label>
-              <div className="relative mb-2">
-                <input
-                  type="text"
-                  value={therapistSearch}
-                  onChange={(e) => setTherapistSearch(e.target.value)}
-                  placeholder="Buscar terapeuta..."
-                  className="w-full p-2 pl-8 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all text-sm"
-                />
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                  🔍
-                </span>
-              </div>
-              <select
-                value={selectedTherapist}
-                onChange={(e) => setSelectedTherapist(e.target.value)}
-                className="w-full p-3 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all"
-              >
-                <option value="">Seleccione especialista...</option>
-                {visibleTherapistsList.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.therapistProfile?.firstName} {t.therapistProfile?.lastName}
-                  </option>
-                ))}
-              </select>
+              <SelectPicker
+                data={therapistOptions}
+                value={selectedTherapist || null}
+                onChange={(value) => setSelectedTherapist(value || "")}
+                placeholder="Buscar especialista..."
+                searchBy={searchByLabel}
+                locale={{ searchPlaceholder: "Escribe un nombre...", noResultsText: "Sin resultados" }}
+                searchable
+                block
+                size="lg"
+              />
             </div>
 
             {/* Selector Paciente */}
             <div>
               <label className="block text-xs font-black text-slate-400 uppercase mb-2">Paciente</label>
-              <div className="relative mb-2">
-                <input
-                  type="text"
-                  value={patientSearch}
-                  onChange={(e) => setPatientSearch(e.target.value)}
-                  placeholder="Buscar paciente..."
-                  className="w-full p-2 pl-8 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all text-sm"
-                />
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                  🔍
-                </span>
-              </div>
-              <select
-                value={selectedPatient}
-                onChange={(e) => setSelectedPatient(e.target.value)}
-                className="w-full p-3 bg-slate-50 rounded-xl border-2 border-slate-100 focus:border-blue-500 outline-none transition-all"
-              >
-                <option value="">Seleccione paciente...</option>
-                {visiblePatientsList.map((p) => (
-                  <option key={p._id} value={p._id}>
-                    {p.patientProfile?.firstName} {p.patientProfile?.lastName}
-                  </option>
-                ))}
-              </select>
+              <SelectPicker
+                data={patientOptions}
+                value={selectedPatient || null}
+                onChange={(value) => setSelectedPatient(value || "")}
+                placeholder="Buscar paciente..."
+                searchBy={searchByLabel}
+                locale={{ searchPlaceholder: "Escribe un nombre...", noResultsText: "Sin resultados" }}
+                searchable
+                block
+                size="lg"
+              />
             </div>
           </div>
 
