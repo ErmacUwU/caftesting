@@ -6,5 +6,3 @@
 
 # Carpeta de dependencias generada por npm
 node_modules/
-# Conexión a MongoDB con credenciales (no subir)
-lib/dbConnect.js
