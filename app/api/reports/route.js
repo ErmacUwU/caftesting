@@ -11,7 +11,10 @@ export const runtime = "nodejs";
 function extractS3Key(url = "") {
   try {
     const u = new URL(url);
-    return u.pathname.replace(/^\/+/, "");
+    // El pathname viene codificado ("Monta%C3%B1ez%20Pedroza"); en S3 la
+    // clave real es el texto plano ("Montañez Pedroza"). Sin decodificar,
+    // el DELETE apunta a una clave inexistente y el PDF se queda huérfano.
+    return decodeURIComponent(u.pathname.replace(/^\/+/, ""));
   } catch {
     return "";
   }

@@ -27,6 +27,24 @@ function nameToLooseRegex(name = "") {
   return new RegExp(pattern, "i");
 }
 
+// Las claves guardadas desde la URL quedaban codificadas ("%C3%B1", "%20");
+// S3 necesita el texto plano. Si no está codificada, se deja igual.
+function decodeS3Key(k = "") {
+  try {
+    return decodeURIComponent(k);
+  } catch {
+    return k;
+  }
+}
+
+function keyFromS3Url(url = "") {
+  try {
+    return decodeS3Key(new URL(url).pathname.replace(/^\/+/, ""));
+  } catch {
+    return "";
+  }
+}
+
 // ====== CONFIGURACIÓN CLIENTE S3 ======
 function getS3Client() {
   const region = process.env.AWS_REGION || process.env.AWS_BUCKET_REGION || process.env.S3_REGION;
@@ -189,35 +207,39 @@ export async function DELETE(req) {
     }
 
     let fileDoc = null;
-    if (!key && id) {
+    if (id) {
       fileDoc = await File.findById(id).lean();
-      if (!fileDoc) {
+      if (!fileDoc && !key) {
         return NextResponse.json({ error: "Documento no encontrado" }, { status: 404 });
       }
     }
 
-    const s3Key = key || fileDoc?.key || fileDoc?.name || null;
+    // Clave tal como está guardada en Mongo (puede venir codificada en
+    // reportes viejos) y su versión real en S3 (texto plano).
+    const storedKey = key || fileDoc?.key || fileDoc?.name || null;
+    const s3Key = storedKey ? decodeS3Key(storedKey) : null;
 
-    if (s3Key) {
-      try {
-        const s3 = getS3Client();
-        const bucket = getBucketName();
-        await s3.send(
-          new DeleteObjectCommand({
-            Bucket: bucket,
-            Key: s3Key,
-          })
-        );
-      } catch (s3err) {
-        console.error("Error borrando en S3:", s3err);
+    // También se borran las imágenes de evidencia que se subieron con el reporte.
+    const imageKeys = (fileDoc?.images || []).map(keyFromS3Url).filter(Boolean);
+    const keysToDelete = [s3Key, ...imageKeys].filter(Boolean);
+
+    if (keysToDelete.length) {
+      const s3 = getS3Client();
+      const bucket = getBucketName();
+      for (const k of keysToDelete) {
+        try {
+          await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: k }));
+        } catch (s3err) {
+          console.error(`Error borrando en S3 (${k}):`, s3err);
+        }
       }
     }
 
     let mongoResult = null;
     if (id) {
       mongoResult = await File.deleteOne({ _id: id });
-    } else if (s3Key) {
-      mongoResult = await File.deleteOne({ key: s3Key });
+    } else if (storedKey) {
+      mongoResult = await File.deleteOne({ key: { $in: [storedKey, s3Key] } });
     }
 
     return NextResponse.json({
