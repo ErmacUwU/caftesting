@@ -8,6 +8,7 @@ import Spinner from "../components/Spinner";
 import { SelectPicker } from "rsuite";
 import "rsuite/dist/rsuite-no-reset.min.css";
 import { searchByLabel } from "@/lib/searchText";
+import { CLINIC_TIMEZONE, formatZonedDate } from "@/lib/clinicTime";
 /* ExcelJS (creación de Excel) solo se necesita al exportar, así que se
  importa de forma perezosa dentro de handleExportExcel. */
 
@@ -72,7 +73,8 @@ const Pagos = () => {
     const pa = p?.estadoDeCuenta?.pagos || [];
     const total = p?.estadoDeCuenta?.total || 0;
 
-    const normKey = (d) => new Date(d).toISOString().split("T")[0];
+    // Día del movimiento según la clínica, no según la zona del navegador.
+    const normKey = (d) => formatZonedDate(new Date(d), CLINIC_TIMEZONE);
     const fmtEs = (dateStr) => {
       const [y, m, d] = dateStr.split("-");
       return new Date(y, m - 1, d).toLocaleDateString("es-MX");
@@ -90,6 +92,7 @@ const Pagos = () => {
       ...pa.map((item) => ({
         fecha: item.fecha,
         tipo: "Pago Recibido",
+        pagoId: item._id,
         monto: -Number(item.cantidad),
         metodo: item.metodoPago,
         rawDate: new Date(item.fecha),
@@ -208,6 +211,34 @@ const Pagos = () => {
     }
   }, [selectedUser, paymentAmount, selectedPaymentMethod]);
 
+  // Elimina un pago mal registrado; el saldo se recalcula en el servidor.
+  const handleDeletePayment = useCallback(async (item) => {
+    if (!selectedUser || !item?.pagoId) return;
+    const monto = Math.abs(item.monto).toFixed(2);
+    if (!window.confirm(`¿Eliminar el pago de $${monto}? El saldo del paciente se ajustará.`)) return;
+
+    setActionLoading(true);
+    setErrorMessage("");
+    try {
+      const response = await axios.patch(`/api/usuarioTrue/${selectedUser._id}`, {
+        eliminarPagoId: item.pagoId,
+      });
+      setSelectedUser((prev) => ({
+        ...prev,
+        patientProfile: {
+          ...prev.patientProfile,
+          estadoDeCuenta: response.data.estadoDeCuenta,
+        },
+      }));
+      setSuccessMessage("Pago eliminado.");
+      setTimeout(() => setSuccessMessage(""), 4000);
+    } catch (error) {
+      setErrorMessage("No se pudo eliminar el pago.");
+    } finally {
+      setActionLoading(false);
+    }
+  }, [selectedUser]);
+
   const handleExportExcel = useCallback(async () => {
     if (!profile) return;
     // Carga perezosa: ExcelJS solo se descarga al exportar un reporte.
@@ -234,7 +265,7 @@ const Pagos = () => {
 
     historial.forEach((h) => {
       sheet.addRow([
-        new Date(h.fecha).toLocaleDateString("es-MX"),
+        new Date(h.fecha).toLocaleDateString("es-MX", { timeZone: CLINIC_TIMEZONE }),
         h.tipo,
         h.monto.toFixed(2),
         h.metodo,
@@ -406,13 +437,14 @@ const Pagos = () => {
                           <th className="p-5">Concepto</th>
                           <th className="p-5">Método</th>
                           <th className="p-5 text-right">Monto</th>
+                          <th className="p-5"></th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
                         {historial.slice().reverse().map((item, idx) => (
                           <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
                             <td className="p-5 text-slate-600 font-medium">
-                              {new Date(item.fecha).toLocaleDateString("es-MX")}
+                              {new Date(item.fecha).toLocaleDateString("es-MX", { timeZone: CLINIC_TIMEZONE })}
                             </td>
                             <td className="p-5 font-bold text-slate-800">{item.tipo}</td>
                             <td className="p-5">
@@ -422,6 +454,18 @@ const Pagos = () => {
                             </td>
                             <td className={`p-5 text-right font-black text-lg ${item.monto < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                               {item.monto < 0 ? `-$${Math.abs(item.monto).toFixed(2)}` : `+$${item.monto.toFixed(2)}`}
+                            </td>
+                            <td className="p-5 text-right">
+                              {item.pagoId && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePayment(item)}
+                                  disabled={actionLoading}
+                                  className="text-xs font-bold text-red-500 hover:text-red-700 hover:underline disabled:opacity-50"
+                                >
+                                  Eliminar
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}

@@ -424,27 +424,10 @@ const handleSubmit = async (e) => {
       ? await axios.post("/api/date", { occurrences: occurrencesData })
       : await axios.post("/api/date", occurrencesData[0]);
 
+    // 5. El cargo de cada cita en el estado de cuenta del paciente lo
+    // agrega el servidor (/api/date) al crearla, ligado a la cita para
+    // poder actualizarlo o quitarlo si después se edita o se borra.
     postOk = true;
-
-    // 5. Actualizar el perfil del Paciente en UsuarioTrue (Historial de citas)
-    // Se registra una entrada de historial por cada ocurrencia creada. En
-    // paralelo (antes era secuencial: una cita recurrente de N semanas
-    // esperaba N round-trips uno tras otro antes de terminar de "guardar").
-    await Promise.all(
-      occurrencesData.map((occ) =>
-        axios
-          .patch(`/api/usuarioTrue/${selectedPatient}`, {
-            isAccountUpdate: false, // Indica que no es cambio de contraseña/email, sino de perfil
-            nuevaCita: {
-              fecha: new Date(`${occ.date}T00:00:00`).toISOString(),
-              costo: Number(cost),
-            },
-          })
-          .catch((patchErr) => {
-            console.warn("La cita se creó, pero no se pudo actualizar el historial del paciente:", patchErr);
-          })
-      )
-    );
 
   } catch (error) {
     console.error("Error crítico al crear la cita:", error);
@@ -454,7 +437,8 @@ const handleSubmit = async (e) => {
     // 6. Si todo salió bien, refrescamos y limpiamos
     if (postOk) {
       await refetchAppointments();
-      setCalKey((k) => k + 1); // Forzar refresco del calendario
+      // Sin remontar el calendario (setCalKey): eso lo regresaba a la
+      // semana actual y se perdía la semana que el usuario estaba viendo.
 
       // Limpiar formulario
       setSelectedPatient("");
@@ -504,7 +488,7 @@ const handleSubmit = async (e) => {
     // persistirlos, igual que al crear una cita.
     const realStart = fromFullCalendarDate(event.start, CLINIC_TIMEZONE);
     const realEnd = fromFullCalendarDate(event.end, CLINIC_TIMEZONE);
-    const newDate = realStart.toISOString().split("T")[0];
+    const newDate = formatZonedDate(realStart, CLINIC_TIMEZONE);
 
     try {
       // La API espera { date, start, end } (mismo contrato que usa
@@ -1382,7 +1366,6 @@ const therapistsData = useMemo(
             onDeleted={() => {
               closeModal();
               refetchAppointments();
-              setCalKey((k) => k + 1);
             }}
           />
         </div>

@@ -23,22 +23,24 @@ const ContactSchema = new mongoose.Schema(
   { _id: false } // Para que no se cree un ID adicional para cada contacto
 );
 
+const PagoSchema = new mongoose.Schema({
+  fecha: { type: Date, default: Date.now },
+  cantidad: { type: Number, required: true },
+  metodoPago: { type: String, enum: ["efectivo", "tarjeta", "transferencia"], required: true },
+});
+
 const EstadoDeCuentaSchema = new mongoose.Schema(
   {
     total: { type: Number, default: 0 }, // 🔹 Deuda total
     citas: [
       {
+        dateId: { type: mongoose.Schema.Types.ObjectId, ref: "Date" }, // Cita que generó el cargo
         fecha: { type: Date, required: true },
         costo: { type: Number, required: true },
       },
     ],
-    pagos: [
-      {
-        fecha: { type: Date, default: Date.now },
-        cantidad: { type: Number, required: true },
-        metodoPago: { type: String, enum: ["efectivo", "tarjeta", "transferencia"], required: true },
-      },
-    ],
+    // Cada pago lleva su propio _id para poder eliminarlo si se registró mal.
+    pagos: [PagoSchema],
   },
   { _id: false }
 );

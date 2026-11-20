@@ -85,6 +85,8 @@ const Servicios = () => {
     }
 
     const handleDelete = async (id) => {
+        const servicio = services.find((s) => s._id === id)
+        if (!window.confirm(`¿Eliminar el servicio "${servicio?.name || ""}"? Esta acción no se puede deshacer.`)) return
         try {
             await axios.delete(`/api/service/${id}`)
             fetchServices()

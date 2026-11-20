@@ -5,6 +5,7 @@ import TherapistU from "@/models/TherapistU";
 import UserTrue from "@/models/UserTrue";
 import mongoose from "mongoose"; // <--- Verifica esta importación
 import bcrypt from "bcryptjs";
+import { recalcularTotal } from "@/lib/estadoDeCuenta";
 
 export async function PUT(req, { params }) {
   try {
@@ -100,7 +101,7 @@ export async function PATCH(req, { params }) {
     await dbConnect();
     const { id } = params; // Este es el ID de UserTrue
     const body = await req.json();
-    const { nuevaCita, cantidad } = body;
+    const { cantidad, eliminarPagoId } = body;
 
     // 1. Buscamos al usuario y poblamos su perfil de paciente
     const user = await UserTrue.findById(id).populate("patientProfile");
@@ -114,25 +115,30 @@ export async function PATCH(req, { params }) {
 
     const paciente = user.patientProfile;
 
-    // 2. ESCENARIO: Agregar nueva cita
-    if (nuevaCita) {
-      paciente.estadoDeCuenta.citas.push({
-        fecha: nuevaCita.fecha,
-        costo: Number(nuevaCita.costo),
-      });
-      paciente.estadoDeCuenta.total += Number(nuevaCita.costo);
-    }
+    // Los cargos de las citas ya no llegan por aquí: los agrega, actualiza y
+    // quita la API de citas (/api/date) al crear, editar o borrar cada cita.
 
-    // 3. ESCENARIO: Registrar un pago
+    // 2. ESCENARIO: Registrar un pago
     if (cantidad) {
       const nuevoPago = {
         fecha: new Date(),
         cantidad: Number(cantidad),
         metodoPago: body.metodoPago || "efectivo",
       };
-      paciente.estadoDeCuenta.total -= Number(cantidad);
       paciente.estadoDeCuenta.pagos.push(nuevoPago);
     }
+
+    // 3. ESCENARIO: Eliminar un pago mal registrado
+    if (eliminarPagoId) {
+      const antes = paciente.estadoDeCuenta.pagos.length;
+      paciente.estadoDeCuenta.pagos = paciente.estadoDeCuenta.pagos.filter(
+        (p) => p._id?.toString() !== String(eliminarPagoId)
+      );
+      if (paciente.estadoDeCuenta.pagos.length === antes) {
+        return NextResponse.json({ error: "Pago no encontrado" }, { status: 404 });
+      }
+    }
+    recalcularTotal(paciente.estadoDeCuenta);
 
     // 4. Guardar cambios en el perfil (PatientU)
     await paciente.save();

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { normalizeSearchText } from "@/lib/searchText";
 import { useRouter } from "next/navigation";
 import uniquid from "uniquid";
 import { useAuth } from "../context/AuthContext.js";
@@ -452,13 +453,11 @@ export default function RegistroUsuario() {
         .filter((user) => {
           const matchesRole = filterRole === "all" || user.role === filterRole;
 
-          const search = debouncedSearchTerm.toLowerCase().trim();
+          const search = normalizeSearchText(debouncedSearchTerm);
 
-          const name = getDisplayName(user).toLowerCase();
-          const email = (user.email || "").toLowerCase();
-          const specialization = (
-            user.therapistProfile?.specialization || ""
-          ).toLowerCase();
+          const name = normalizeSearchText(getDisplayName(user));
+          const email = normalizeSearchText(user.email);
+          const specialization = normalizeSearchText(user.therapistProfile?.specialization);
 
           const matchesSearch =
             !search ||
@@ -1580,7 +1579,7 @@ export default function RegistroUsuario() {
                     : "Edición Integral de Paciente"}
                 </h3>
                 <p className="text-indigo-100 opacity-80">
-                  Modificando perfil de {editForm.firstName}
+                  {isViewMode ? "Perfil de" : "Modificando perfil de"} {editForm.firstName}
                 </p>
               </div>
               <button
@@ -1716,6 +1715,19 @@ export default function RegistroUsuario() {
                         <option value="M">Masculino</option>
                         <option value="F">Femenino</option>
                       </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-gray-500">
+                        Fecha de Nacimiento
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full p-2 border rounded"
+                        value={editForm.birthdate || ""}
+                        onChange={(e) =>
+                          setEditForm({ ...editForm, birthdate: e.target.value })
+                        }
+                      />
                     </div>
                   </div>
                 </section>
@@ -2094,7 +2106,7 @@ export default function RegistroUsuario() {
               <div>
                 <h3 className="text-2xl font-bold">Gestión de Terapeuta</h3>
                 <p className="text-emerald-100 opacity-80">
-                  Modificando perfil profesional de {editForm.firstName}
+                  {isViewMode ? "Perfil profesional de" : "Modificando perfil profesional de"} {editForm.firstName}
                 </p>
               </div>
               <button

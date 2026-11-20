@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import { normalizeSearchText } from "@/lib/searchText";
 import axios from 'axios';
 import Modal from 'react-modal';
 import BotonDeleteCitas from './BotonDeleteCitas';
@@ -160,7 +161,7 @@ const TarjetaCitas = () => {
         .filter(
           (therapist) =>
             therapist._id === selectedTherapist ||
-            getNombre(therapist).toLowerCase().includes(debouncedTherapistFilterSearch.trim().toLowerCase())
+            normalizeSearchText(getNombre(therapist)).includes(normalizeSearchText(debouncedTherapistFilterSearch))
         ),
     [therapists, selectedTherapist, debouncedTherapistFilterSearch, getNombre]
   );
@@ -172,7 +173,7 @@ const TarjetaCitas = () => {
         .filter(
           (patient) =>
             patient._id === selectedPatient ||
-            getNombre(patient).toLowerCase().includes(debouncedPatientFilterSearch.trim().toLowerCase())
+            normalizeSearchText(getNombre(patient)).includes(normalizeSearchText(debouncedPatientFilterSearch))
         ),
     [patients, selectedPatient, debouncedPatientFilterSearch, getNombre]
   );
@@ -187,10 +188,11 @@ const TarjetaCitas = () => {
     return Math.round((new Date(endDate) - new Date(startDate)) / 86400000);
   }, [startDate, endDate]);
 
+  // Fecha de la cita como se vive en la clínica, tomada de `start` (el
+  // instante real). `date` se guarda como medianoche UTC, y al mostrarlo en
+  // hora de Tijuana caía en el día anterior.
   const formatToLocalDate = useCallback((dateString) => {
-    const [year, month, day] = dateString.split("T")[0].split("-");
-    const localDate = new Date(year, month - 1, day);
-    return localDate.toLocaleDateString("es-ES", { timeZone: CLINIC_TIMEZONE });
+    return new Date(dateString).toLocaleDateString("es-ES", { timeZone: CLINIC_TIMEZONE });
   }, []);
 
   const formatToLocalTime = useCallback((dateString) => {
@@ -208,9 +210,9 @@ const TarjetaCitas = () => {
       Servicio: cita.title,
       Terapeuta: getNombre(cita.therapist),
       Paciente: getNombre(cita.patient),
-      Fecha: new Date(cita.date).toLocaleDateString("es-MX"),
-      HoraInicio: new Date(cita.date).toLocaleTimeString("es-MX", { hour: '2-digit', minute: '2-digit' }),
-      HoraFin: new Date(cita.end).toLocaleTimeString("es-MX", { hour: '2-digit', minute: '2-digit' }),
+      Fecha: new Date(cita.start).toLocaleDateString("es-MX", { timeZone: CLINIC_TIMEZONE }),
+      HoraInicio: formatZonedTime(new Date(cita.start), CLINIC_TIMEZONE),
+      HoraFin: formatZonedTime(new Date(cita.end), CLINIC_TIMEZONE),
       Duración: `${cita.duration} minutos`,
       Costo: `$${cita.cost}`,
     }));
@@ -417,7 +419,7 @@ const TarjetaCitas = () => {
                     {d.title || "Sin servicio"}
                   </span>
                   <span className="text-xs text-slate-400">
-                    {formatToLocalDate(d.date)} · {formatToLocalTime(d.start)} – {formatToLocalTime(d.end)}
+                    {formatToLocalDate(d.start)} · {formatToLocalTime(d.start)} – {formatToLocalTime(d.end)}
                   </span>
                 </div>
                 <p className="text-sm text-slate-700">
@@ -490,9 +492,9 @@ const TarjetaCitas = () => {
               selectedPatient={selectedAppointment.patient?._id || selectedAppointment.patient}
               selectedTherapist={selectedAppointment.therapist?._id || selectedAppointment.therapist}
               selectedService={selectedAppointment.serviceId || ""}
-              appointmentDate={selectedAppointment.date ? new Date(selectedAppointment.date).toISOString().split('T')[0] : ""}
-              appointmentStartTime={new Date(selectedAppointment.start).toTimeString().slice(0, 5)}
-              appointmentEndTime={new Date(selectedAppointment.end).toTimeString().slice(0, 5)}
+              appointmentDate={formatZonedDate(new Date(selectedAppointment.start), CLINIC_TIMEZONE)}
+              appointmentStartTime={formatZonedTime(new Date(selectedAppointment.start), CLINIC_TIMEZONE)}
+              appointmentEndTime={formatZonedTime(new Date(selectedAppointment.end), CLINIC_TIMEZONE)}
               appointmentDuration={selectedAppointment.duration}
               cost={selectedAppointment.cost}
               preloadedPatients={patients}

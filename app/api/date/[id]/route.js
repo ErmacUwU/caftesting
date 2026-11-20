@@ -2,6 +2,7 @@ import dbConnect from "@/lib/dbConnect";
 import DateModel from "@/models/Date";
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
+import { actualizarCargo } from "@/lib/estadoDeCuenta";
 
 export async function PUT(request, { params }) {
   const { id } = params;
@@ -27,6 +28,11 @@ export async function PUT(request, { params }) {
     serviceId: data.serviceId ? new mongoose.Types.ObjectId(data.serviceId) : undefined,
   };
 
+  const previousDate = await DateModel.findById(id).lean();
+  if (!previousDate) {
+    return NextResponse.json({ message: "Cita no encontrada" }, { status: 404 });
+  }
+
   const updatedDate = await DateModel.findByIdAndUpdate(id, updatedData, {
     new: true,
     runValidators: true 
@@ -34,6 +40,13 @@ export async function PUT(request, { params }) {
 
   if (!updatedDate) {
     return NextResponse.json({ message: "Cita no encontrada" }, { status: 404 });
+  }
+
+  // Refleja el nuevo costo/fecha (o el cambio de paciente) en el estado de cuenta.
+  try {
+    await actualizarCargo(previousDate, updatedDate);
+  } catch (error) {
+    console.error("[/api/date/:id] no se pudo actualizar el estado de cuenta:", error);
   }
 
   return NextResponse.json({ message: "Fecha Actualizada", updatedDate });

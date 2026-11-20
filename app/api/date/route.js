@@ -147,6 +147,17 @@ import "@/models/TherapistU";
 
 import mongoose from "mongoose";
 import { NextResponse } from "next/server";
+import { agregarCargos, quitarCargos } from "@/lib/estadoDeCuenta";
+
+// Si falla la sincronización del estado de cuenta, la cita ya quedó
+// guardada/borrada: se registra el error pero no se reporta como fallo.
+async function sincronizarCuenta(fn, citas) {
+  try {
+    await fn(citas);
+  } catch (error) {
+    console.error("[/api/date] no se pudo actualizar el estado de cuenta:", error);
+  }
+}
 
 function errorResponse(error, status = 500) {
   console.error("[/api/date] error:", error);
@@ -230,6 +241,7 @@ export async function POST(req) {
 
       const docs = occurrences.map(toDoc);
       const created = await DateModel.insertMany(docs);
+      await sincronizarCuenta(agregarCargos, created);
 
       return NextResponse.json(
         { success: true, msg: "Citas recurrentes creadas con éxito", count: created.length },
@@ -272,7 +284,7 @@ export async function POST(req) {
   try {
     await dbConnect();
 
-    await DateModel.create(
+    const created = await DateModel.create(
       toDoc({
         idDate,
         date,
@@ -288,6 +300,7 @@ export async function POST(req) {
         recurrenceGroupId,
       })
     );
+    await sincronizarCuenta(agregarCargos, [created]);
 
     return NextResponse.json(
       { success: true, msg: "Cita creada con éxito" },
@@ -380,10 +393,13 @@ export async function DELETE(req) {
       }
 
       if (target.recurrenceGroupId) {
-        const result = await DateModel.deleteMany({
+        const filtro = {
           recurrenceGroupId: target.recurrenceGroupId,
           start: { $gte: target.start },
-        });
+        };
+        const aBorrar = await DateModel.find(filtro).select("_id patient").lean();
+        const result = await DateModel.deleteMany(filtro);
+        await sincronizarCuenta(quitarCargos, aBorrar);
         return NextResponse.json(
           { success: true, msg: "Citas eliminadas", count: result.deletedCount },
           { status: 200, ...noStore }
@@ -392,6 +408,7 @@ export async function DELETE(req) {
 
       // No pertenece a una serie: se comporta como borrado simple.
       await DateModel.findByIdAndDelete(id);
+      await sincronizarCuenta(quitarCargos, [target]);
       return NextResponse.json(
         { success: true, msg: "Cita eliminada" },
         { status: 200, ...noStore }
@@ -405,6 +422,7 @@ export async function DELETE(req) {
         { status: 404 }
       );
     }
+    await sincronizarCuenta(quitarCargos, [deleted]);
     return NextResponse.json(
       { success: true, msg: "Cita eliminada" },
       { status: 200, ...noStore }

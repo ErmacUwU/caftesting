@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { normalizeSearchText } from "@/lib/searchText";
 import axios from "axios";
 import { TimePicker } from "rsuite";
 import "rsuite/dist/rsuite-no-reset.min.css";
@@ -237,9 +238,8 @@ const appointmentData = {
       patients.filter(
         (p) =>
           p._id === newPatient ||
-          `${p.firstName} ${p.lastName}`
-            .toLowerCase()
-            .includes(debouncedPatientSearch.trim().toLowerCase())
+          normalizeSearchText(`${p.firstName} ${p.lastName}`)
+            .includes(normalizeSearchText(debouncedPatientSearch))
       ),
     [patients, newPatient, debouncedPatientSearch]
   );
@@ -248,9 +248,8 @@ const appointmentData = {
       therapists.filter(
         (t) =>
           t._id === newTherapist ||
-          `${t.firstName} ${t.lastName}`
-            .toLowerCase()
-            .includes(debouncedTherapistSearch.trim().toLowerCase())
+          normalizeSearchText(`${t.firstName} ${t.lastName}`)
+            .includes(normalizeSearchText(debouncedTherapistSearch))
       ),
     [therapists, newTherapist, debouncedTherapistSearch]
   );
